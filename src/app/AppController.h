@@ -15,6 +15,7 @@
 #include "modules/mbd/MbdService.h"
 #include "modules/simplify/SimplifyService.h"
 #include "interop/ImportExportService.h"
+#include "interop/IoPipeline.h"
 
 namespace cad {
 namespace app {
@@ -49,6 +50,7 @@ private:
     cad::modules::MbdService mbd_service_;
     cad::modules::SimplifyService simplify_service_;
     cad::interop::ImportExportService io_service_;
+    cad::interop::IoPipeline io_pipeline_;
     cad::core::Sketch active_sketch_{"Sketch"};
     cad::core::Assembly active_assembly_;
 };

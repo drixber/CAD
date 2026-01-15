@@ -1,5 +1,6 @@
 add_library(cad_interop
     ImportExportService.cpp
+    IoPipeline.cpp
 )
 
 target_include_directories(cad_interop
