@@ -30,6 +30,7 @@ public:
     void setAssemblySummary(const std::string& summary);
     void setMatesSummary(const std::string& summary);
     void setContextPlaceholder(const std::string& context);
+    void appendRecentCommand(const std::string& command);
 
 private:
     QtRibbon* ribbon_{nullptr};

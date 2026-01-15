@@ -22,6 +22,7 @@ completed_items:
 - Added Qt main window viewport placeholder.
 - Added ribbon tabs/groups and QAction registration.
 - Wired ribbon actions to command line and property panel context.
+- Added browser tree sections and recent command list.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -38,5 +39,6 @@ decisions_made:
 - 3D viewport placeholder uses Qt frame with centered label.
 - Ribbon uses QAction registry with grouped tabs.
 - Ribbon triggers update command line and UI context placeholder.
+- Browser tree tracks recent commands for UI-only feedback.
 
 estimated_remaining_time: 70-110 weeks

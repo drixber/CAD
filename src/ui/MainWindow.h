@@ -34,6 +34,7 @@ public:
     void setAssemblySummary(const std::string& summary);
     void setMatesSummary(const std::string& summary);
     void setContextPlaceholder(const std::string& context);
+    void appendRecentCommand(const std::string& command);
 
     bool hasNativeWindow() const;
 #ifdef CAD_USE_QT

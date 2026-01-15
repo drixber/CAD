@@ -91,6 +91,13 @@ void MainWindow::setContextPlaceholder(const std::string& context) {
 #endif
 }
 
+void MainWindow::appendRecentCommand(const std::string& command) {
+    (void)command;
+#ifdef CAD_USE_QT
+    native_window_.appendRecentCommand(command);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

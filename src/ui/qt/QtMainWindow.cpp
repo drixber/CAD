@@ -28,12 +28,14 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
+        browser_tree_->appendRecentCommand(command);
     });
 
     connect(agent_console_, &QtAgentConsole::commandIssued, this, [this](const QString& command) {
         agent_thoughts_->appendThought(tr("Queued agent task: %1").arg(command));
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
+        browser_tree_->appendRecentCommand(command);
     });
 
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
@@ -88,6 +90,7 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
+        browser_tree_->appendRecentCommand(command);
     });
 }
 
@@ -101,6 +104,10 @@ void QtMainWindow::setMatesSummary(const std::string& summary) {
 
 void QtMainWindow::setContextPlaceholder(const std::string& context) {
     property_panel_->setContextPlaceholder(QString::fromStdString(context));
+}
+
+void QtMainWindow::appendRecentCommand(const std::string& command) {
+    browser_tree_->appendRecentCommand(QString::fromStdString(command));
 }
 
 }  // namespace ui
