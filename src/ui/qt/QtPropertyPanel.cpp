@@ -22,6 +22,23 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     layout->addWidget(mates_label_);
     context_label_ = new QLabel(tr("Context: None"));
     layout->addWidget(context_label_);
+
+    context_stack_ = new QStackedWidget(this);
+    auto makePanel = [this](const QString& name) {
+        QLabel* label = new QLabel(name, context_stack_);
+        label->setAlignment(Qt::AlignCenter);
+        return label;
+    };
+    context_stack_->addWidget(makePanel(tr("Context Panel: General")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Sketch")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Part")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Assembly")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Drawing")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Inspect")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Manage")));
+    context_stack_->addWidget(makePanel(tr("Context Panel: View")));
+    layout->addWidget(context_stack_);
+
     layout->addStretch();
 }
 
@@ -59,6 +76,30 @@ void QtPropertyPanel::setContextPlaceholder(const QString& context) {
     if (context_label_) {
         context_label_->setText(tr("Context: %1").arg(context));
     }
+}
+
+void QtPropertyPanel::setContextCategory(const QString& category) {
+    if (!context_stack_) {
+        return;
+    }
+    const QString normalized = category.toLower();
+    int index = 0;
+    if (normalized == "sketch") {
+        index = 1;
+    } else if (normalized == "part") {
+        index = 2;
+    } else if (normalized == "assembly") {
+        index = 3;
+    } else if (normalized == "drawing") {
+        index = 4;
+    } else if (normalized == "inspect") {
+        index = 5;
+    } else if (normalized == "manage") {
+        index = 6;
+    } else if (normalized == "view") {
+        index = 7;
+    }
+    context_stack_->setCurrentIndex(index);
 }
 
 }  // namespace ui

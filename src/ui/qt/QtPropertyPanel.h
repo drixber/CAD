@@ -3,6 +3,7 @@
 #include <QWidget>
 
 #include <QLabel>
+#include <QStackedWidget>
 
 namespace cad {
 namespace ui {
@@ -18,6 +19,7 @@ public:
     void setIntegrationStatus(const QString& status);
     void setMateCount(int count);
     void setContextPlaceholder(const QString& context);
+    void setContextCategory(const QString& category);
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -26,6 +28,7 @@ private:
     QLabel* integration_status_{nullptr};
     QLabel* mates_label_{nullptr};
     QLabel* context_label_{nullptr};
+    QStackedWidget* context_stack_{nullptr};
 };
 
 }  // namespace ui

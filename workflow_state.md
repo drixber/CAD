@@ -23,10 +23,12 @@ completed_items:
 - Added ribbon tabs/groups and QAction registration.
 - Wired ribbon actions to command line and property panel context.
 - Added browser tree sections and recent command list.
+- Added property panel context categories for ribbon commands.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - Property panel widgets for detailed command parameters.
+ - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -40,5 +42,6 @@ decisions_made:
 - Ribbon uses QAction registry with grouped tabs.
 - Ribbon triggers update command line and UI context placeholder.
 - Browser tree tracks recent commands for UI-only feedback.
+- Property panel uses stacked placeholder panels for context categories.
 
 estimated_remaining_time: 70-110 weeks

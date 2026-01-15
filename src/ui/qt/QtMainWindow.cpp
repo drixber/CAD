@@ -1,12 +1,57 @@
 #include "QtMainWindow.h"
 
 #include <QDockWidget>
+#include <QSet>
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QWidget>
 
 namespace cad {
 namespace ui {
+
+namespace {
+
+QString categoryForCommand(const QString& command) {
+    const QSet<QString> sketch = {"Line", "Rectangle", "Circle", "Arc", "Constraint"};
+    const QSet<QString> part = {"Extrude", "Revolve", "Loft", "Hole", "Fillet",
+                                "Flange", "Bend", "Unfold", "Refold",
+                                "RectangularPattern", "CircularPattern", "CurvePattern",
+                                "DirectEdit", "Freeform"};
+    const QSet<QString> assembly = {"Place", "Mate", "Flush", "Angle", "Pattern",
+                                    "RigidPipe", "FlexibleHose", "BentTube", "Simplify"};
+    const QSet<QString> drawing = {"BaseView", "Section", "Dimension", "PartsList"};
+    const QSet<QString> inspect = {"Measure", "Interference", "SectionAnalysis",
+                                   "Simulation", "StressAnalysis"};
+    const QSet<QString> manage = {"Parameters", "Styles", "AddIns", "Import",
+                                  "Export", "ExportRFA", "MbdNote"};
+    const QSet<QString> view = {"Visibility", "Appearance", "Environment",
+                                "Illustration", "Rendering", "Animation"};
+
+    if (sketch.contains(command)) {
+        return "Sketch";
+    }
+    if (part.contains(command)) {
+        return "Part";
+    }
+    if (assembly.contains(command)) {
+        return "Assembly";
+    }
+    if (drawing.contains(command)) {
+        return "Drawing";
+    }
+    if (inspect.contains(command)) {
+        return "Inspect";
+    }
+    if (manage.contains(command)) {
+        return "Manage";
+    }
+    if (view.contains(command)) {
+        return "View";
+    }
+    return "General";
+}
+
+}  // namespace
 
 QtMainWindow::QtMainWindow(QWidget* parent)
     : QMainWindow(parent),
@@ -28,6 +73,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
+        property_panel_->setContextCategory(categoryForCommand(command));
         browser_tree_->appendRecentCommand(command);
     });
 
@@ -35,6 +81,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         agent_thoughts_->appendThought(tr("Queued agent task: %1").arg(command));
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
+        property_panel_->setContextCategory(categoryForCommand(command));
         browser_tree_->appendRecentCommand(command);
     });
 
@@ -90,6 +137,7 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
+        property_panel_->setContextCategory(categoryForCommand(command));
         browser_tree_->appendRecentCommand(command);
     });
 }
@@ -108,6 +156,10 @@ void QtMainWindow::setContextPlaceholder(const std::string& context) {
 
 void QtMainWindow::appendRecentCommand(const std::string& command) {
     browser_tree_->appendRecentCommand(QString::fromStdString(command));
+}
+
+void QtMainWindow::setContextCategory(const std::string& category) {
+    property_panel_->setContextCategory(QString::fromStdString(category));
 }
 
 }  // namespace ui

@@ -98,6 +98,13 @@ void MainWindow::appendRecentCommand(const std::string& command) {
 #endif
 }
 
+void MainWindow::setContextCategory(const std::string& category) {
+    (void)category;
+#ifdef CAD_USE_QT
+    native_window_.setContextCategory(category);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

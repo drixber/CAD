@@ -31,6 +31,7 @@ public:
     void setMatesSummary(const std::string& summary);
     void setContextPlaceholder(const std::string& context);
     void appendRecentCommand(const std::string& command);
+    void setContextCategory(const std::string& category);
 
 private:
     QtRibbon* ribbon_{nullptr};
