@@ -10,6 +10,7 @@
 #include "QtAgentConsole.h"
 #include "QtAgentThoughts.h"
 #include "QtViewport.h"
+#include "QtLogPanel.h"
 #include "core/Modeler/Sketch.h"
 
 namespace cad {
@@ -41,6 +42,7 @@ private:
     QtAgentConsole* agent_console_{nullptr};
     QtAgentThoughts* agent_thoughts_{nullptr};
     QtViewport* viewport_{nullptr};
+    QtLogPanel* log_panel_{nullptr};
 };
 
 }  // namespace ui

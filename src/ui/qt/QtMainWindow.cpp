@@ -61,7 +61,8 @@ QtMainWindow::QtMainWindow(QWidget* parent)
       command_line_(new QtCommandLine(this)),
       agent_console_(new QtAgentConsole(this)),
       agent_thoughts_(new QtAgentThoughts(this)),
-      viewport_(new QtViewport(this)) {
+      viewport_(new QtViewport(this)),
+      log_panel_(new QtLogPanel(this)) {
     QWidget* central = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -75,6 +76,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
         browser_tree_->appendRecentCommand(command);
+        log_panel_->appendLog(tr("Command: %1").arg(command));
     });
 
     connect(agent_console_, &QtAgentConsole::commandIssued, this, [this](const QString& command) {
@@ -83,6 +85,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
         browser_tree_->appendRecentCommand(command);
+        log_panel_->appendLog(tr("Agent: %1").arg(command));
     });
 
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
@@ -100,6 +103,10 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     QDockWidget* thoughtsDock = new QDockWidget(tr("Agent Thoughts"), this);
     thoughtsDock->setWidget(agent_thoughts_);
     addDockWidget(Qt::BottomDockWidgetArea, thoughtsDock);
+
+    QDockWidget* logDock = new QDockWidget(tr("Log"), this);
+    logDock->setWidget(log_panel_);
+    addDockWidget(Qt::BottomDockWidgetArea, logDock);
 
     statusBar()->addPermanentWidget(command_line_);
 }
@@ -139,6 +146,7 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
         browser_tree_->appendRecentCommand(command);
+        log_panel_->appendLog(tr("Command: %1").arg(command));
     });
 }
 

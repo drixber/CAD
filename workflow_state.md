@@ -24,6 +24,7 @@ completed_items:
 - Wired ribbon actions to command line and property panel context.
 - Added browser tree sections and recent command list.
 - Added property panel context categories for ribbon commands.
+- Added log panel to track UI command activity.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -43,5 +44,6 @@ decisions_made:
 - Ribbon triggers update command line and UI context placeholder.
 - Browser tree tracks recent commands for UI-only feedback.
 - Property panel uses stacked placeholder panels for context categories.
+- UI log panel added as bottom dock widget.
 
 estimated_remaining_time: 70-110 weeks
