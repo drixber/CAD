@@ -84,6 +84,13 @@ void MainWindow::setMatesSummary(const std::string& summary) {
 #endif
 }
 
+void MainWindow::setContextPlaceholder(const std::string& context) {
+    (void)context;
+#ifdef CAD_USE_QT
+    native_window_.setContextPlaceholder(context);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

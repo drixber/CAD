@@ -20,6 +20,8 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     layout->addWidget(integration_status_);
     mates_label_ = new QLabel(tr("Mates: 0"));
     layout->addWidget(mates_label_);
+    context_label_ = new QLabel(tr("Context: None"));
+    layout->addWidget(context_label_);
     layout->addStretch();
 }
 
@@ -50,6 +52,12 @@ void QtPropertyPanel::setIntegrationStatus(const QString& status) {
 void QtPropertyPanel::setMateCount(int count) {
     if (mates_label_) {
         mates_label_->setText(tr("Mates: %1").arg(count));
+    }
+}
+
+void QtPropertyPanel::setContextPlaceholder(const QString& context) {
+    if (context_label_) {
+        context_label_->setText(tr("Context: %1").arg(context));
     }
 }
 

@@ -17,6 +17,7 @@ public:
     void setParameterSummary(const QString& summary);
     void setIntegrationStatus(const QString& status);
     void setMateCount(int count);
+    void setContextPlaceholder(const QString& context);
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -24,6 +25,7 @@ private:
     QLabel* parameters_summary_{nullptr};
     QLabel* integration_status_{nullptr};
     QLabel* mates_label_{nullptr};
+    QLabel* context_label_{nullptr};
 };
 
 }  // namespace ui

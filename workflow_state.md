@@ -21,9 +21,11 @@ completed_items:
 - Added smoke test for kernel/simulation linking.
 - Added Qt main window viewport placeholder.
 - Added ribbon tabs/groups and QAction registration.
+- Wired ribbon actions to command line and property panel context.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
+- Property panel widgets for detailed command parameters.
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -35,5 +37,6 @@ decisions_made:
 - Windows configure not run in this environment; CI covers configure-only.
 - 3D viewport placeholder uses Qt frame with centered label.
 - Ribbon uses QAction registry with grouped tabs.
+- Ribbon triggers update command line and UI context placeholder.
 
 estimated_remaining_time: 70-110 weeks

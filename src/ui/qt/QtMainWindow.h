@@ -29,6 +29,7 @@ public:
     void setCommandHandler(const std::function<void(const std::string&)>& handler);
     void setAssemblySummary(const std::string& summary);
     void setMatesSummary(const std::string& summary);
+    void setContextPlaceholder(const std::string& context);
 
 private:
     QtRibbon* ribbon_{nullptr};
