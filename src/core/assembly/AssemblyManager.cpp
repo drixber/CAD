@@ -20,7 +20,27 @@ AssemblyLoadStats AssemblyManager::loadAssembly(const std::string& path) {
     AssemblyLoadStats stats;
     stats.component_count = max_components_;
     stats.load_seconds = 0.0;
+    cache_entries_ = cache_limit_ > 0 ? cache_limit_ / 2 : 0;
+    stats.used_background_loading = background_loading_;
     return stats;
+}
+
+CacheStats AssemblyManager::cacheStats() const {
+    CacheStats stats;
+    stats.entries = cache_entries_;
+    stats.max_entries = cache_limit_;
+    return stats;
+}
+
+void AssemblyManager::setCacheLimit(std::size_t max_entries) {
+    cache_limit_ = max_entries;
+    if (cache_entries_ > cache_limit_) {
+        cache_entries_ = cache_limit_;
+    }
+}
+
+void AssemblyManager::enableBackgroundLoading(bool enabled) {
+    background_loading_ = enabled;
 }
 
 }  // namespace core

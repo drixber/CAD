@@ -77,6 +77,14 @@ void AppController::initializeAssembly() {
     main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
     main_window_.setAssemblySummary("2 components, 1 mate");
     main_window_.setMatesSummary("1 mate");
+
+    assembly_manager_.setCacheLimit(300);
+    assembly_manager_.enableBackgroundLoading(true);
+    cad::core::AssemblyLoadStats load_stats = assembly_manager_.loadAssembly("MainAssembly");
+    cad::core::CacheStats cache = assembly_manager_.cacheStats();
+    main_window_.setIntegrationStatus("Cache: " + std::to_string(cache.entries) + "/" +
+                                       std::to_string(cache.max_entries) +
+                                       (load_stats.used_background_loading ? " (bg)" : " (fg)"));
 }
 
 void AppController::bindCommands() {
@@ -170,17 +178,17 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("Drawing view failed");
         }
     } else if (command == "Import") {
-        cad::interop::ImportRequest request;
-        request.path = "C:/temp/model.step";
-        request.format = cad::interop::FileFormat::Step;
-        cad::interop::IoResult result = io_service_.importModel(request);
+        cad::interop::IoJob job;
+        job.path = "C:/temp/model.step";
+        job.format = "STEP";
+        cad::interop::IoJobResult result = io_pipeline_.importJob(job);
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("Import queued");
     } else if (command == "Export") {
-        cad::interop::ExportRequest request;
-        request.path = "C:/temp/model.step";
-        request.format = cad::interop::FileFormat::Step;
-        cad::interop::IoResult result = io_service_.exportModel(request);
+        cad::interop::IoJob job;
+        job.path = "C:/temp/model.step";
+        job.format = "STEP";
+        cad::interop::IoJobResult result = io_pipeline_.exportJob(job);
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("Export queued");
     } else if (command == "Export RFA" || command == "ExportRFA") {

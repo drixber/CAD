@@ -43,14 +43,15 @@ completed_items:
 - Added performance monitor stub and FPS placeholder.
 - Added assembly manager scaffolding for LOD and limits.
 - Added interference checker stub and UI hook.
+- Added IO pipeline stub for unified import/export.
+- Added assembly cache stats and load stub.
 - Docked AI panels into tabs for UI layout clarity.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
- - 3D viewport integration with Coin3D or OpenCascade viewer.
+- 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching implementation.
 - Collision/interference checks (full).
-- Unified import/export pipeline for core formats.
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -82,6 +83,8 @@ decisions_made:
 - UI uses QSS resource for Inventor-like theme.
 - FPS shown as simulated value until real render loop exists.
 - Interference checks currently return stubbed results.
+- IO pipeline abstracts format handling from UI commands.
+- Assembly cache stats are stubbed for perf scaffolding.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

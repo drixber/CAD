@@ -4,6 +4,7 @@
 #include "core/Modeler/Modeler.h"
 #include "core/FreeCAD/FreeCADAdapter.h"
 #include "core/analysis/InterferenceChecker.h"
+#include "core/assembly/AssemblyManager.h"
 #include "ui/MainWindow.h"
 #include "modules/drawings/DrawingService.h"
 #include "modules/sheetmetal/SheetMetalService.h"
@@ -40,6 +41,7 @@ private:
     cad::core::Modeler modeler_;
     cad::core::FreeCADAdapter freecad_;
     cad::core::InterferenceChecker interference_checker_;
+    cad::core::AssemblyManager assembly_manager_;
     cad::modules::DrawingService drawing_service_;
     cad::modules::SheetMetalService sheet_metal_service_;
     cad::modules::SimulationService simulation_service_;
