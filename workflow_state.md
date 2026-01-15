@@ -48,6 +48,8 @@ completed_items:
 - Added background loading flag to assembly manager.
 - Added performance panel with FPS/cache display.
 - Added UI LOD selector in performance panel.
+- Added background loading toggle in performance panel.
+- Initialized assembly manager LOD defaults on startup.
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
 
@@ -93,6 +95,8 @@ decisions_made:
 - FPS label shows simulated viewport updates until render loop exists.
 - Performance panel shares FPS/cache with status bar.
 - LOD selection currently updates UI status only.
+- Background loading toggle updates UI status only.
+- Assembly LOD defaults to Simplified for Phase 2 demo.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

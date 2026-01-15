@@ -89,6 +89,10 @@ void AppController::initializeAssembly() {
                                        (load_stats.used_background_loading ? " (bg)" : " (fg)"));
     main_window_.setCacheStats(static_cast<int>(cache.entries),
                                static_cast<int>(cache.max_entries));
+    main_window_.setViewportStatus(load_stats.used_background_loading
+                                       ? "Background loading enabled"
+                                       : "Background loading disabled");
+    main_window_.setBackgroundLoading(load_stats.used_background_loading);
 }
 
 void AppController::bindCommands() {

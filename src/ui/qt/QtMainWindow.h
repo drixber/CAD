@@ -40,6 +40,7 @@ public:
     void setWorkspaceMode(const std::string& mode);
     void setDocumentLabel(const std::string& label);
     void setCacheStats(int entries, int max_entries);
+    void setBackgroundLoading(bool enabled);
 
 private:
     QtRibbon* ribbon_{nullptr};

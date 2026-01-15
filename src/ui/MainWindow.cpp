@@ -134,6 +134,13 @@ void MainWindow::setCacheStats(int entries, int max_entries) {
 #endif
 }
 
+void MainWindow::setBackgroundLoading(bool enabled) {
+    (void)enabled;
+#ifdef CAD_USE_QT
+    native_window_.setBackgroundLoading(enabled);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

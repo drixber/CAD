@@ -186,6 +186,12 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     connect(perf_panel_, &QtPerformancePanel::lodModeChanged, this, [this](const QString& mode) {
         log_panel_->appendLog(tr("LOD mode: %1").arg(mode));
         setViewportStatus(QString("LOD: %1").arg(mode).toStdString());
+        setWorkspaceMode("Assembly");
+    });
+
+    connect(perf_panel_, &QtPerformancePanel::backgroundLoadingToggled, this, [this](bool enabled) {
+        log_panel_->appendLog(tr("Background loading: %1").arg(enabled ? tr("on") : tr("off")));
+        setViewportStatus(enabled ? "Background loading enabled" : "Background loading disabled");
     });
 
     restoreUiState();
@@ -280,6 +286,12 @@ void QtMainWindow::setDocumentLabel(const std::string& label) {
 void QtMainWindow::setCacheStats(int entries, int max_entries) {
     if (perf_panel_) {
         perf_panel_->setCacheStats(entries, max_entries);
+    }
+}
+
+void QtMainWindow::setBackgroundLoading(bool enabled) {
+    if (perf_panel_) {
+        perf_panel_->setBackgroundLoading(enabled);
     }
 }
 
