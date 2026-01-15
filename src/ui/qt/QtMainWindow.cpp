@@ -183,6 +183,11 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         }
     });
 
+    connect(perf_panel_, &QtPerformancePanel::lodModeChanged, this, [this](const QString& mode) {
+        log_panel_->appendLog(tr("LOD mode: %1").arg(mode));
+        setViewportStatus(QString("LOD: %1").arg(mode).toStdString());
+    });
+
     restoreUiState();
 }
 

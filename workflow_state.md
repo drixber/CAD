@@ -47,6 +47,7 @@ completed_items:
 - Added assembly cache stats and load stub.
 - Added background loading flag to assembly manager.
 - Added performance panel with FPS/cache display.
+- Added UI LOD selector in performance panel.
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
 
@@ -91,6 +92,7 @@ decisions_made:
 - Background loading flag is exposed for future async load.
 - FPS label shows simulated viewport updates until render loop exists.
 - Performance panel shares FPS/cache with status bar.
+- LOD selection currently updates UI status only.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

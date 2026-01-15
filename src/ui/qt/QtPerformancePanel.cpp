@@ -10,6 +10,7 @@ QtPerformancePanel::QtPerformancePanel(QWidget* parent) : QWidget(parent) {
     cache_label_ = new QLabel(tr("Cache: --/--"), this);
     lod_selector_ = new QComboBox(this);
     lod_selector_->addItems({tr("Full"), tr("Simplified"), tr("Bounding Boxes")});
+    lod_selector_->setCurrentIndex(1);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(fps_label_);

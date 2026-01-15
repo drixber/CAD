@@ -80,6 +80,8 @@ void AppController::initializeAssembly() {
 
     assembly_manager_.setCacheLimit(300);
     assembly_manager_.enableBackgroundLoading(true);
+    assembly_manager_.setLodMode(cad::core::LodMode::Simplified);
+    assembly_manager_.setTargetFps(30.0);
     cad::core::AssemblyLoadStats load_stats = assembly_manager_.loadAssembly("MainAssembly");
     cad::core::CacheStats cache = assembly_manager_.cacheStats();
     main_window_.setIntegrationStatus("Cache: " + std::to_string(cache.entries) + "/" +
