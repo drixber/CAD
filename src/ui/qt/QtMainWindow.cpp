@@ -15,12 +15,13 @@ QtMainWindow::QtMainWindow(QWidget* parent)
       property_panel_(new QtPropertyPanel(this)),
       command_line_(new QtCommandLine(this)),
       agent_console_(new QtAgentConsole(this)),
-      agent_thoughts_(new QtAgentThoughts(this)) {
+      agent_thoughts_(new QtAgentThoughts(this)),
+      viewport_(new QtViewport(this)) {
     QWidget* central = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(ribbon_);
-    layout->addStretch();
+    layout->addWidget(viewport_);
     setCentralWidget(central);
 
     ribbon_->setCommandHandler([this](const QString& command) {

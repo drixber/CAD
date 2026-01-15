@@ -1,6 +1,6 @@
 # Workflow State
 
-current_phase: Phase 0 foundations
+current_phase: Phase 1 UI shell
 
 completed_items:
 - Added CAD_BUILD_PYTHON option and python bindings scaffold.
@@ -19,9 +19,11 @@ completed_items:
 - Added Qt AI console and agent thoughts panel.
 - Added kernel and simulation module scaffolding.
 - Added smoke test for kernel/simulation linking.
+- Added Qt main window viewport placeholder.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
+ - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
@@ -30,5 +32,6 @@ decisions_made:
 - Document Windows build with MSVC/Clang-CL guidance.
 - Added minimal C++ smoke test to validate kernel/simulation linking.
 - Windows configure not run in this environment; CI covers configure-only.
+- 3D viewport placeholder uses Qt frame with centered label.
 
 estimated_remaining_time: 70-110 weeks

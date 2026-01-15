@@ -15,6 +15,7 @@ if(CAD_USE_QT)
         qt/QtCommandLine.cpp
         qt/QtAgentConsole.cpp
         qt/QtAgentThoughts.cpp
+        qt/QtViewport.cpp
     )
 endif()
 
