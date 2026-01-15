@@ -36,6 +36,9 @@ public:
     void setContextPlaceholder(const std::string& context);
     void appendRecentCommand(const std::string& command);
     void setContextCategory(const std::string& category);
+    void setViewportStatus(const std::string& status);
+    void setWorkspaceMode(const std::string& mode);
+    void setDocumentLabel(const std::string& label);
 
     bool hasNativeWindow() const;
 #ifdef CAD_USE_QT

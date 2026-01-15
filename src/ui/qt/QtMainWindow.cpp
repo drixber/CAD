@@ -75,6 +75,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
+        setWorkspaceMode(categoryForCommand(command).toStdString());
         browser_tree_->appendRecentCommand(command);
         log_panel_->appendLog(tr("Command: %1").arg(command));
     });
@@ -84,6 +85,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
+        setWorkspaceMode(categoryForCommand(command).toStdString());
         browser_tree_->appendRecentCommand(command);
         log_panel_->appendLog(tr("Agent: %1").arg(command));
     });
@@ -107,8 +109,17 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
     logDock->setWidget(log_panel_);
     addDockWidget(Qt::BottomDockWidgetArea, logDock);
+    tabifyDockWidget(thoughtsDock, logDock);
+    logDock->raise();
+
+    tabifyDockWidget(propertyDock, agentDock);
+    propertyDock->raise();
 
     statusBar()->addPermanentWidget(command_line_);
+    mode_label_ = new QLabel(tr("Mode: None"), this);
+    document_label_ = new QLabel(tr("Document: Untitled"), this);
+    statusBar()->addPermanentWidget(mode_label_);
+    statusBar()->addPermanentWidget(document_label_);
 }
 
 void QtMainWindow::updateFromSketch(const cad::core::Sketch& sketch) {
@@ -145,6 +156,7 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         command_line_->setText(command);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
+        setWorkspaceMode(categoryForCommand(command).toStdString());
         browser_tree_->appendRecentCommand(command);
         log_panel_->appendLog(tr("Command: %1").arg(command));
     });
@@ -168,6 +180,22 @@ void QtMainWindow::appendRecentCommand(const std::string& command) {
 
 void QtMainWindow::setContextCategory(const std::string& category) {
     property_panel_->setContextCategory(QString::fromStdString(category));
+}
+
+void QtMainWindow::setViewportStatus(const std::string& status) {
+    viewport_->setStatusText(QString::fromStdString(status));
+}
+
+void QtMainWindow::setWorkspaceMode(const std::string& mode) {
+    if (mode_label_) {
+        mode_label_->setText(tr("Mode: %1").arg(QString::fromStdString(mode)));
+    }
+}
+
+void QtMainWindow::setDocumentLabel(const std::string& label) {
+    if (document_label_) {
+        document_label_->setText(tr("Document: %1").arg(QString::fromStdString(label)));
+    }
 }
 
 }  // namespace ui

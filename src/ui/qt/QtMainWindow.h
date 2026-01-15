@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 #include <functional>
+#include <QLabel>
 
 #include "QtBrowserTree.h"
 #include "QtCommandLine.h"
@@ -33,6 +34,9 @@ public:
     void setContextPlaceholder(const std::string& context);
     void appendRecentCommand(const std::string& command);
     void setContextCategory(const std::string& category);
+    void setViewportStatus(const std::string& status);
+    void setWorkspaceMode(const std::string& mode);
+    void setDocumentLabel(const std::string& label);
 
 private:
     QtRibbon* ribbon_{nullptr};
@@ -43,6 +47,8 @@ private:
     QtAgentThoughts* agent_thoughts_{nullptr};
     QtViewport* viewport_{nullptr};
     QtLogPanel* log_panel_{nullptr};
+    QLabel* mode_label_{nullptr};
+    QLabel* document_label_{nullptr};
 };
 
 }  // namespace ui

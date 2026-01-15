@@ -1,6 +1,8 @@
 #include "QtPropertyPanel.h"
 
+#include <QFormLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QVBoxLayout>
 
 namespace cad {
@@ -24,19 +26,40 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     layout->addWidget(context_label_);
 
     context_stack_ = new QStackedWidget(this);
-    auto makePanel = [this](const QString& name) {
-        QLabel* label = new QLabel(name, context_stack_);
-        label->setAlignment(Qt::AlignCenter);
-        return label;
+    auto makePanel = [this](const QString& title, const QStringList& fields) {
+        QWidget* panel = new QWidget(context_stack_);
+        QVBoxLayout* panelLayout = new QVBoxLayout(panel);
+        QLabel* header = new QLabel(title, panel);
+        header->setAlignment(Qt::AlignLeft);
+        panelLayout->addWidget(header);
+        QFormLayout* form = new QFormLayout();
+        for (const auto& field : fields) {
+            QLineEdit* input = new QLineEdit(panel);
+            input->setPlaceholderText(field);
+            form->addRow(field + ":", input);
+        }
+        panelLayout->addLayout(form);
+        panelLayout->addStretch();
+        panel->setLayout(panelLayout);
+        return panel;
     };
-    context_stack_->addWidget(makePanel(tr("Context Panel: General")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Sketch")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Part")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Assembly")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Drawing")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Inspect")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Manage")));
-    context_stack_->addWidget(makePanel(tr("Context Panel: View")));
+
+    context_stack_->addWidget(makePanel(tr("Context Panel: General"),
+                                        {tr("Name"), tr("Description")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Sketch"),
+                                        {tr("Constraint"), tr("Dimension")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Part"),
+                                        {tr("Feature"), tr("Depth")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Assembly"),
+                                        {tr("Mate Type"), tr("Offset")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Drawing"),
+                                        {tr("View Type"), tr("Scale")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Inspect"),
+                                        {tr("Tool"), tr("Result")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: Manage"),
+                                        {tr("Parameter"), tr("Value")}));
+    context_stack_->addWidget(makePanel(tr("Context Panel: View"),
+                                        {tr("Appearance"), tr("Environment")}));
     layout->addWidget(context_stack_);
 
     layout->addStretch();

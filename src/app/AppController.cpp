@@ -9,6 +9,9 @@ AppController::AppController() = default;
 
 void AppController::initialize() {
     main_window_.initializeLayout();
+    main_window_.setViewportStatus("3D viewport ready");
+    main_window_.setWorkspaceMode("General");
+    main_window_.setDocumentLabel("MainDocument");
     if (freecad_.initializeSession()) {
         freecad_.createDocument("MainDocument");
         main_window_.setIntegrationStatus("FreeCAD on");
@@ -85,12 +88,14 @@ void AppController::bindCommands() {
 void AppController::executeCommand(const std::string& command) {
     if (command == "Parameters") {
         main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
+        main_window_.setViewportStatus("Parameters opened");
     } else if (command == "Flange" || command == "Bend" || command == "Unfold" || command == "Refold") {
         cad::modules::SheetMetalRequest request;
         request.targetPart = "Bracket";
         request.operation = cad::modules::SheetMetalOperation::Flange;
         cad::modules::SheetMetalResult result = sheet_metal_service_.applyOperation(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Sheet metal command queued");
     } else if (command == "Rectangular Pattern" || command == "Circular Pattern" || command == "Curve Pattern") {
         cad::modules::PatternRequest request;
         request.targetFeature = "Hole1";
@@ -98,42 +103,49 @@ void AppController::executeCommand(const std::string& command) {
         request.instanceCount = 6;
         cad::modules::PatternResult result = pattern_service_.createPattern(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Pattern command queued");
     } else if (command == "Direct Edit" || command == "Freeform") {
         cad::modules::DirectEditRequest request;
         request.targetFeature = "Face1";
         request.operation = cad::modules::DirectEditOperation::MoveFace;
         cad::modules::DirectEditResult result = direct_edit_service_.applyEdit(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Direct edit queued");
     } else if (command == "Rigid Pipe" || command == "Flexible Hose" || command == "Bent Tube") {
         cad::modules::RoutingRequest request;
         request.targetAssembly = "MainAssembly";
         request.type = cad::modules::RoutingType::RigidPipe;
         cad::modules::RoutingResult result = routing_service_.createRoute(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Routing command queued");
     } else if (command == "Simplify") {
         cad::modules::SimplifyRequest request;
         request.targetAssembly = "MainAssembly";
         request.replacementType = "Cylinder";
         cad::modules::SimplifyResult result = simplify_service_.simplify(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Simplify queued");
     } else if (command == "Illustration" || command == "Rendering" || command == "Animation") {
         cad::modules::VisualizationRequest request;
         request.targetPart = "Bracket";
         request.mode = cad::modules::VisualizationMode::Rendering;
         cad::modules::VisualizationResult result = visualization_service_.runVisualization(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Visualization queued");
     } else if (command == "MBD Note" || command == "MbdNote") {
         cad::modules::MbdRequest request;
         request.targetPart = "Bracket";
         request.note = "GD&T: profile tolerance";
         cad::modules::MbdResult result = mbd_service_.applyMbd(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("MBD annotation queued");
     } else if (command == "Simulation" || command == "Stress Analysis") {
         cad::modules::SimulationRequest request;
         request.targetAssembly = "MainAssembly";
         request.type = cad::modules::SimulationType::FEA;
         cad::modules::SimulationResult result = simulation_service_.runSimulation(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Simulation queued");
     } else if (command == "Base View") {
         cad::modules::DrawingRequest request;
         request.sourcePart = "Bracket";
@@ -144,8 +156,10 @@ void AppController::executeCommand(const std::string& command) {
                 freecad_.createDrawingStub(result.drawingId);
             }
             main_window_.setIntegrationStatus("Drawing created");
+            main_window_.setViewportStatus("Drawing view created");
         } else {
             main_window_.setIntegrationStatus("Drawing failed");
+            main_window_.setViewportStatus("Drawing view failed");
         }
     } else if (command == "Import") {
         cad::interop::ImportRequest request;
@@ -153,17 +167,21 @@ void AppController::executeCommand(const std::string& command) {
         request.format = cad::interop::FileFormat::Step;
         cad::interop::IoResult result = io_service_.importModel(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Import queued");
     } else if (command == "Export") {
         cad::interop::ExportRequest request;
         request.path = "C:/temp/model.step";
         request.format = cad::interop::FileFormat::Step;
         cad::interop::IoResult result = io_service_.exportModel(request);
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Export queued");
     } else if (command == "Export RFA" || command == "ExportRFA") {
         cad::interop::IoResult result = io_service_.exportBimRfa("C:/temp/model.rfa");
         main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("RFA export queued");
     } else if (command == "Mate") {
         main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+        main_window_.setViewportStatus("Mate command ready");
     }
 }
 

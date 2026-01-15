@@ -105,6 +105,27 @@ void MainWindow::setContextCategory(const std::string& category) {
 #endif
 }
 
+void MainWindow::setViewportStatus(const std::string& status) {
+    (void)status;
+#ifdef CAD_USE_QT
+    native_window_.setViewportStatus(status);
+#endif
+}
+
+void MainWindow::setWorkspaceMode(const std::string& mode) {
+    (void)mode;
+#ifdef CAD_USE_QT
+    native_window_.setWorkspaceMode(mode);
+#endif
+}
+
+void MainWindow::setDocumentLabel(const std::string& label) {
+    (void)label;
+#ifdef CAD_USE_QT
+    native_window_.setDocumentLabel(label);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

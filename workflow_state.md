@@ -25,10 +25,14 @@ completed_items:
 - Added browser tree sections and recent command list.
 - Added property panel context categories for ribbon commands.
 - Added log panel to track UI command activity.
+- Added property panel form placeholders per command context.
+- Added viewport status updates for command feedback.
+- Added viewport navigation hint placeholder text.
+- Added status bar labels for workspace mode and document.
+- Docked AI panels into tabs for UI layout clarity.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
-- Property panel widgets for detailed command parameters.
  - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Ribbon command wiring to actual CAD operations.
 
@@ -45,5 +49,10 @@ decisions_made:
 - Browser tree tracks recent commands for UI-only feedback.
 - Property panel uses stacked placeholder panels for context categories.
 - UI log panel added as bottom dock widget.
+- Property panel uses placeholder form fields per context.
+- Viewport status text reflects last UI command.
+- Viewport shows basic navigation hint for UI-only stage.
+- Status bar reflects workspace mode and active document.
+- Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks
