@@ -1,6 +1,9 @@
 add_library(cad_core
     Modeler/Modeler.cpp
     FreeCAD/FreeCADAdapter.cpp
+    logging/Logger.cpp
+    crash/CrashReporter.cpp
+    undo/UndoStack.cpp
 )
 
 target_include_directories(cad_core
