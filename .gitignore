@@ -1,0 +1,34 @@
+# Build outputs
+/build/
+/out/
+/bin/
+/lib/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Visual Studio / MSVC
+/.vs/
+*.sln
+*.vcxproj*
+*.user
+*.pdb
+*.opendb
+*.VC.db
+
+# vcpkg
+vcpkg_installed/
+/_deps/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+/.venv/
+
+# Logs / dumps
+*.log
+*.dmp
