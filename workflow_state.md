@@ -46,6 +46,7 @@ completed_items:
 - Added IO pipeline stub for unified import/export.
 - Added assembly cache stats and load stub.
 - Added background loading flag to assembly manager.
+- Added performance panel with FPS/cache display.
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
 
@@ -89,6 +90,7 @@ decisions_made:
 - Assembly cache stats are stubbed for perf scaffolding.
 - Background loading flag is exposed for future async load.
 - FPS label shows simulated viewport updates until render loop exists.
+- Performance panel shares FPS/cache with status bar.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

@@ -126,6 +126,14 @@ void MainWindow::setDocumentLabel(const std::string& label) {
 #endif
 }
 
+void MainWindow::setCacheStats(int entries, int max_entries) {
+    (void)entries;
+    (void)max_entries;
+#ifdef CAD_USE_QT
+    native_window_.setCacheStats(entries, max_entries);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

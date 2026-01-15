@@ -63,7 +63,8 @@ QtMainWindow::QtMainWindow(QWidget* parent)
       agent_console_(new QtAgentConsole(this)),
       agent_thoughts_(new QtAgentThoughts(this)),
       viewport_(new QtViewport(this)),
-      log_panel_(new QtLogPanel(this)) {
+      log_panel_(new QtLogPanel(this)),
+      perf_panel_(new QtPerformancePanel(this)) {
     QWidget* central = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -159,6 +160,12 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     tabifyDockWidget(propertyDock, agentDock);
     propertyDock->raise();
 
+    QDockWidget* perfDock = new QDockWidget(tr("Performance"), this);
+    perfDock->setWidget(perf_panel_);
+    addDockWidget(Qt::BottomDockWidgetArea, perfDock);
+    perfDock->setAllowedAreas(Qt::BottomDockWidgetArea);
+    tabifyDockWidget(logDock, perfDock);
+
     statusBar()->addPermanentWidget(command_line_);
     mode_label_ = new QLabel(tr("Mode: None"), this);
     document_label_ = new QLabel(tr("Document: Untitled"), this);
@@ -170,6 +177,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     connect(viewport_, &QtViewport::fpsUpdated, this, [this](double fps) {
         if (fps_status_label_) {
             fps_status_label_->setText(tr("FPS: %1").arg(QString::number(fps, 'f', 0)));
+        }
+        if (perf_panel_) {
+            perf_panel_->setFps(fps);
         }
     });
 
@@ -259,6 +269,12 @@ void QtMainWindow::setWorkspaceMode(const std::string& mode) {
 void QtMainWindow::setDocumentLabel(const std::string& label) {
     if (document_label_) {
         document_label_->setText(tr("Document: %1").arg(QString::fromStdString(label)));
+    }
+}
+
+void QtMainWindow::setCacheStats(int entries, int max_entries) {
+    if (perf_panel_) {
+        perf_panel_->setCacheStats(entries, max_entries);
     }
 }
 

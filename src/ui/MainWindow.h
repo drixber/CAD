@@ -39,6 +39,7 @@ public:
     void setViewportStatus(const std::string& status);
     void setWorkspaceMode(const std::string& mode);
     void setDocumentLabel(const std::string& label);
+    void setCacheStats(int entries, int max_entries);
 
     bool hasNativeWindow() const;
 #ifdef CAD_USE_QT

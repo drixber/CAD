@@ -12,6 +12,7 @@
 #include "QtAgentThoughts.h"
 #include "QtViewport.h"
 #include "QtLogPanel.h"
+#include "QtPerformancePanel.h"
 #include "core/Modeler/Sketch.h"
 
 namespace cad {
@@ -38,6 +39,7 @@ public:
     void setViewportStatus(const std::string& status);
     void setWorkspaceMode(const std::string& mode);
     void setDocumentLabel(const std::string& label);
+    void setCacheStats(int entries, int max_entries);
 
 private:
     QtRibbon* ribbon_{nullptr};
@@ -48,6 +50,7 @@ private:
     QtAgentThoughts* agent_thoughts_{nullptr};
     QtViewport* viewport_{nullptr};
     QtLogPanel* log_panel_{nullptr};
+    QtPerformancePanel* perf_panel_{nullptr};
     QLabel* mode_label_{nullptr};
     QLabel* document_label_{nullptr};
     QLabel* fps_status_label_{nullptr};

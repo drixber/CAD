@@ -85,6 +85,8 @@ void AppController::initializeAssembly() {
     main_window_.setIntegrationStatus("Cache: " + std::to_string(cache.entries) + "/" +
                                        std::to_string(cache.max_entries) +
                                        (load_stats.used_background_loading ? " (bg)" : " (fg)"));
+    main_window_.setCacheStats(static_cast<int>(cache.entries),
+                               static_cast<int>(cache.max_entries));
 }
 
 void AppController::bindCommands() {
