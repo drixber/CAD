@@ -11,12 +11,12 @@ completed_items:
 - Added logging framework, crash reporter stub, and undo stack abstraction.
 - Added Windows build documentation.
 - Added .gitignore for Windows/CMake/vcpkg/Python artifacts.
+- Added Windows CI configure-only workflow.
 
 pending_items:
 - .cursorcad rules parser and workflow memory integration.
 - Multi-agent loop wiring and UI console integration.
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
-- CI configure-only workflow.
 - Installer/docs scaffolding.
 
 decisions_made:

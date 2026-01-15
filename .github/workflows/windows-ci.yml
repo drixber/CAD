@@ -1,0 +1,20 @@
+name: windows-configure
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  configure:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 17 2022"
+          -A x64
+          -DCAD_USE_QT=OFF
+          -DCAD_USE_FREECAD=OFF
