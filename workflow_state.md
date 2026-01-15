@@ -12,12 +12,12 @@ completed_items:
 - Added Windows build documentation.
 - Added .gitignore for Windows/CMake/vcpkg/Python artifacts.
 - Added Windows CI configure-only workflow.
+- Added NSIS installer script scaffold.
 
 pending_items:
 - .cursorcad rules parser and workflow memory integration.
 - Multi-agent loop wiring and UI console integration.
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
-- Installer/docs scaffolding.
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
