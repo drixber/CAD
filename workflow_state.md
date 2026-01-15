@@ -32,6 +32,11 @@ completed_items:
 - Set minimum widths for primary dock panels.
 - Added UI layout persistence with QSettings.
 - Added viewport navigation toolbar buttons (UI-only).
+- Restricted dock areas for layout consistency.
+- Added command line history navigation.
+- Added ribbon tab metadata table for tooltips and grouping.
+- Added command line enter-to-run UI feedback.
+- Added workspace tab change syncing for mode and context.
 - Docked AI panels into tabs for UI layout clarity.
 
 pending_items:
@@ -59,6 +64,11 @@ decisions_made:
 - Dock panels enforce minimum widths for layout stability.
 - Persist window geometry and dock layout per user.
 - Viewport navigation buttons update placeholder status.
+- Dock areas constrained to preserve UI layout parity.
+- Command history capped at 20 entries for UI clarity.
+- Ribbon tabs defined via static configuration table.
+- Command line enter updates UI context without CAD logic.
+- Workspace mode follows ribbon tab selection.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

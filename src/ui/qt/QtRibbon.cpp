@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QKeySequence>
 
 namespace cad {
 namespace ui {
@@ -11,54 +12,51 @@ namespace ui {
 QtRibbon::QtRibbon(QWidget* parent) : QTabWidget(parent) {
     registerDefaultActions();
 
-    addTab(buildCommandTab(tr("Sketch"),
-                           {{tr("Create"),
-                             {"Line", "Rectangle", "Circle", "Arc"}},
-                            {tr("Constraints"),
-                             {"Constraint"}}}),
-           tr("Sketch"));
-    addTab(buildCommandTab(tr("Part"),
-                           {{tr("Features"),
-                             {"Extrude", "Revolve", "Loft", "Hole", "Fillet"}},
-                            {tr("Sheet Metal"),
-                             {"Flange", "Bend", "Unfold", "Refold"}},
-                            {tr("Pattern"),
-                             {"RectangularPattern", "CircularPattern", "CurvePattern"}},
-                            {tr("Direct"),
-                             {"DirectEdit", "Freeform"}}}),
-           tr("Part"));
-    addTab(buildCommandTab(tr("Assembly"),
-                           {{tr("Assemble"),
-                             {"Place", "Mate", "Flush", "Angle", "Pattern"}},
-                            {tr("Routing"),
-                             {"RigidPipe", "FlexibleHose", "BentTube"}},
-                            {tr("Simplify"),
-                             {"Simplify"}}}),
-           tr("Assembly"));
-    addTab(buildCommandTab(tr("Drawing"),
-                           {{tr("Views"),
-                             {"BaseView", "Section", "Dimension", "PartsList"}}}),
-           tr("Drawing"));
-    addTab(buildCommandTab(tr("Inspect"),
-                           {{tr("Analysis"),
-                             {"Measure", "Interference", "SectionAnalysis"}},
-                            {tr("Simulation"),
-                             {"Simulation", "StressAnalysis"}}}),
-           tr("Inspect"));
-    addTab(buildCommandTab(tr("Manage"),
-                           {{tr("Parameters"),
-                             {"Parameters", "Styles", "AddIns"}},
-                            {tr("Interop"),
-                             {"Import", "Export", "ExportRFA"}},
-                            {tr("MBD"),
-                             {"MbdNote"}}}),
-           tr("Manage"));
-    addTab(buildCommandTab(tr("View"),
-                           {{tr("Display"),
-                             {"Visibility", "Appearance", "Environment"}},
-                            {tr("Render"),
-                             {"Illustration", "Rendering", "Animation"}}}),
-           tr("View"));
+    struct TabConfig {
+        QString name;
+        QList<QPair<QString, QStringList>> groups;
+        QString tooltip;
+    };
+
+    const TabConfig tabs[] = {
+        {tr("Sketch"),
+         {{tr("Create"), {"Line", "Rectangle", "Circle", "Arc"}},
+          {tr("Constraints"), {"Constraint"}}},
+         tr("Create sketches and constraints")},
+        {tr("Part"),
+         {{tr("Features"), {"Extrude", "Revolve", "Loft", "Hole", "Fillet"}},
+          {tr("Sheet Metal"), {"Flange", "Bend", "Unfold", "Refold"}},
+          {tr("Pattern"), {"RectangularPattern", "CircularPattern", "CurvePattern"}},
+          {tr("Direct"), {"DirectEdit", "Freeform"}}},
+         tr("Create and edit parts")},
+        {tr("Assembly"),
+         {{tr("Assemble"), {"Place", "Mate", "Flush", "Angle", "Pattern"}},
+          {tr("Routing"), {"RigidPipe", "FlexibleHose", "BentTube"}},
+          {tr("Simplify"), {"Simplify"}}},
+         tr("Assemble components and mates")},
+        {tr("Drawing"),
+         {{tr("Views"), {"BaseView", "Section", "Dimension", "PartsList"}}},
+         tr("Create drawings and annotations")},
+        {tr("Inspect"),
+         {{tr("Analysis"), {"Measure", "Interference", "SectionAnalysis"}},
+          {tr("Simulation"), {"Simulation", "StressAnalysis"}}},
+         tr("Inspect and simulate models")},
+        {tr("Manage"),
+         {{tr("Parameters"), {"Parameters", "Styles", "AddIns"}},
+          {tr("Interop"), {"Import", "Export", "ExportRFA"}},
+          {tr("MBD"), {"MbdNote"}}},
+         tr("Manage data and interoperability")},
+        {tr("View"),
+         {{tr("Display"), {"Visibility", "Appearance", "Environment"}},
+          {tr("Render"), {"Illustration", "Rendering", "Animation"}}},
+         tr("Control visibility and rendering")},
+    };
+
+    for (const auto& tab : tabs) {
+        addTab(buildCommandTab(tab.name, tab.groups), tab.name);
+        setTabToolTip(count() - 1, tab.tooltip);
+    }
+
 }
 
 void QtRibbon::setCommandHandler(const std::function<void(const QString&)>& handler) {
@@ -120,7 +118,18 @@ void QtRibbon::registerDefaultActions() {
     };
 
     for (const auto& item : commands) {
-        registerAction(item.first, item.second);
+        QAction* action = registerAction(item.first, item.second);
+        if (item.first == "Line") {
+            action->setShortcut(QKeySequence("L"));
+        } else if (item.first == "Rectangle") {
+            action->setShortcut(QKeySequence("R"));
+        } else if (item.first == "Circle") {
+            action->setShortcut(QKeySequence("C"));
+        } else if (item.first == "Extrude") {
+            action->setShortcut(QKeySequence("E"));
+        } else if (item.first == "Mate") {
+            action->setShortcut(QKeySequence("M"));
+        }
     }
 }
 
@@ -132,6 +141,7 @@ QAction* QtRibbon::registerAction(const QString& id, const QString& label) {
     }
     QAction* action = new QAction(label, this);
     action->setObjectName(id);
+    action->setShortcutVisibleInContextMenu(true);
     connect(action, &QAction::triggered, this, [this, id]() {
         if (command_handler_) {
             command_handler_(id);

@@ -74,6 +74,12 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     ribbon_->setCommandHandler([this](const QString& command) {
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
+        QStringList history = command_line_->history();
+        history.append(command);
+        if (history.size() > 20) {
+            history.removeFirst();
+        }
+        command_line_->setHistory(history);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
         setWorkspaceMode(categoryForCommand(command).toStdString());
@@ -81,14 +87,44 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         log_panel_->appendLog(tr("Command: %1").arg(command));
     });
 
+    connect(ribbon_, &QTabWidget::currentChanged, this, [this](int index) {
+        const QString tab = ribbon_->tabText(index);
+        if (tab.isEmpty()) {
+            return;
+        }
+        property_panel_->setContextCategory(tab);
+        setWorkspaceMode(tab.toStdString());
+        setViewportStatus(QString("Workspace: %1").arg(tab).toStdString());
+        log_panel_->appendLog(tr("Workspace changed: %1").arg(tab));
+    });
+
     connect(agent_console_, &QtAgentConsole::commandIssued, this, [this](const QString& command) {
         agent_thoughts_->appendThought(tr("Queued agent task: %1").arg(command));
         command_line_->setText(command);
+        QStringList history = command_line_->history();
+        history.append(command);
+        if (history.size() > 20) {
+            history.removeFirst();
+        }
+        command_line_->setHistory(history);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
         setWorkspaceMode(categoryForCommand(command).toStdString());
         browser_tree_->appendRecentCommand(command);
         log_panel_->appendLog(tr("Agent: %1").arg(command));
+    });
+
+    connect(command_line_, &QLineEdit::returnPressed, this, [this]() {
+        const QString command = command_line_->takeCurrentCommand();
+        if (command.isEmpty()) {
+            return;
+        }
+        statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
+        property_panel_->setContextPlaceholder(command);
+        property_panel_->setContextCategory(categoryForCommand(command));
+        setWorkspaceMode(categoryForCommand(command).toStdString());
+        browser_tree_->appendRecentCommand(command);
+        log_panel_->appendLog(tr("Command Line: %1").arg(command));
     });
 
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
@@ -100,19 +136,23 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     propertyDock->setWidget(property_panel_);
     addDockWidget(Qt::RightDockWidgetArea, propertyDock);
     propertyDock->setMinimumWidth(280);
+    propertyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     QDockWidget* agentDock = new QDockWidget(tr("AI Console"), this);
     agentDock->setWidget(agent_console_);
     addDockWidget(Qt::RightDockWidgetArea, agentDock);
     agentDock->setMinimumWidth(280);
+    agentDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     QDockWidget* thoughtsDock = new QDockWidget(tr("Agent Thoughts"), this);
     thoughtsDock->setWidget(agent_thoughts_);
     addDockWidget(Qt::BottomDockWidgetArea, thoughtsDock);
+    thoughtsDock->setAllowedAreas(Qt::BottomDockWidgetArea);
 
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
     logDock->setWidget(log_panel_);
     addDockWidget(Qt::BottomDockWidgetArea, logDock);
+    logDock->setAllowedAreas(Qt::BottomDockWidgetArea);
     tabifyDockWidget(thoughtsDock, logDock);
     logDock->raise();
 
@@ -164,6 +204,12 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         }
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
+        QStringList history = command_line_->history();
+        history.append(command);
+        if (history.size() > 20) {
+            history.removeFirst();
+        }
+        command_line_->setHistory(history);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
         setWorkspaceMode(categoryForCommand(command).toStdString());
