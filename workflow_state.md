@@ -15,9 +15,10 @@ completed_items:
 - Added NSIS installer script scaffold.
 - Added .cursorcad rules file and parser.
 - Added workflow state loader in Python engine.
+- Added CLI runner for multi-agent workflow loop.
 
 pending_items:
-- Multi-agent loop wiring and UI console integration.
+- UI console integration for agent controls.
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 
 decisions_made:

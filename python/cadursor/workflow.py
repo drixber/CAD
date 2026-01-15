@@ -25,6 +25,7 @@ class WorkflowEngine:
         self.historian = HistorianAgent()
         self.rules: RuleSet | None = load_rules(rules_path) if rules_path else None
         self.state: WorkflowState | None = WorkflowState.load(state_path) if state_path else None
+        self.state_path = state_path
 
     def run(self, goal: str) -> WorkflowRun:
         plan = self.planner.create_plan(goal)
@@ -41,6 +42,8 @@ class WorkflowEngine:
 
         if self.state:
             self.state.add_completed(f"Workflow run: {goal}")
+            if self.state_path:
+                self.state.write(self.state_path)
 
         success = execution.success and validation.success
         notes = validation.issues + reflection.improvements
