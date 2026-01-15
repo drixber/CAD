@@ -7,6 +7,8 @@
 #include "QtCommandLine.h"
 #include "QtPropertyPanel.h"
 #include "QtRibbon.h"
+#include "QtAgentConsole.h"
+#include "QtAgentThoughts.h"
 #include "core/Modeler/Sketch.h"
 
 namespace cad {
@@ -32,6 +34,8 @@ private:
     QtBrowserTree* browser_tree_{nullptr};
     QtPropertyPanel* property_panel_{nullptr};
     QtCommandLine* command_line_{nullptr};
+    QtAgentConsole* agent_console_{nullptr};
+    QtAgentThoughts* agent_thoughts_{nullptr};
 };
 
 }  // namespace ui

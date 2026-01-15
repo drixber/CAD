@@ -16,9 +16,9 @@ completed_items:
 - Added .cursorcad rules file and parser.
 - Added workflow state loader in Python engine.
 - Added CLI runner for multi-agent workflow loop.
+- Added Qt AI console and agent thoughts panel.
 
 pending_items:
-- UI console integration for agent controls.
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 
 decisions_made:

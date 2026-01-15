@@ -13,7 +13,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
       ribbon_(new QtRibbon(this)),
       browser_tree_(new QtBrowserTree(this)),
       property_panel_(new QtPropertyPanel(this)),
-      command_line_(new QtCommandLine(this)) {
+      command_line_(new QtCommandLine(this)),
+      agent_console_(new QtAgentConsole(this)),
+      agent_thoughts_(new QtAgentThoughts(this)) {
     QWidget* central = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -25,6 +27,10 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
     });
 
+    connect(agent_console_, &QtAgentConsole::commandIssued, this, [this](const QString& command) {
+        agent_thoughts_->appendThought(tr("Queued agent task: %1").arg(command));
+    });
+
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
     browserDock->setWidget(browser_tree_);
     addDockWidget(Qt::LeftDockWidgetArea, browserDock);
@@ -32,6 +38,14 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     QDockWidget* propertyDock = new QDockWidget(tr("Properties"), this);
     propertyDock->setWidget(property_panel_);
     addDockWidget(Qt::RightDockWidgetArea, propertyDock);
+
+    QDockWidget* agentDock = new QDockWidget(tr("AI Console"), this);
+    agentDock->setWidget(agent_console_);
+    addDockWidget(Qt::RightDockWidgetArea, agentDock);
+
+    QDockWidget* thoughtsDock = new QDockWidget(tr("Agent Thoughts"), this);
+    thoughtsDock->setWidget(agent_thoughts_);
+    addDockWidget(Qt::BottomDockWidgetArea, thoughtsDock);
 
     statusBar()->addPermanentWidget(command_line_);
 }

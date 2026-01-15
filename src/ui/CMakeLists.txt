@@ -13,6 +13,8 @@ if(CAD_USE_QT)
         qt/QtBrowserTree.cpp
         qt/QtPropertyPanel.cpp
         qt/QtCommandLine.cpp
+        qt/QtAgentConsole.cpp
+        qt/QtAgentThoughts.cpp
     )
 endif()
 
