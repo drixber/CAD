@@ -1,6 +1,6 @@
 # Workflow State
 
-current_phase: Phase 1 UI shell
+current_phase: Phase 2 assemblies & performance
 
 completed_items:
 - Added CAD_BUILD_PYTHON option and python bindings scaffold.
@@ -37,11 +37,19 @@ completed_items:
 - Added ribbon tab metadata table for tooltips and grouping.
 - Added command line enter-to-run UI feedback.
 - Added workspace tab change syncing for mode and context.
+- Added default keyboard shortcuts for common commands.
+- Added base UI style sheet and resource loading.
+- Phase 1 UI shell complete (Ribbon, panels, viewport placeholder).
+- Added performance monitor stub and FPS placeholder.
+- Added assembly manager scaffolding for LOD and limits.
 - Docked AI panels into tabs for UI layout clarity.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
  - 3D viewport integration with Coin3D or OpenCascade viewer.
+- Large assembly LOD/caching implementation.
+- Collision/interference checks.
+- Unified import/export pipeline for core formats.
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -69,6 +77,9 @@ decisions_made:
 - Ribbon tabs defined via static configuration table.
 - Command line enter updates UI context without CAD logic.
 - Workspace mode follows ribbon tab selection.
+- Shortcuts added for frequent sketch/part/assembly actions.
+- UI uses QSS resource for Inventor-like theme.
+- FPS shown as simulated value until real render loop exists.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

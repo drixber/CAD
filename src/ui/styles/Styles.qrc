@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/styles">
+        <file>InventorLight.qss</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,30 @@
+QMainWindow {
+    background-color: #f2f2f2;
+}
+
+QDockWidget::title {
+    background: #e6e6e6;
+    padding: 4px;
+    font-weight: bold;
+}
+
+QTabBar::tab {
+    background: #e0e0e0;
+    padding: 6px 12px;
+    margin: 1px;
+}
+
+QTabBar::tab:selected {
+    background: #ffffff;
+    border-bottom: 2px solid #2b78e4;
+}
+
+QToolButton {
+    padding: 4px;
+}
+
+QLineEdit {
+    background: #ffffff;
+    border: 1px solid #cccccc;
+    padding: 4px;
+}

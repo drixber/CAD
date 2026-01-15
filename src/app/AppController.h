@@ -3,6 +3,7 @@
 #include "CADApplication.h"
 #include "core/Modeler/Modeler.h"
 #include "core/FreeCAD/FreeCADAdapter.h"
+#include "core/analysis/InterferenceChecker.h"
 #include "ui/MainWindow.h"
 #include "modules/drawings/DrawingService.h"
 #include "modules/sheetmetal/SheetMetalService.h"
@@ -37,6 +38,7 @@ private:
     cad::ui::MainWindow main_window_;
     cad::core::Modeler modeler_;
     cad::core::FreeCADAdapter freecad_;
+    cad::core::InterferenceChecker interference_checker_;
     cad::modules::DrawingService drawing_service_;
     cad::modules::SheetMetalService sheet_metal_service_;
     cad::modules::SimulationService simulation_service_;

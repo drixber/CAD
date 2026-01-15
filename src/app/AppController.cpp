@@ -146,6 +146,14 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::SimulationResult result = simulation_service_.runSimulation(request);
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("Simulation queued");
+    } else if (command == "Interference") {
+        cad::core::InterferenceResult result = interference_checker_.check("MainAssembly");
+        main_window_.setIntegrationStatus(result.message);
+        if (result.has_interference) {
+            main_window_.setViewportStatus("Interference detected");
+        } else {
+            main_window_.setViewportStatus("No interference");
+        }
     } else if (command == "Base View") {
         cad::modules::DrawingRequest request;
         request.sourcePart = "Bracket";

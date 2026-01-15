@@ -21,6 +21,13 @@ QtViewport::QtViewport(QWidget* parent) : QFrame(parent) {
     font.setPointSize(font.pointSize() - 1);
     nav_label_->setFont(font);
     layout->addWidget(nav_label_);
+
+    fps_label_ = new QLabel(tr("FPS: --"), this);
+    fps_label_->setAlignment(Qt::AlignCenter);
+    QFont fps_font = fps_label_->font();
+    fps_font.setPointSize(fps_font.pointSize() - 1);
+    fps_label_->setFont(fps_font);
+    layout->addWidget(fps_label_);
     QHBoxLayout* toolbar = new QHBoxLayout();
     QPushButton* orbit = new QPushButton(tr("Orbit"), this);
     QPushButton* pan = new QPushButton(tr("Pan"), this);
@@ -34,6 +41,10 @@ QtViewport::QtViewport(QWidget* parent) : QFrame(parent) {
     connect(orbit, &QPushButton::clicked, this, [this]() { setNavigationMode("orbit"); });
     connect(pan, &QPushButton::clicked, this, [this]() { setNavigationMode("pan"); });
     connect(zoom, &QPushButton::clicked, this, [this]() { setNavigationMode("zoom"); });
+
+    fps_timer_ = new QTimer(this);
+    connect(fps_timer_, &QTimer::timeout, this, [this]() { setFps(60.0); });
+    fps_timer_->start(1000);
     setLayout(layout);
 }
 
@@ -48,6 +59,12 @@ void QtViewport::setNavigationMode(const QString& mode) {
         nav_label_->setText(tr("Navigation: %1").arg(mode));
     }
     setStatusText(tr("Viewport mode: %1").arg(mode));
+}
+
+void QtViewport::setFps(double fps) {
+    if (fps_label_) {
+        fps_label_->setText(tr("FPS: %1").arg(QString::number(fps, 'f', 0)));
+    }
 }
 
 }  // namespace ui

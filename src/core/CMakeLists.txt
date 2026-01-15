@@ -4,6 +4,9 @@ add_library(cad_core
     logging/Logger.cpp
     crash/CrashReporter.cpp
     undo/UndoStack.cpp
+    perf/PerformanceMonitor.cpp
+    assembly/AssemblyManager.cpp
+    analysis/InterferenceChecker.cpp
 )
 
 target_include_directories(cad_core

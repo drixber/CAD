@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QFile>
 
 #include "app/AppController.h"
 #include "app/CADApplication.h"
@@ -11,6 +12,11 @@ int main(int argc, char** argv) {
     cad::app::AppController controller;
     application.setController(&controller);
     application.initialize();
+
+    QFile styleFile(":/styles/InventorLight.qss");
+    if (styleFile.open(QFile::ReadOnly)) {
+        qt_app.setStyleSheet(styleFile.readAll());
+    }
 
     cad::ui::MainWindow& main_window = controller.mainWindow();
 #ifdef CAD_USE_QT
