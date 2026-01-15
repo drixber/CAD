@@ -162,8 +162,16 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     statusBar()->addPermanentWidget(command_line_);
     mode_label_ = new QLabel(tr("Mode: None"), this);
     document_label_ = new QLabel(tr("Document: Untitled"), this);
+    fps_status_label_ = new QLabel(tr("FPS: --"), this);
     statusBar()->addPermanentWidget(mode_label_);
     statusBar()->addPermanentWidget(document_label_);
+    statusBar()->addPermanentWidget(fps_status_label_);
+
+    connect(viewport_, &QtViewport::fpsUpdated, this, [this](double fps) {
+        if (fps_status_label_) {
+            fps_status_label_->setText(tr("FPS: %1").arg(QString::number(fps, 'f', 0)));
+        }
+    });
 
     restoreUiState();
 }

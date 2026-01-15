@@ -45,6 +45,8 @@ completed_items:
 - Added interference checker stub and UI hook.
 - Added IO pipeline stub for unified import/export.
 - Added assembly cache stats and load stub.
+- Added background loading flag to assembly manager.
+- Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
 
 pending_items:
@@ -85,6 +87,8 @@ decisions_made:
 - Interference checks currently return stubbed results.
 - IO pipeline abstracts format handling from UI commands.
 - Assembly cache stats are stubbed for perf scaffolding.
+- Background loading flag is exposed for future async load.
+- FPS label shows simulated viewport updates until render loop exists.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

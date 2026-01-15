@@ -16,6 +16,9 @@ public:
     void setNavigationMode(const QString& mode);
     void setFps(double fps);
 
+signals:
+    void fpsUpdated(double fps);
+
 private:
     QLabel* status_label_{nullptr};
     QLabel* nav_label_{nullptr};

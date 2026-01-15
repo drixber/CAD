@@ -65,6 +65,7 @@ void QtViewport::setFps(double fps) {
     if (fps_label_) {
         fps_label_->setText(tr("FPS: %1").arg(QString::number(fps, 'f', 0)));
     }
+    emit fpsUpdated(fps);
 }
 
 }  // namespace ui

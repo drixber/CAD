@@ -37,9 +37,13 @@ int main() {
 
     cad::core::AssemblyManager manager;
     manager.setCacheLimit(100);
-    manager.loadAssembly("AssemblyA");
-    cad::core::CacheStats stats = manager.cacheStats();
-    if (stats.max_entries == 0) {
+    manager.enableBackgroundLoading(true);
+    cad::core::AssemblyLoadStats load_stats = manager.loadAssembly("AssemblyA");
+    cad::core::CacheStats cache_stats = manager.cacheStats();
+    if (cache_stats.max_entries == 0) {
+        return 1;
+    }
+    if (!load_stats.used_background_loading) {
         return 1;
     }
 

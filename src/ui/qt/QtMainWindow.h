@@ -50,6 +50,7 @@ private:
     QtLogPanel* log_panel_{nullptr};
     QLabel* mode_label_{nullptr};
     QLabel* document_label_{nullptr};
+    QLabel* fps_status_label_{nullptr};
 
     void restoreUiState();
     void saveUiState();
