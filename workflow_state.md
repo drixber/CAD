@@ -29,6 +29,9 @@ completed_items:
 - Added viewport status updates for command feedback.
 - Added viewport navigation hint placeholder text.
 - Added status bar labels for workspace mode and document.
+- Set minimum widths for primary dock panels.
+- Added UI layout persistence with QSettings.
+- Added viewport navigation toolbar buttons (UI-only).
 - Docked AI panels into tabs for UI layout clarity.
 
 pending_items:
@@ -53,6 +56,9 @@ decisions_made:
 - Viewport status text reflects last UI command.
 - Viewport shows basic navigation hint for UI-only stage.
 - Status bar reflects workspace mode and active document.
+- Dock panels enforce minimum widths for layout stability.
+- Persist window geometry and dock layout per user.
+- Viewport navigation buttons update placeholder status.
 - Property/AI console and log/thought panels are tabified for space.
 
 estimated_remaining_time: 70-110 weeks

@@ -12,9 +12,11 @@ class QtViewport : public QFrame {
 public:
     explicit QtViewport(QWidget* parent = nullptr);
     void setStatusText(const QString& text);
+    void setNavigationMode(const QString& mode);
 
 private:
     QLabel* status_label_{nullptr};
+    QLabel* nav_label_{nullptr};
 };
 
 }  // namespace ui

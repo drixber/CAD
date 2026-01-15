@@ -22,6 +22,7 @@ class QtMainWindow : public QMainWindow {
 
 public:
     explicit QtMainWindow(QWidget* parent = nullptr);
+    ~QtMainWindow() override;
     void updateFromSketch(const cad::core::Sketch& sketch);
     void setConstraintCount(int count);
     void setParameterCount(int count);
@@ -49,6 +50,9 @@ private:
     QtLogPanel* log_panel_{nullptr};
     QLabel* mode_label_{nullptr};
     QLabel* document_label_{nullptr};
+
+    void restoreUiState();
+    void saveUiState();
 };
 
 }  // namespace ui

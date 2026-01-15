@@ -2,6 +2,7 @@
 
 #include <QDockWidget>
 #include <QSet>
+#include <QSettings>
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -93,14 +94,17 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
     browserDock->setWidget(browser_tree_);
     addDockWidget(Qt::LeftDockWidgetArea, browserDock);
+    browserDock->setMinimumWidth(220);
 
     QDockWidget* propertyDock = new QDockWidget(tr("Properties"), this);
     propertyDock->setWidget(property_panel_);
     addDockWidget(Qt::RightDockWidgetArea, propertyDock);
+    propertyDock->setMinimumWidth(280);
 
     QDockWidget* agentDock = new QDockWidget(tr("AI Console"), this);
     agentDock->setWidget(agent_console_);
     addDockWidget(Qt::RightDockWidgetArea, agentDock);
+    agentDock->setMinimumWidth(280);
 
     QDockWidget* thoughtsDock = new QDockWidget(tr("Agent Thoughts"), this);
     thoughtsDock->setWidget(agent_thoughts_);
@@ -120,6 +124,12 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     document_label_ = new QLabel(tr("Document: Untitled"), this);
     statusBar()->addPermanentWidget(mode_label_);
     statusBar()->addPermanentWidget(document_label_);
+
+    restoreUiState();
+}
+
+QtMainWindow::~QtMainWindow() {
+    saveUiState();
 }
 
 void QtMainWindow::updateFromSketch(const cad::core::Sketch& sketch) {
@@ -196,6 +206,24 @@ void QtMainWindow::setDocumentLabel(const std::string& label) {
     if (document_label_) {
         document_label_->setText(tr("Document: %1").arg(QString::fromStdString(label)));
     }
+}
+
+void QtMainWindow::restoreUiState() {
+    QSettings settings("CADursor", "CADursor");
+    const QByteArray geometry = settings.value("mainWindow/geometry").toByteArray();
+    if (!geometry.isEmpty()) {
+        restoreGeometry(geometry);
+    }
+    const QByteArray state = settings.value("mainWindow/state").toByteArray();
+    if (!state.isEmpty()) {
+        restoreState(state);
+    }
+}
+
+void QtMainWindow::saveUiState() {
+    QSettings settings("CADursor", "CADursor");
+    settings.setValue("mainWindow/geometry", saveGeometry());
+    settings.setValue("mainWindow/state", saveState());
 }
 
 }  // namespace ui
