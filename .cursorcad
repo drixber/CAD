@@ -1,0 +1,6 @@
+rules:
+  - id: no_destructive_ops
+    description: Require user gate for destructive operations.
+  - id: max_iterations
+    description: Limit autonomous loops to prevent runaway execution.
+    limit: 50

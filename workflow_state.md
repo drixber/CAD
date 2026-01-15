@@ -13,9 +13,10 @@ completed_items:
 - Added .gitignore for Windows/CMake/vcpkg/Python artifacts.
 - Added Windows CI configure-only workflow.
 - Added NSIS installer script scaffold.
+- Added .cursorcad rules file and parser.
+- Added workflow state loader in Python engine.
 
 pending_items:
-- .cursorcad rules parser and workflow memory integration.
 - Multi-agent loop wiring and UI console integration.
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 
