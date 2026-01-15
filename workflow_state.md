@@ -20,10 +20,11 @@ completed_items:
 - Added kernel and simulation module scaffolding.
 - Added smoke test for kernel/simulation linking.
 - Added Qt main window viewport placeholder.
+- Added ribbon tabs/groups and QAction registration.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
- - Ribbon command wiring to actual CAD operations.
+- Ribbon command wiring to actual CAD operations.
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
@@ -33,5 +34,6 @@ decisions_made:
 - Added minimal C++ smoke test to validate kernel/simulation linking.
 - Windows configure not run in this environment; CI covers configure-only.
 - 3D viewport placeholder uses Qt frame with centered label.
+- Ribbon uses QAction registry with grouped tabs.
 
 estimated_remaining_time: 70-110 weeks

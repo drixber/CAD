@@ -1,7 +1,9 @@
 #pragma once
 
 #include <functional>
+#include <unordered_map>
 
+#include <QAction>
 #include <QTabWidget>
 
 namespace cad {
@@ -15,9 +17,14 @@ public:
     void setCommandHandler(const std::function<void(const QString&)>& handler);
 
 private:
-    QWidget* buildCommandTab(const QString& title, const QStringList& commands);
+    void registerDefaultActions();
+    QAction* registerAction(const QString& id, const QString& label);
+    QWidget* buildCommandTab(const QString& title,
+                             const QList<QPair<QString, QStringList>>& groups);
+    QWidget* buildGroup(const QString& name, const QStringList& command_ids);
 
     std::function<void(const QString&)> command_handler_;
+    std::unordered_map<std::string, QAction*> actions_;
 };
 
 }  // namespace ui
