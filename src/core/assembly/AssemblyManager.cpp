@@ -43,5 +43,28 @@ void AssemblyManager::enableBackgroundLoading(bool enabled) {
     background_loading_ = enabled;
 }
 
+void AssemblyManager::enqueueLoad(const std::string& path) {
+    AssemblyLoadJob job;
+    job.path = path;
+    job.progress = 0;
+    load_queue_.push_back(job);
+}
+
+AssemblyLoadJob AssemblyManager::pollLoadProgress() {
+    if (load_queue_.empty()) {
+        return {};
+    }
+    AssemblyLoadJob& job = load_queue_.front();
+    if (job.progress < 100) {
+        job.progress += 25;
+    }
+    if (job.progress >= 100) {
+        AssemblyLoadJob done = job;
+        load_queue_.pop_front();
+        return done;
+    }
+    return job;
+}
+
 }  // namespace core
 }  // namespace cad

@@ -16,6 +16,7 @@ public:
     void setFps(double fps);
     void setCacheStats(int entries, int max_entries);
     void setBackgroundLoading(bool enabled);
+    void setProgress(int progress);
 
 signals:
     void lodModeChanged(const QString& mode);
@@ -26,6 +27,7 @@ private:
     QLabel* cache_label_{nullptr};
     QComboBox* lod_selector_{nullptr};
     QCheckBox* background_loading_{nullptr};
+    QLabel* progress_label_{nullptr};
 };
 
 }  // namespace ui

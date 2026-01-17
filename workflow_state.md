@@ -49,6 +49,12 @@ completed_items:
 - Added performance panel with FPS/cache display.
 - Added UI LOD selector in performance panel.
 - Added background loading toggle in performance panel.
+- Wired LOD/background toggles to assembly manager.
+- Added assembly load queue stub and progress polling.
+- Added performance panel load progress indicator.
+- Added IO format metadata for export labels.
+- Added IO format support checks in pipeline.
+- Added perf timing stub for assembly load.
 - Initialized assembly manager LOD defaults on startup.
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
@@ -96,6 +102,12 @@ decisions_made:
 - Performance panel shares FPS/cache with status bar.
 - LOD selection currently updates UI status only.
 - Background loading toggle updates UI status only.
+- LOD selection now updates assembly manager state.
+- Assembly load queue uses coarse 25% progress ticks.
+- Load progress indicator uses queued progress percent.
+- Export uses IO pipeline format labels in UI status.
+- IO pipeline exposes support checks for import/export.
+- Assembly load timing uses PerfTimer stub.
 - Assembly LOD defaults to Simplified for Phase 2 demo.
 - Property/AI console and log/thought panels are tabified for space.
 

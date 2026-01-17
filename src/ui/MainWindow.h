@@ -41,6 +41,9 @@ public:
     void setDocumentLabel(const std::string& label);
     void setCacheStats(int entries, int max_entries);
     void setBackgroundLoading(bool enabled);
+    void setLodModeHandler(const std::function<void(const std::string&)>& handler);
+    void setBackgroundLoadingHandler(const std::function<void(bool)>& handler);
+    void setLoadProgress(int progress);
 
     bool hasNativeWindow() const;
 #ifdef CAD_USE_QT

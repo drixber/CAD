@@ -5,6 +5,7 @@
 #include "core/FreeCAD/FreeCADAdapter.h"
 #include "core/analysis/InterferenceChecker.h"
 #include "core/assembly/AssemblyManager.h"
+#include "core/perf/PerfSpan.h"
 #include "ui/MainWindow.h"
 #include "modules/drawings/DrawingService.h"
 #include "modules/sheetmetal/SheetMetalService.h"

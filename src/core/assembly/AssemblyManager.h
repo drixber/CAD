@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <deque>
 #include <string>
 
 namespace cad {
@@ -23,6 +24,11 @@ struct AssemblyLoadStats {
     bool used_background_loading{false};
 };
 
+struct AssemblyLoadJob {
+    std::string path;
+    int progress{0};
+};
+
 class AssemblyManager {
 public:
     void setLodMode(LodMode mode);
@@ -32,6 +38,8 @@ public:
     CacheStats cacheStats() const;
     void setCacheLimit(std::size_t max_entries);
     void enableBackgroundLoading(bool enabled);
+    void enqueueLoad(const std::string& path);
+    AssemblyLoadJob pollLoadProgress();
 
 private:
     LodMode lod_mode_{LodMode::Full};
@@ -40,6 +48,7 @@ private:
     std::size_t cache_entries_{0};
     std::size_t cache_limit_{200};
     bool background_loading_{true};
+    std::deque<AssemblyLoadJob> load_queue_{};
 };
 
 }  // namespace core

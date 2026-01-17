@@ -13,10 +13,12 @@ QtPerformancePanel::QtPerformancePanel(QWidget* parent) : QWidget(parent) {
     lod_selector_->setCurrentIndex(1);
     background_loading_ = new QCheckBox(tr("Background loading"), this);
     background_loading_->setChecked(true);
+    progress_label_ = new QLabel(tr("Load progress: --"), this);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(fps_label_);
     layout->addWidget(cache_label_);
+    layout->addWidget(progress_label_);
     layout->addWidget(new QLabel(tr("LOD Mode"), this));
     layout->addWidget(lod_selector_);
     layout->addWidget(background_loading_);
@@ -46,6 +48,16 @@ void QtPerformancePanel::setCacheStats(int entries, int max_entries) {
 void QtPerformancePanel::setBackgroundLoading(bool enabled) {
     if (background_loading_) {
         background_loading_->setChecked(enabled);
+    }
+}
+
+void QtPerformancePanel::setProgress(int progress) {
+    if (progress_label_) {
+        if (progress < 0) {
+            progress_label_->setText(tr("Load progress: --"));
+        } else {
+            progress_label_->setText(tr("Load progress: %1%").arg(progress));
+        }
     }
 }
 

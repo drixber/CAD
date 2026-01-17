@@ -141,6 +141,27 @@ void MainWindow::setBackgroundLoading(bool enabled) {
 #endif
 }
 
+void MainWindow::setLoadProgress(int progress) {
+    (void)progress;
+#ifdef CAD_USE_QT
+    native_window_.setLoadProgress(progress);
+#endif
+}
+
+void MainWindow::setLodModeHandler(const std::function<void(const std::string&)>& handler) {
+    (void)handler;
+#ifdef CAD_USE_QT
+    native_window_.setLodModeHandler(handler);
+#endif
+}
+
+void MainWindow::setBackgroundLoadingHandler(const std::function<void(bool)>& handler) {
+    (void)handler;
+#ifdef CAD_USE_QT
+    native_window_.setBackgroundLoadingHandler(handler);
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

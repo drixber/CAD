@@ -5,6 +5,7 @@ add_library(cad_core
     crash/CrashReporter.cpp
     undo/UndoStack.cpp
     perf/PerformanceMonitor.cpp
+    perf/PerfSpan.cpp
     assembly/AssemblyManager.cpp
     analysis/InterferenceChecker.cpp
 )

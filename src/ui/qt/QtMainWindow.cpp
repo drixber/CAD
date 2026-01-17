@@ -295,6 +295,28 @@ void QtMainWindow::setBackgroundLoading(bool enabled) {
     }
 }
 
+void QtMainWindow::setLoadProgress(int progress) {
+    if (perf_panel_) {
+        perf_panel_->setProgress(progress);
+    }
+}
+
+void QtMainWindow::setLodModeHandler(const std::function<void(const std::string&)>& handler) {
+    connect(perf_panel_, &QtPerformancePanel::lodModeChanged, this, [this, handler](const QString& mode) {
+        if (handler) {
+            handler(mode.toStdString());
+        }
+    });
+}
+
+void QtMainWindow::setBackgroundLoadingHandler(const std::function<void(bool)>& handler) {
+    connect(perf_panel_, &QtPerformancePanel::backgroundLoadingToggled, this, [this, handler](bool enabled) {
+        if (handler) {
+            handler(enabled);
+        }
+    });
+}
+
 void QtMainWindow::restoreUiState() {
     QSettings settings("CADursor", "CADursor");
     const QByteArray geometry = settings.value("mainWindow/geometry").toByteArray();

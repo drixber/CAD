@@ -82,7 +82,9 @@ void AppController::initializeAssembly() {
     assembly_manager_.enableBackgroundLoading(true);
     assembly_manager_.setLodMode(cad::core::LodMode::Simplified);
     assembly_manager_.setTargetFps(30.0);
+    cad::core::PerfTimer timer("AssemblyLoad");
     cad::core::AssemblyLoadStats load_stats = assembly_manager_.loadAssembly("MainAssembly");
+    cad::core::PerfSpan span = timer.finish();
     cad::core::CacheStats cache = assembly_manager_.cacheStats();
     main_window_.setIntegrationStatus("Cache: " + std::to_string(cache.entries) + "/" +
                                        std::to_string(cache.max_entries) +
@@ -93,11 +95,28 @@ void AppController::initializeAssembly() {
                                        ? "Background loading enabled"
                                        : "Background loading disabled");
     main_window_.setBackgroundLoading(load_stats.used_background_loading);
+    main_window_.setViewportStatus("Assembly load " + std::to_string(span.elapsed_ms) + " ms");
+    assembly_manager_.enqueueLoad("MainAssembly");
 }
 
 void AppController::bindCommands() {
     main_window_.setCommandHandler([this](const std::string& command) {
         executeCommand(command);
+    });
+    main_window_.setLodModeHandler([this](const std::string& mode) {
+        if (mode == "Full") {
+            assembly_manager_.setLodMode(cad::core::LodMode::Full);
+        } else if (mode == "Simplified") {
+            assembly_manager_.setLodMode(cad::core::LodMode::Simplified);
+        } else {
+            assembly_manager_.setLodMode(cad::core::LodMode::BoundingBoxes);
+        }
+        main_window_.setViewportStatus("LOD: " + mode);
+    });
+    main_window_.setBackgroundLoadingHandler([this](bool enabled) {
+        assembly_manager_.enableBackgroundLoading(enabled);
+        main_window_.setViewportStatus(enabled ? "Background loading enabled"
+                                               : "Background loading disabled");
     });
 }
 
@@ -189,16 +208,24 @@ void AppController::executeCommand(const std::string& command) {
         cad::interop::IoJob job;
         job.path = "C:/temp/model.step";
         job.format = "STEP";
-        cad::interop::IoJobResult result = io_pipeline_.importJob(job);
-        main_window_.setIntegrationStatus(result.message);
-        main_window_.setViewportStatus("Import queued");
+        if (!io_pipeline_.supportsFormat(job.format, false)) {
+            main_window_.setIntegrationStatus("Import format unsupported");
+        } else {
+            cad::interop::IoJobResult result = io_pipeline_.importJob(job);
+            main_window_.setIntegrationStatus(result.message);
+            main_window_.setViewportStatus("Import queued");
+        }
     } else if (command == "Export") {
         cad::interop::IoJob job;
         job.path = "C:/temp/model.step";
-        job.format = "STEP";
-        cad::interop::IoJobResult result = io_pipeline_.exportJob(job);
-        main_window_.setIntegrationStatus(result.message);
-        main_window_.setViewportStatus("Export queued");
+        job.format = io_pipeline_.supportedFormats().front().format;
+        if (!io_pipeline_.supportsFormat(job.format, true)) {
+            main_window_.setIntegrationStatus("Export format unsupported");
+        } else {
+            cad::interop::IoJobResult result = io_pipeline_.exportJob(job);
+            main_window_.setIntegrationStatus(result.message + " (" + job.format + ")");
+            main_window_.setViewportStatus("Export queued");
+        }
     } else if (command == "Export RFA" || command == "ExportRFA") {
         cad::interop::IoResult result = io_service_.exportBimRfa("C:/temp/model.rfa");
         main_window_.setIntegrationStatus(result.message);
@@ -206,6 +233,12 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "Mate") {
         main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
         main_window_.setViewportStatus("Mate command ready");
+    } else if (command == "Place") {
+        cad::core::AssemblyLoadJob job = assembly_manager_.pollLoadProgress();
+        if (!job.path.empty()) {
+            main_window_.setViewportStatus("Assembly load " + std::to_string(job.progress) + "%");
+            main_window_.setLoadProgress(job.progress);
+        }
     }
 }
 

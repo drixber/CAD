@@ -46,6 +46,11 @@ int main() {
     if (!load_stats.used_background_loading) {
         return 1;
     }
+    manager.enqueueLoad("AssemblyA");
+    cad::core::AssemblyLoadJob job = manager.pollLoadProgress();
+    if (job.path.empty()) {
+        return 1;
+    }
 
     return 0;
 }
