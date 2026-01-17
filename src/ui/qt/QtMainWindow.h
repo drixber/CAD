@@ -44,6 +44,8 @@ public:
     void setLodModeHandler(const std::function<void(const std::string&)>& handler);
     void setBackgroundLoadingHandler(const std::function<void(bool)>& handler);
     void setLoadProgress(int progress);
+    void setTargetFps(int fps);
+    void setTargetFpsHandler(const std::function<void(int)>& handler);
 
 private:
     QtRibbon* ribbon_{nullptr};

@@ -14,6 +14,10 @@ QtPerformancePanel::QtPerformancePanel(QWidget* parent) : QWidget(parent) {
     background_loading_ = new QCheckBox(tr("Background loading"), this);
     background_loading_->setChecked(true);
     progress_label_ = new QLabel(tr("Load progress: --"), this);
+    fps_target_label_ = new QLabel(tr("Target FPS: 30"), this);
+    fps_slider_ = new QSlider(Qt::Horizontal, this);
+    fps_slider_->setRange(5, 120);
+    fps_slider_->setValue(30);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(fps_label_);
@@ -22,14 +26,20 @@ QtPerformancePanel::QtPerformancePanel(QWidget* parent) : QWidget(parent) {
     layout->addWidget(new QLabel(tr("LOD Mode"), this));
     layout->addWidget(lod_selector_);
     layout->addWidget(background_loading_);
+    layout->addWidget(fps_target_label_);
+    layout->addWidget(fps_slider_);
     layout->addStretch();
     setLayout(layout);
 
     connect(lod_selector_, &QComboBox::currentTextChanged, this, [this](const QString& text) {
-        emit lodModeChanged(text);
+        emit lodModeChanged(text.toLower());
     });
     connect(background_loading_, &QCheckBox::toggled, this, [this](bool enabled) {
         emit backgroundLoadingToggled(enabled);
+    });
+    connect(fps_slider_, &QSlider::valueChanged, this, [this](int value) {
+        fps_target_label_->setText(tr("Target FPS: %1").arg(value));
+        emit targetFpsChanged(value);
     });
 }
 
@@ -58,6 +68,15 @@ void QtPerformancePanel::setProgress(int progress) {
         } else {
             progress_label_->setText(tr("Load progress: %1%").arg(progress));
         }
+    }
+}
+
+void QtPerformancePanel::setTargetFps(int fps) {
+    if (fps_slider_) {
+        fps_slider_->setValue(fps);
+    }
+    if (fps_target_label_) {
+        fps_target_label_->setText(tr("Target FPS: %1").arg(fps));
     }
 }
 

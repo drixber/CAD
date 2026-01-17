@@ -18,6 +18,7 @@ void AppController::initialize() {
     } else {
         main_window_.setIntegrationStatus("FreeCAD off");
     }
+    techdraw_bridge_.initialize();
     cad::core::Sketch sketch("Sketch1");
     sketch.addConstraint({cad::core::ConstraintType::Distance, "line1", "line2", 25.0});
     sketch.addParameter({"Width", 0.0, "100"});
@@ -82,6 +83,14 @@ void AppController::initializeAssembly() {
     assembly_manager_.enableBackgroundLoading(true);
     assembly_manager_.setLodMode(cad::core::LodMode::Simplified);
     assembly_manager_.setTargetFps(30.0);
+    main_window_.setTargetFps(30);
+    if (assembly_manager_.recommendedLod() == cad::core::LodMode::BoundingBoxes) {
+        main_window_.setViewportStatus("LOD recommendation: bounding boxes");
+    } else if (assembly_manager_.recommendedLod() == cad::core::LodMode::Simplified) {
+        main_window_.setViewportStatus("LOD recommendation: simplified");
+    } else {
+        main_window_.setViewportStatus("LOD recommendation: full");
+    }
     cad::core::PerfTimer timer("AssemblyLoad");
     cad::core::AssemblyLoadStats load_stats = assembly_manager_.loadAssembly("MainAssembly");
     cad::core::PerfSpan span = timer.finish();
@@ -104,9 +113,9 @@ void AppController::bindCommands() {
         executeCommand(command);
     });
     main_window_.setLodModeHandler([this](const std::string& mode) {
-        if (mode == "Full") {
+        if (mode == "full") {
             assembly_manager_.setLodMode(cad::core::LodMode::Full);
-        } else if (mode == "Simplified") {
+        } else if (mode == "simplified") {
             assembly_manager_.setLodMode(cad::core::LodMode::Simplified);
         } else {
             assembly_manager_.setLodMode(cad::core::LodMode::BoundingBoxes);
@@ -117,6 +126,10 @@ void AppController::bindCommands() {
         assembly_manager_.enableBackgroundLoading(enabled);
         main_window_.setViewportStatus(enabled ? "Background loading enabled"
                                                : "Background loading disabled");
+    });
+    main_window_.setTargetFpsHandler([this](int fps) {
+        assembly_manager_.setTargetFps(static_cast<double>(fps));
+        main_window_.setViewportStatus("Target FPS " + std::to_string(fps));
     });
 }
 
@@ -198,6 +211,18 @@ void AppController::executeCommand(const std::string& command) {
             if (freecad_.isAvailable()) {
                 freecad_.createDrawingStub(result.drawingId);
             }
+            cad::drawings::DrawingDocument document =
+                drawing_service_.buildDocumentSkeleton(result.drawingId);
+            document.bom = bom_service_.buildBom("MainAssembly");
+            if (!document.sheets.empty()) {
+                document.annotations =
+                    annotation_service_.buildDefaultAnnotations(document.sheets.front().name);
+                document.dimensions =
+                    annotation_service_.buildDefaultDimensions(document.sheets.front().name);
+            }
+            techdraw_bridge_.syncDrawing(document);
+            techdraw_bridge_.syncDimensions(document);
+            techdraw_bridge_.syncAssociativeLinks(document);
             main_window_.setIntegrationStatus("Drawing created");
             main_window_.setViewportStatus("Drawing view created");
         } else {
@@ -233,6 +258,10 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "Mate") {
         main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
         main_window_.setViewportStatus("Mate command ready");
+    } else if (command == "LoadAssembly") {
+        assembly_manager_.enqueueLoad("MainAssembly");
+        main_window_.setLoadProgress(0);
+        main_window_.setViewportStatus("Assembly load queued");
     } else if (command == "Place") {
         cad::core::AssemblyLoadJob job = assembly_manager_.pollLoadProgress();
         if (!job.path.empty()) {

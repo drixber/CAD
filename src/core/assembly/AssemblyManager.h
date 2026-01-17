@@ -40,6 +40,7 @@ public:
     void enableBackgroundLoading(bool enabled);
     void enqueueLoad(const std::string& path);
     AssemblyLoadJob pollLoadProgress();
+    LodMode recommendedLod() const;
 
 private:
     LodMode lod_mode_{LodMode::Full};

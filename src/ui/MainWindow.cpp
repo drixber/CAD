@@ -148,6 +148,20 @@ void MainWindow::setLoadProgress(int progress) {
 #endif
 }
 
+void MainWindow::setTargetFps(int fps) {
+    (void)fps;
+#ifdef CAD_USE_QT
+    native_window_.setTargetFps(fps);
+#endif
+}
+
+void MainWindow::setTargetFpsHandler(const std::function<void(int)>& handler) {
+    (void)handler;
+#ifdef CAD_USE_QT
+    native_window_.setTargetFpsHandler(handler);
+#endif
+}
+
 void MainWindow::setLodModeHandler(const std::function<void(const std::string&)>& handler) {
     (void)handler;
 #ifdef CAD_USE_QT

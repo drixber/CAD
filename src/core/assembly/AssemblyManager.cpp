@@ -66,5 +66,15 @@ AssemblyLoadJob AssemblyManager::pollLoadProgress() {
     return job;
 }
 
+LodMode AssemblyManager::recommendedLod() const {
+    if (max_components_ >= 5000 || target_fps_ >= 60.0) {
+        return LodMode::BoundingBoxes;
+    }
+    if (max_components_ >= 2000 || target_fps_ >= 45.0) {
+        return LodMode::Simplified;
+    }
+    return LodMode::Full;
+}
+
 }  // namespace core
 }  // namespace cad

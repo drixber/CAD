@@ -194,6 +194,14 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         setViewportStatus(enabled ? "Background loading enabled" : "Background loading disabled");
     });
 
+    connect(perf_panel_, &QtPerformancePanel::targetFpsChanged, this, [this](int fps) {
+        log_panel_->appendLog(tr("Target FPS: %1").arg(fps));
+        setViewportStatus("Target FPS " + std::to_string(fps));
+        if (fps_status_label_) {
+            fps_status_label_->setText(tr("Target FPS: %1").arg(fps));
+        }
+    });
+
     restoreUiState();
 }
 
@@ -299,6 +307,20 @@ void QtMainWindow::setLoadProgress(int progress) {
     if (perf_panel_) {
         perf_panel_->setProgress(progress);
     }
+}
+
+void QtMainWindow::setTargetFps(int fps) {
+    if (perf_panel_) {
+        perf_panel_->setTargetFps(fps);
+    }
+}
+
+void QtMainWindow::setTargetFpsHandler(const std::function<void(int)>& handler) {
+    connect(perf_panel_, &QtPerformancePanel::targetFpsChanged, this, [handler](int fps) {
+        if (handler) {
+            handler(fps);
+        }
+    });
 }
 
 void QtMainWindow::setLodModeHandler(const std::function<void(const std::string&)>& handler) {

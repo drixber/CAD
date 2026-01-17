@@ -38,6 +38,7 @@ int main() {
     cad::core::AssemblyManager manager;
     manager.setCacheLimit(100);
     manager.enableBackgroundLoading(true);
+    manager.setMaxComponents(5000);
     cad::core::AssemblyLoadStats load_stats = manager.loadAssembly("AssemblyA");
     cad::core::CacheStats cache_stats = manager.cacheStats();
     if (cache_stats.max_entries == 0) {
@@ -49,6 +50,9 @@ int main() {
     manager.enqueueLoad("AssemblyA");
     cad::core::AssemblyLoadJob job = manager.pollLoadProgress();
     if (job.path.empty()) {
+        return 1;
+    }
+    if (manager.recommendedLod() == cad::core::LodMode::Full) {
         return 1;
     }
 

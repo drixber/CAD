@@ -3,11 +3,14 @@
 #include "CADApplication.h"
 #include "core/Modeler/Modeler.h"
 #include "core/FreeCAD/FreeCADAdapter.h"
+#include "core/FreeCAD/TechDrawBridge.h"
 #include "core/analysis/InterferenceChecker.h"
 #include "core/assembly/AssemblyManager.h"
 #include "core/perf/PerfSpan.h"
 #include "ui/MainWindow.h"
 #include "modules/drawings/DrawingService.h"
+#include "modules/drawings/BomService.h"
+#include "modules/drawings/AnnotationService.h"
 #include "modules/sheetmetal/SheetMetalService.h"
 #include "modules/simulation/SimulationService.h"
 #include "modules/patterns/PatternService.h"
@@ -41,9 +44,12 @@ private:
     cad::ui::MainWindow main_window_;
     cad::core::Modeler modeler_;
     cad::core::FreeCADAdapter freecad_;
+    cad::core::TechDrawBridge techdraw_bridge_;
     cad::core::InterferenceChecker interference_checker_;
     cad::core::AssemblyManager assembly_manager_;
     cad::modules::DrawingService drawing_service_;
+    cad::drawings::BomService bom_service_;
+    cad::drawings::AnnotationService annotation_service_;
     cad::modules::SheetMetalService sheet_metal_service_;
     cad::modules::SimulationService simulation_service_;
     cad::modules::PatternService pattern_service_;

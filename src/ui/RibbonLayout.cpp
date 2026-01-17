@@ -19,7 +19,7 @@ void RibbonLayout::configureDefaultTabs() {
                          "Flange", "Bend", "Unfold", "Refold",
                          "RectangularPattern", "CircularPattern", "CurvePattern",
                          "DirectEdit", "Freeform"};
-    commands_["Assembly"] = {"Place", "Mate", "Flush", "Angle", "Pattern",
+    commands_["Assembly"] = {"LoadAssembly", "Place", "Mate", "Flush", "Angle", "Pattern",
                              "RigidPipe", "FlexibleHose", "BentTube", "Simplify"};
     commands_["Drawing"] = {"BaseView", "Section", "Dimension", "PartsList"};
     commands_["Inspect"] = {"Measure", "Interference", "SectionAnalysis",

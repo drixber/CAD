@@ -1,6 +1,6 @@
 # Workflow State
 
-current_phase: Phase 2 assemblies & performance
+current_phase: Phase 3 drawings & MBD
 
 completed_items:
 - Added CAD_BUILD_PYTHON option and python bindings scaffold.
@@ -54,7 +54,18 @@ completed_items:
 - Added performance panel load progress indicator.
 - Added IO format metadata for export labels.
 - Added IO format support checks in pipeline.
+- Added target FPS slider in performance panel.
+- Phase 2 scaffolding progressing (performance + IO + assembly).
 - Added perf timing stub for assembly load.
+- Added explicit assembly load command in ribbon.
+- Synced target FPS indicator with status bar.
+- Phase 2 scaffolding mostly complete (pending full LOD/perf).
+- Added drawing document skeleton models and TechDraw adapter stubs.
+- Added drawing styles, BOM, and annotation stubs.
+- Added associative link placeholders in drawing model and bridge.
+- Added drawing dimension stubs and TechDraw hooks.
+- Added LOD recommendation helper for large assemblies.
+- Normalized LOD selection labels for handler.
 - Initialized assembly manager LOD defaults on startup.
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
@@ -64,6 +75,8 @@ pending_items:
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching implementation.
 - Collision/interference checks (full).
+- Drawing styles framework, BOM pipeline, annotations stubs (expand).
+- MBD/PMI data structures and 3D annotations.
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -107,7 +120,16 @@ decisions_made:
 - Load progress indicator uses queued progress percent.
 - Export uses IO pipeline format labels in UI status.
 - IO pipeline exposes support checks for import/export.
+- Target FPS slider updates assembly manager target.
 - Assembly load timing uses PerfTimer stub.
+- Assembly load is queued via dedicated command.
+- Status bar now shows target FPS when adjusted.
+- LOD recommendation uses component count and target FPS.
+- Drawing documents include standard view placeholders.
+- Drawing stubs use default styles and basic annotations.
+- Drawing document stores source model id for associative links.
+- Dimensions stored in drawing document alongside annotations.
+- LOD handler expects lowercase labels.
 - Assembly LOD defaults to Simplified for Phase 2 demo.
 - Property/AI console and log/thought panels are tabified for space.
 

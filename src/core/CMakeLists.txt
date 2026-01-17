@@ -1,6 +1,7 @@
 add_library(cad_core
     Modeler/Modeler.cpp
     FreeCAD/FreeCADAdapter.cpp
+    FreeCAD/TechDrawBridge.cpp
     logging/Logger.cpp
     crash/CrashReporter.cpp
     undo/UndoStack.cpp

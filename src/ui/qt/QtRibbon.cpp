@@ -30,7 +30,7 @@ QtRibbon::QtRibbon(QWidget* parent) : QTabWidget(parent) {
           {tr("Direct"), {"DirectEdit", "Freeform"}}},
          tr("Create and edit parts")},
         {tr("Assembly"),
-         {{tr("Assemble"), {"Place", "Mate", "Flush", "Angle", "Pattern"}},
+         {{tr("Assemble"), {"LoadAssembly", "Place", "Mate", "Flush", "Angle", "Pattern"}},
           {tr("Routing"), {"RigidPipe", "FlexibleHose", "BentTube"}},
           {tr("Simplify"), {"Simplify"}}},
          tr("Assemble components and mates")},
@@ -84,6 +84,7 @@ void QtRibbon::registerDefaultActions() {
         {"CurvePattern", tr("Curve Pattern")},
         {"DirectEdit", tr("Direct Edit")},
         {"Freeform", tr("Freeform")},
+        {"LoadAssembly", tr("Load Assembly")},
         {"Place", tr("Place")},
         {"Mate", tr("Mate")},
         {"Flush", tr("Flush")},
@@ -129,6 +130,8 @@ void QtRibbon::registerDefaultActions() {
             action->setShortcut(QKeySequence("E"));
         } else if (item.first == "Mate") {
             action->setShortcut(QKeySequence("M"));
+        } else if (item.first == "LoadAssembly") {
+            action->setShortcut(QKeySequence("Shift+L"));
         }
     }
 }

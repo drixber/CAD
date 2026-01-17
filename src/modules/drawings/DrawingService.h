@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "model/DrawingDocument.h"
+
 namespace cad {
 namespace modules {
 
@@ -18,6 +20,8 @@ struct DrawingResult {
 class DrawingService {
 public:
     DrawingResult createDrawing(const DrawingRequest& request) const;
+    DrawingDocument buildDocumentSkeleton(const std::string& title) const;
+    DrawingStyleSet defaultStyles() const;
 };
 
 }  // namespace modules
