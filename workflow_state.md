@@ -64,6 +64,15 @@ completed_items:
 - Added drawing styles, BOM, and annotation stubs.
 - Added associative link placeholders in drawing model and bridge.
 - Added drawing dimension stubs and TechDraw hooks.
+- Added PMI data structures and default MBD dataset.
+- Added associative flag on drawing views.
+- Added associative flag on drawing sheets and extra dimensions.
+- Updated drawing property panel fields for BOM and sheet.
+- Added BOM part numbers and dimension tolerances.
+- Added drawing sheet scale label and annotations.
+- Added drawing style profiles for style mapping.
+- Added view-level style profile field.
+- Added associative update service for drawings.
 - Added LOD recommendation helper for large assemblies.
 - Normalized LOD selection labels for handler.
 - Initialized assembly manager LOD defaults on startup.
@@ -76,7 +85,7 @@ pending_items:
 - Large assembly LOD/caching implementation.
 - Collision/interference checks (full).
 - Drawing styles framework, BOM pipeline, annotations stubs (expand).
-- MBD/PMI data structures and 3D annotations.
+- MBD 3D annotation rendering hook.
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -129,6 +138,15 @@ decisions_made:
 - Drawing stubs use default styles and basic annotations.
 - Drawing document stores source model id for associative links.
 - Dimensions stored in drawing document alongside annotations.
+- PMI dataset includes datum, tolerance, and annotation stubs.
+- Drawing views default to associative updates.
+- Drawing sheets default to associative updates.
+- Dimension stubs include simple tolerances.
+- Drawing sheets include scale label for UI binding.
+- Style profiles map line/text styles by name.
+- Views reference style profiles by name for UI binding.
+- Drawing document tracks revision and last update id.
+- Drawing context panel includes BOM field placeholder.
 - LOD handler expects lowercase labels.
 - Assembly LOD defaults to Simplified for Phase 2 demo.
 - Property/AI console and log/thought panels are tabified for space.

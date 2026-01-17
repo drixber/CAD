@@ -22,5 +22,11 @@ struct DrawingStyleSet {
     std::vector<TextStyle> text_styles;
 };
 
+struct DrawingStyleProfile {
+    std::string name;
+    std::string line_style;
+    std::string text_style;
+};
+
 }  // namespace drawings
 }  // namespace cad

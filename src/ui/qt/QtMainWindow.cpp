@@ -96,6 +96,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         property_panel_->setContextCategory(tab);
         setWorkspaceMode(tab.toStdString());
         setViewportStatus(QString("Workspace: %1").arg(tab).toStdString());
+        if (tab == tr("Drawing")) {
+            log_panel_->appendLog(tr("Drawing workspace active"));
+        }
         log_panel_->appendLog(tr("Workspace changed: %1").arg(tab));
     });
 

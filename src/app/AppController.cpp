@@ -187,6 +187,8 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::MbdResult result = mbd_service_.applyMbd(request);
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("MBD annotation queued");
+        cad::mbd::PmiDataSet pmi = mbd_service_.buildDefaultPmi("Bracket");
+        (void)pmi;
     } else if (command == "Simulation" || command == "Stress Analysis") {
         cad::modules::SimulationRequest request;
         request.targetAssembly = "MainAssembly";
@@ -223,6 +225,7 @@ void AppController::executeCommand(const std::string& command) {
             techdraw_bridge_.syncDrawing(document);
             techdraw_bridge_.syncDimensions(document);
             techdraw_bridge_.syncAssociativeLinks(document);
+            associative_link_service_.updateFromModel(document, document.source_model_id);
             main_window_.setIntegrationStatus("Drawing created");
             main_window_.setViewportStatus("Drawing view created");
         } else {

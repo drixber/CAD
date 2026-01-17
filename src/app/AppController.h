@@ -11,6 +11,7 @@
 #include "modules/drawings/DrawingService.h"
 #include "modules/drawings/BomService.h"
 #include "modules/drawings/AnnotationService.h"
+#include "modules/drawings/AssociativeLinkService.h"
 #include "modules/sheetmetal/SheetMetalService.h"
 #include "modules/simulation/SimulationService.h"
 #include "modules/patterns/PatternService.h"
@@ -50,6 +51,7 @@ private:
     cad::modules::DrawingService drawing_service_;
     cad::drawings::BomService bom_service_;
     cad::drawings::AnnotationService annotation_service_;
+    cad::drawings::AssociativeLinkService associative_link_service_;
     cad::modules::SheetMetalService sheet_metal_service_;
     cad::modules::SimulationService simulation_service_;
     cad::modules::PatternService pattern_service_;

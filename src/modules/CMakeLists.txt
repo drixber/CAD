@@ -3,6 +3,7 @@ add_library(cad_modules
     drawings/TechDrawAdapter.cpp
     drawings/BomService.cpp
     drawings/AnnotationService.cpp
+    drawings/AssociativeLinkService.cpp
     sheetmetal/SheetMetalService.cpp
     simulation/SimulationService.cpp
     patterns/PatternService.cpp

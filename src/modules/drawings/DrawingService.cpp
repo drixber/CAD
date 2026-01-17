@@ -17,13 +17,16 @@ DrawingDocument DrawingService::buildDocumentSkeleton(const std::string& title) 
     document.title = title;
     document.source_model_id = title;
     document.styles = defaultStyles();
+    document.profiles.push_back({"Default", "Visible", "Annotation"});
     DrawingSheet sheet;
     sheet.name = "Sheet1";
     sheet.template_name = "A3";
-    sheet.views.push_back({"Front", "Front", 1.0, document.source_model_id});
-    sheet.views.push_back({"Top", "Top", 1.0, document.source_model_id});
-    sheet.views.push_back({"Side", "Right", 1.0, document.source_model_id});
-    sheet.views.push_back({"Iso", "Isometric", 1.0, document.source_model_id});
+    sheet.associative = true;
+    sheet.scale_label = "1:1";
+    sheet.views.push_back({"Front", "Front", 1.0, document.source_model_id, true, "Default"});
+    sheet.views.push_back({"Top", "Top", 1.0, document.source_model_id, true, "Default"});
+    sheet.views.push_back({"Side", "Right", 1.0, document.source_model_id, true, "Default"});
+    sheet.views.push_back({"Iso", "Isometric", 1.0, document.source_model_id, true, "Default"});
     document.sheets.push_back(sheet);
     return document;
 }

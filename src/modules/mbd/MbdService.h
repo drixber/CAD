@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "PmiData.h"
+
 namespace cad {
 namespace modules {
 
@@ -18,6 +20,7 @@ struct MbdResult {
 class MbdService {
 public:
     MbdResult applyMbd(const MbdRequest& request) const;
+    cad::mbd::PmiDataSet buildDefaultPmi(const std::string& part_id) const;
 };
 
 }  // namespace modules

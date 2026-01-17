@@ -28,7 +28,16 @@ bool TechDrawAdapter::applyDimensions(const DrawingDocument& document) {
 }
 
 bool TechDrawAdapter::syncAssociativeLinks(const DrawingDocument& document) {
-    (void)document;
+    for (const auto& sheet : document.sheets) {
+        if (!sheet.associative) {
+            return false;
+        }
+        for (const auto& view : sheet.views) {
+            if (!view.associative) {
+                return false;
+            }
+        }
+    }
     return true;
 }
 

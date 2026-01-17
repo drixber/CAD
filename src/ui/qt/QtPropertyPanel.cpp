@@ -53,7 +53,8 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     context_stack_->addWidget(makePanel(tr("Context Panel: Assembly"),
                                         {tr("Mate Type"), tr("Offset")}));
     context_stack_->addWidget(makePanel(tr("Context Panel: Drawing"),
-                                        {tr("View Type"), tr("Scale")}));
+                                        {tr("View Type"), tr("Scale"), tr("Sheet"),
+                                         tr("BOM")}));
     context_stack_->addWidget(makePanel(tr("Context Panel: Inspect"),
                                         {tr("Tool"), tr("Result")}));
     context_stack_->addWidget(makePanel(tr("Context Panel: Manage"),
