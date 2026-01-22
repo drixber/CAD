@@ -162,7 +162,7 @@ pending_items:
 - Collision/interference checks refinement (precise geometry-based collision detection).
 - Drawing styles UI editor enhancements (advanced preview rendering with actual style visualization).
 - BOM pipeline UI display widget enhancements (saved filter presets, export formats).
-- Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
+- Annotation positioning UI enhancements (visual leader line preview in drawing view).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring refinement (advanced parameter validation, command completion).
 

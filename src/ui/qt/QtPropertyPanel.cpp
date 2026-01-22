@@ -163,11 +163,26 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     annotation_table_->setColumnCount(5);
     annotation_table_->setHorizontalHeaderLabels({tr("Text"), tr("Type"), tr("X"), tr("Y"), tr("Leader")});
     annotation_table_->horizontalHeader()->setStretchLastSection(true);
-    annotation_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    annotation_table_->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
     annotation_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     annotation_table_->setAlternatingRowColors(true);
     annotation_table_->setMaximumHeight(200);
+    annotation_table_->setDragDropMode(QAbstractItemView::InternalMove);
     drawing_layout->addWidget(annotation_table_);
+    
+    // Annotation editing controls
+    QHBoxLayout* annotation_controls = new QHBoxLayout();
+    edit_leader_button_ = new QPushButton(tr("Edit Leader Line..."), drawing_panel);
+    edit_leader_button_->setEnabled(false);
+    annotation_controls->addWidget(edit_leader_button_);
+    
+    drag_annotation_button_ = new QPushButton(tr("Drag Mode"), drawing_panel);
+    drag_annotation_button_->setCheckable(true);
+    annotation_controls->addWidget(drag_annotation_button_);
+    annotation_controls->addStretch();
+    drawing_layout->addLayout(annotation_controls);
+    
+    setupAnnotationTableEditing();
     
     drawing_layout->addStretch();
     drawing_panel->setLayout(drawing_layout);
@@ -868,21 +883,235 @@ void QtPropertyPanel::updateAnnotationTable(const QList<AnnotationItem>& items) 
         return;
     }
     
+    annotation_items_cache_ = items;
     annotation_table_->setRowCount(items.size());
     for (int i = 0; i < items.size(); ++i) {
         const AnnotationItem& item = items[i];
         annotation_table_->setItem(i, 0, new QTableWidgetItem(item.text));
         annotation_table_->setItem(i, 1, new QTableWidgetItem(item.type));
-        annotation_table_->setItem(i, 2, new QTableWidgetItem(QString::number(item.x, 'f', 2)));
-        annotation_table_->setItem(i, 3, new QTableWidgetItem(QString::number(item.y, 'f', 2)));
+        
+        // Make X, Y editable
+        QTableWidgetItem* x_item = new QTableWidgetItem(QString::number(item.x, 'f', 2));
+        x_item->setFlags(x_item->flags() | Qt::ItemIsEditable);
+        annotation_table_->setItem(i, 2, x_item);
+        
+        QTableWidgetItem* y_item = new QTableWidgetItem(QString::number(item.y, 'f', 2));
+        y_item->setFlags(y_item->flags() | Qt::ItemIsEditable);
+        annotation_table_->setItem(i, 3, y_item);
+        
         QString leader_text = item.has_leader ? tr("Yes") : tr("No");
         if (item.has_attachment && !item.attachment_entity.isEmpty()) {
             leader_text += " (" + item.attachment_entity + ")";
+        }
+        if (!item.leader_points.isEmpty()) {
+            leader_text += QString(" [%1 points]").arg(item.leader_points.size());
         }
         annotation_table_->setItem(i, 4, new QTableWidgetItem(leader_text));
     }
     
     annotation_table_->resizeColumnsToContents();
+}
+
+void QtPropertyPanel::setupAnnotationTableEditing() {
+    if (!annotation_table_) {
+        return;
+    }
+    
+    connect(annotation_table_, &QTableWidget::cellDoubleClicked, this, &QtPropertyPanel::onAnnotationTableDoubleClicked);
+    connect(annotation_table_, &QTableWidget::itemChanged, this, &QtPropertyPanel::onAnnotationTableItemChanged);
+    connect(annotation_table_, &QTableWidget::itemSelectionChanged, this, [this]() {
+        bool has_selection = annotation_table_->selectedItems().size() > 0;
+        if (edit_leader_button_) {
+            edit_leader_button_->setEnabled(has_selection);
+        }
+        if (has_selection && annotation_table_->currentRow() >= 0) {
+            current_editing_annotation_row_ = annotation_table_->currentRow();
+        }
+    });
+    
+    connect(edit_leader_button_, &QPushButton::clicked, this, [this]() {
+        if (annotation_table_->currentRow() >= 0) {
+            editAnnotationLeader(annotation_table_->currentRow());
+        }
+    });
+    
+    connect(drag_annotation_button_, &QPushButton::toggled, this, [this](bool enabled) {
+        if (enabled) {
+            annotation_table_->setDragDropMode(QAbstractItemView::DragDrop);
+        } else {
+            annotation_table_->setDragDropMode(QAbstractItemView::InternalMove);
+        }
+    });
+}
+
+void QtPropertyPanel::onAnnotationTableDoubleClicked(int row, int column) {
+    if (column == 4) {  // Leader column
+        editAnnotationLeader(row);
+    } else if (column == 2 || column == 3) {  // X or Y column
+        QTableWidgetItem* item = annotation_table_->item(row, column);
+        if (item) {
+            annotation_table_->editItem(item);
+        }
+    }
+}
+
+void QtPropertyPanel::onAnnotationTableItemChanged(QTableWidgetItem* item) {
+    if (!item || !annotation_table_) {
+        return;
+    }
+    
+    int row = item->row();
+    int col = item->column();
+    QString annotation_id = getAnnotationId(row);
+    
+    if (col == 2) {  // X position
+        bool ok;
+        double x = item->text().toDouble(&ok);
+        if (ok && row < annotation_items_cache_.size()) {
+            annotation_items_cache_[row].x = x;
+            emit annotationPositionChanged(annotation_id, x, annotation_items_cache_[row].y);
+        }
+    } else if (col == 3) {  // Y position
+        bool ok;
+        double y = item->text().toDouble(&ok);
+        if (ok && row < annotation_items_cache_.size()) {
+            annotation_items_cache_[row].y = y;
+            emit annotationPositionChanged(annotation_id, annotation_items_cache_[row].x, y);
+        }
+    }
+}
+
+void QtPropertyPanel::onEditAnnotationLeader() {
+    if (annotation_table_->currentRow() >= 0) {
+        editAnnotationLeader(annotation_table_->currentRow());
+    }
+}
+
+void QtPropertyPanel::onAnnotationPositionDrag() {
+    // This would be called when drag mode is enabled
+    // In a real implementation, this would handle mouse drag events
+}
+
+void QtPropertyPanel::editAnnotationLeader(int row) {
+    if (row < 0 || row >= annotation_items_cache_.size() || !annotation_table_) {
+        return;
+    }
+    
+    AnnotationItem& item = annotation_items_cache_[row];
+    QString annotation_id = getAnnotationId(row);
+    
+    // Create leader line editing dialog
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Edit Leader Line - %1").arg(item.text));
+    QVBoxLayout* layout = new QVBoxLayout(&dialog);
+    
+    QLabel* info_label = new QLabel(tr("Leader Line Points:"), &dialog);
+    layout->addWidget(info_label);
+    
+    QTableWidget* points_table = new QTableWidget(&dialog);
+    points_table->setColumnCount(2);
+    points_table->setHorizontalHeaderLabels({tr("X"), tr("Y")});
+    points_table->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
+    points_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    
+    // Populate with existing leader points
+    points_table->setRowCount(item.leader_points.size() + 1);  // +1 for add new row
+    for (int i = 0; i < item.leader_points.size(); ++i) {
+        const QPointF& point = item.leader_points[i];
+        QTableWidgetItem* x_item = new QTableWidgetItem(QString::number(point.x(), 'f', 2));
+        x_item->setFlags(x_item->flags() | Qt::ItemIsEditable);
+        points_table->setItem(i, 0, x_item);
+        
+        QTableWidgetItem* y_item = new QTableWidgetItem(QString::number(point.y(), 'f', 2));
+        y_item->setFlags(y_item->flags() | Qt::ItemIsEditable);
+        points_table->setItem(i, 1, y_item);
+    }
+    
+    // Add new row placeholder
+    if (item.leader_points.isEmpty()) {
+        points_table->setItem(0, 0, new QTableWidgetItem(tr("0.0")));
+        points_table->setItem(0, 1, new QTableWidgetItem(tr("0.0")));
+    }
+    
+    points_table->resizeColumnsToContents();
+    layout->addWidget(points_table);
+    
+    QPushButton* add_point_button = new QPushButton(tr("Add Point"), &dialog);
+    QPushButton* remove_point_button = new QPushButton(tr("Remove Selected"), &dialog);
+    QHBoxLayout* button_layout1 = new QHBoxLayout();
+    button_layout1->addWidget(add_point_button);
+    button_layout1->addWidget(remove_point_button);
+    button_layout1->addStretch();
+    layout->addLayout(button_layout1);
+    
+    connect(add_point_button, &QPushButton::clicked, [points_table]() {
+        int row = points_table->rowCount();
+        points_table->insertRow(row);
+        QTableWidgetItem* x_item = new QTableWidgetItem(tr("0.0"));
+        x_item->setFlags(x_item->flags() | Qt::ItemIsEditable);
+        points_table->setItem(row, 0, x_item);
+        QTableWidgetItem* y_item = new QTableWidgetItem(tr("0.0"));
+        y_item->setFlags(y_item->flags() | Qt::ItemIsEditable);
+        points_table->setItem(row, 1, y_item);
+    });
+    
+    connect(remove_point_button, &QPushButton::clicked, [points_table]() {
+        int row = points_table->currentRow();
+        if (row >= 0) {
+            points_table->removeRow(row);
+        }
+    });
+    
+    QPushButton* ok_button = new QPushButton(tr("OK"), &dialog);
+    QPushButton* cancel_button = new QPushButton(tr("Cancel"), &dialog);
+    QHBoxLayout* button_layout2 = new QHBoxLayout();
+    button_layout2->addStretch();
+    button_layout2->addWidget(ok_button);
+    button_layout2->addWidget(cancel_button);
+    layout->addLayout(button_layout2);
+    
+    connect(ok_button, &QPushButton::clicked, &dialog, &QDialog::accept);
+    connect(cancel_button, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        // Update leader points from dialog
+        QList<QPointF> new_leader_points;
+        for (int i = 0; i < points_table->rowCount(); ++i) {
+            QTableWidgetItem* x_item = points_table->item(i, 0);
+            QTableWidgetItem* y_item = points_table->item(i, 1);
+            if (x_item && y_item) {
+                bool x_ok, y_ok;
+                double x = x_item->text().toDouble(&x_ok);
+                double y = y_item->text().toDouble(&y_ok);
+                if (x_ok && y_ok) {
+                    new_leader_points.append(QPointF(x, y));
+                }
+            }
+        }
+        
+        item.leader_points = new_leader_points;
+        item.has_leader = !new_leader_points.isEmpty();
+        
+        // Update table display
+        QString leader_text = item.has_leader ? tr("Yes") : tr("No");
+        if (item.has_attachment && !item.attachment_entity.isEmpty()) {
+            leader_text += " (" + item.attachment_entity + ")";
+        }
+        if (!item.leader_points.isEmpty()) {
+            leader_text += QString(" [%1 points]").arg(item.leader_points.size());
+        }
+        annotation_table_->item(row, 4)->setText(leader_text);
+        
+        emit annotationLeaderChanged(annotation_id, new_leader_points);
+    }
+}
+
+QString QtPropertyPanel::getAnnotationId(int row) const {
+    // Generate ID from row and text
+    if (row >= 0 && row < annotation_items_cache_.size()) {
+        return QString("annotation_%1_%2").arg(row).arg(annotation_items_cache_[row].text);
+    }
+    return QString("annotation_%1").arg(row);
 }
 
 }  // namespace ui

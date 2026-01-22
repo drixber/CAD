@@ -6,6 +6,7 @@
 #include <QDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPointF>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTableWidget>
@@ -29,6 +30,8 @@ struct AnnotationItem {
     bool has_leader{false};
     bool has_attachment{false};
     QString attachment_entity;
+    QList<QPointF> leader_points;
+    QPointF attachment_point;
 };
 
 class QtPropertyPanel : public QWidget {
@@ -56,12 +59,19 @@ public:
     
 signals:
     void styleChanged(const QString& style_type, const QString& style_name, const QVariantMap& properties);
+    void annotationChanged(const QString& annotation_id, const QVariantMap& properties);
+    void annotationPositionChanged(const QString& annotation_id, double x, double y);
+    void annotationLeaderChanged(const QString& annotation_id, const QList<QPointF>& leader_points);
 
 private slots:
     void onStyleTableDoubleClicked(int row, int column);
     void onStyleTableItemChanged(QTableWidgetItem* item);
     void onEditStyleProperties();
     void onStylePreviewUpdate();
+    void onAnnotationTableDoubleClicked(int row, int column);
+    void onAnnotationTableItemChanged(QTableWidgetItem* item);
+    void onEditAnnotationLeader();
+    void onAnnotationPositionDrag();
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -73,6 +83,8 @@ private:
     QStackedWidget* context_stack_{nullptr};
     QTableWidget* bom_table_{nullptr};
     QTableWidget* annotation_table_{nullptr};
+    QPushButton* edit_leader_button_{nullptr};
+    QPushButton* drag_annotation_button_{nullptr};
     QLabel* style_preset_label_{nullptr};
     QLabel* style_info_label_{nullptr};
     QComboBox* style_preset_selector_{nullptr};
@@ -92,8 +104,10 @@ private:
     QList<BomItem> bom_items_cache_;
     QList<int> bom_sort_columns_;
     Qt::SortOrder bom_sort_order_{Qt::AscendingOrder};
+    QList<AnnotationItem> annotation_items_cache_;
     QString current_editing_style_type_;
     QString current_editing_style_name_;
+    int current_editing_annotation_row_{-1};
     
     void updateBomTable(const QList<BomItem>& items);
     void updateStyleInfo(const QString& info);
@@ -112,6 +126,9 @@ private:
     void removeSortColumn(int column);
     void clearAllFilters();
     bool matchesFilter(const BomItem& item, const QString& filter_text, int filter_column) const;
+    void setupAnnotationTableEditing();
+    void editAnnotationLeader(int row);
+    QString getAnnotationId(int row) const;
 };
 
 }  // namespace ui
