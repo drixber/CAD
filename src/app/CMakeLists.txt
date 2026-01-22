@@ -18,3 +18,13 @@ target_link_libraries(cad_app
         cad_modules
         cad_interop
 )
+
+if(CAD_USE_QT)
+    find_package(Qt6 QUIET COMPONENTS Network)
+    if(Qt6_FOUND)
+        target_link_libraries(cad_app PUBLIC Qt6::Network)
+    else()
+        find_package(Qt5 REQUIRED COMPONENTS Network)
+        target_link_libraries(cad_app PUBLIC Qt5::Network)
+    endif()
+endif()
