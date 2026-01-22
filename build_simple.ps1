@@ -55,6 +55,12 @@ Write-Host ""
 Write-Host "Starte Build..." -ForegroundColor Green
 Write-Host ""
 
+# Altes Build-Verzeichnis löschen falls vorhanden
+if (Test-Path "build") {
+    Write-Host "Lösche altes Build-Verzeichnis..." -ForegroundColor Gray
+    Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 # CMake konfigurieren
 Write-Host "[1/3] CMake konfigurieren..." -ForegroundColor Yellow
 & "$msys2Path\cmake.exe" -S . -B build -G "MinGW Makefiles" -DCAD_USE_QT=ON
