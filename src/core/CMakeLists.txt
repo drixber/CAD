@@ -14,6 +14,7 @@ add_library(cad_core
 target_include_directories(cad_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
 )
 
 if(CAD_USE_FREECAD)

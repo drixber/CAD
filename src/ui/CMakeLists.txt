@@ -27,6 +27,7 @@ add_library(cad_ui ${CAD_UI_SOURCES})
 target_include_directories(cad_ui
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
 )
 
 if(CAD_USE_QT)

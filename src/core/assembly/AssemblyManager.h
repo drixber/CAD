@@ -111,7 +111,7 @@ private:
     std::size_t thread_pool_size_{4};
     std::deque<AssemblyLoadJob> load_queue_{};
     std::vector<std::future<AssemblyLoadStats>> active_loads_{};
-    std::mutex cache_mutex_;
+    mutable std::mutex cache_mutex_;
     std::mutex load_mutex_;
     
     // Cache storage
