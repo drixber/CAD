@@ -104,11 +104,16 @@ completed_items:
 - Added BoundingBox structure and overlap calculation methods.
 - Implemented checkAssembly method for actual collision detection.
 - Added InterferencePair structure to track overlapping components.
+- Expanded LOD/caching implementation with actual caching logic.
+- Added CachedAssembly structure with access tracking.
+- Implemented LRU cache eviction strategy.
+- Added getVisibleComponentCount and getVisibleComponentIds for LOD filtering.
+- Cache now tracks hits/misses and access times.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
-- Large assembly LOD/caching implementation.
+- Large assembly LOD/caching optimization (performance tuning).
 - Collision/interference checks refinement (geometry-based instead of bounding box).
 - Drawing styles UI integration and style editor.
 - BOM pipeline UI display widget (table view for BOM items).
@@ -213,5 +218,11 @@ decisions_made:
 - checkAssembly method performs pairwise collision detection on all components.
 - Interference pairs include component IDs, part names, and overlap volume.
 - Bounding box overlap calculated in all three dimensions (x, y, z).
+- Assembly cache uses LRU eviction when cache limit is reached.
+- CachedAssembly tracks component count, LOD mode, access count, and last access time.
+- Cache statistics include hits and misses for performance monitoring.
+- LOD filtering limits visible components: Full (100%), Simplified (50%), BoundingBoxes (10%).
+- getVisibleComponentIds returns filtered component IDs based on LOD mode.
+- loadAssembly checks cache first and returns cached data if available.
 
 estimated_remaining_time: 70-110 weeks
