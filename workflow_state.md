@@ -142,6 +142,12 @@ completed_items:
 - Added text styles table showing Name, Size, Font, and Weight.
 - Style tables support selection and display style properties.
 - Styles command now updates property panel with style tables and preset selector.
+- Added command parameter input and validation to ribbon commands.
+- Implemented ParsedCommand structure for command parsing.
+- Added parseCommand method to split command and parameters.
+- Added validateCommand with parameter count and type validation.
+- Commands like Extrude and Revolve now accept numeric parameters.
+- Command validation provides error messages for invalid commands.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -152,7 +158,7 @@ pending_items:
 - BOM pipeline UI display widget enhancements (advanced filtering, multi-column sort).
 - Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
-- Ribbon command wiring refinement (command parameter input, validation).
+- Ribbon command wiring refinement (advanced parameter validation, command completion).
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
@@ -290,5 +296,11 @@ decisions_made:
 - Style tables use alternating row colors and read-only selection.
 - Preset selector updates current preset label when changed.
 - Styles command populates both line and text styles tables with current preset data.
+- Command parsing splits input into command name and parameter list.
+- Parameter validation checks command name against valid commands list.
+- Parameter count validation ensures required parameters are provided.
+- Parameter type validation checks numeric parameters for Extrude/Revolve commands.
+- Invalid commands show error messages in integration status.
+- Extrude and Revolve commands now accept depth/angle parameters (e.g., "Extrude 10").
 
 estimated_remaining_time: 70-110 weeks

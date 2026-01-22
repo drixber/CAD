@@ -364,5 +364,9 @@ QtPropertyPanel* QtMainWindow::propertyPanel() {
     return property_panel_;
 }
 
+QtCommandLine* QtMainWindow::commandLine() {
+    return command_line_;
+}
+
 }  // namespace ui
 }  // namespace cad

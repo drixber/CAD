@@ -48,6 +48,7 @@ public:
     void setTargetFpsHandler(const std::function<void(int)>& handler);
     
     QtPropertyPanel* propertyPanel();
+    QtCommandLine* commandLine();
 
 private:
     QtRibbon* ribbon_{nullptr};

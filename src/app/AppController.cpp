@@ -115,6 +115,28 @@ void AppController::bindCommands() {
     main_window_.setCommandHandler([this](const std::string& command) {
         executeCommand(command);
     });
+    
+    #ifdef CAD_USE_QT
+    cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+    if (qt_window && qt_window->commandLine()) {
+        cad::ui::QtCommandLine* cmd_line = dynamic_cast<cad::ui::QtCommandLine*>(qt_window->commandLine());
+        if (cmd_line) {
+            QObject::connect(cmd_line, &cad::ui::QtCommandLine::commandParsed,
+                           [this](const cad::ui::ParsedCommand& parsed) {
+                               if (parsed.valid) {
+                                   std::string full_command = parsed.command.toStdString();
+                                   if (!parsed.parameters.isEmpty()) {
+                                       full_command += " " + parsed.parameters.join(" ").toStdString();
+                                   }
+                                   executeCommand(full_command);
+                               } else {
+                                   main_window_.setIntegrationStatus("Invalid command: " + parsed.error_message.toStdString());
+                                   main_window_.setViewportStatus("Command validation failed");
+                               }
+                           });
+        }
+    }
+    #endif
     main_window_.setLodModeHandler([this](const std::string& mode) {
         if (mode == "full") {
             assembly_manager_.setLodMode(cad::core::LodMode::Full);
