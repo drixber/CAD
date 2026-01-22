@@ -113,10 +113,10 @@ void MbdService::renderMbdInViewport(const MbdRenderResult& render_data, void* v
         ann_data.has_leader = annotation.show_leader;
         
         if (annotation.show_leader) {
-            if (!annotation.leader_points.empty()) {
-                ann_data.leader_start_x = annotation.leader_points[0].x;
-                ann_data.leader_start_y = annotation.leader_points[0].y;
-                ann_data.leader_start_z = annotation.leader_points[0].z;
+            if (annotation.leader_x != 0.0 || annotation.leader_y != 0.0 || annotation.leader_z != 0.0) {
+                ann_data.leader_start_x = annotation.leader_x;
+                ann_data.leader_start_y = annotation.leader_y;
+                ann_data.leader_start_z = annotation.leader_z;
             } else {
                 ann_data.leader_start_x = annotation.x - 10.0;
                 ann_data.leader_start_y = annotation.y - 10.0;

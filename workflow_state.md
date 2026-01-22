@@ -326,5 +326,13 @@ decisions_made:
 - Phase 8-11: Assembly File Loading mit ImportExportService-Integration implementiert.
 - Phase 8-11: Performance-Optimierung erweitert (LOD, Caching, Multi-Threading-Vorbereitung).
 - Phase 8-11: Undo/Redo System vollständig implementiert (History Management, Max Size, Command Tracking).
+- Phase 12: Pattern Service vollständig implementiert (Curve-Evaluierung, Tangent-Berechnung, echte Pattern-Generierung).
+- Phase 12: Simplify Service vollständig implementiert (Geometrie-Komplexitäts-Berechnung, Simplification-Ratio).
+- Phase 12: Visualization Service vollständig implementiert (Material-Overrides, Material-Cache, Quality-Settings).
+- Phase 12: MBD Service vollständig implementiert (PMI-Rendering, Color-Parsing, Visibility-State-Management).
+- Phase 12: Performance-Optimierung erweitert (LOD-Geometrie-Reduktion, Cache-Optimierung, Priority-Score).
+- Phase 12: Crash Reporter vollständig implementiert (Stack-Trace-Capture, Crash-Dump-Generierung, System-Info).
+- Phase 12: Python Bindings vollständig implementiert (pybind11-Integration für alle Services, Enums, Helper-Functions).
+- Phase 12: Unit Tests erstellt (PatternServiceTest, SimplifyServiceTest, VisualizationServiceTest, MbdServiceTest, CrashReporterTest).
 
-estimated_remaining_time: 60-85 weeks
+estimated_remaining_time: 50-70 weeks
