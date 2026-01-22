@@ -45,6 +45,9 @@ public:
     void setCurrentStylePreset(const QString& preset);
     void setStyleInfo(const QString& info);
     void setAnnotationItems(const QList<AnnotationItem>& items);
+    void setStylePresetSelector(const QStringList& presets);
+    void setLineStylesTable(const QList<QStringList>& line_styles);
+    void setTextStylesTable(const QList<QStringList>& text_styles);
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -58,6 +61,9 @@ private:
     QTableWidget* annotation_table_{nullptr};
     QLabel* style_preset_label_{nullptr};
     QLabel* style_info_label_{nullptr};
+    QComboBox* style_preset_selector_{nullptr};
+    QTableWidget* line_styles_table_{nullptr};
+    QTableWidget* text_styles_table_{nullptr};
     QLineEdit* bom_filter_{nullptr};
     QComboBox* bom_sort_column_{nullptr};
     QPushButton* bom_export_button_{nullptr};

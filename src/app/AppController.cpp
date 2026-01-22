@@ -368,6 +368,7 @@ void AppController::executeCommand(const std::string& command) {
             if (panel) {
                 QStringList presets = {"Default", "ISO", "ANSI", "JIS"};
                 panel->setStylePresets(presets);
+                panel->setStylePresetSelector(presets);
                 
                 QString style_info = QString("Line styles: %1, Text styles: %2, Dimension styles: %3, Hatch styles: %4")
                     .arg(default_styles.line_styles.size())
@@ -376,6 +377,30 @@ void AppController::executeCommand(const std::string& command) {
                     .arg(default_styles.hatch_styles.size());
                 panel->setCurrentStylePreset(QString::fromStdString("Default"));
                 panel->setStyleInfo(style_info);
+                
+                // Update line styles table
+                QList<QStringList> line_styles_data;
+                for (const auto& line_style : default_styles.line_styles) {
+                    QStringList row;
+                    row << QString::fromStdString(line_style.name)
+                        << QString::number(line_style.thickness, 'f', 2)
+                        << QString::fromStdString(line_style.color)
+                        << "Solid";  // Simplified type display
+                    line_styles_data.append(row);
+                }
+                panel->setLineStylesTable(line_styles_data);
+                
+                // Update text styles table
+                QList<QStringList> text_styles_data;
+                for (const auto& text_style : default_styles.text_styles) {
+                    QStringList row;
+                    row << QString::fromStdString(text_style.name)
+                        << QString::number(text_style.size, 'f', 1)
+                        << QString::fromStdString(text_style.font_family)
+                        << "Normal";  // Simplified weight display
+                    text_styles_data.append(row);
+                }
+                panel->setTextStylesTable(text_styles_data);
             }
         }
         #endif

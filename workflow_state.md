@@ -136,13 +136,19 @@ completed_items:
 - Added BOM export button to export table to CSV file.
 - BOM table now supports clickable header sorting.
 - Filter and sort operations work together for BOM table management.
+- Added interactive style editing to drawing styles UI editor.
+- Implemented style preset selector combo box for switching between presets.
+- Added line styles table showing Name, Thickness, Type, and Color.
+- Added text styles table showing Name, Size, Font, and Weight.
+- Style tables support selection and display style properties.
+- Styles command now updates property panel with style tables and preset selector.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching optimization (performance tuning).
 - Collision/interference checks refinement (geometry-based instead of bounding box).
-- Drawing styles UI editor enhancements (interactive style editing, preview).
+- Drawing styles UI editor enhancements (style property editing, preview rendering).
 - BOM pipeline UI display widget enhancements (advanced filtering, multi-column sort).
 - Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
@@ -278,5 +284,11 @@ decisions_made:
 - BOM export saves table data to CSV format with headers.
 - BOM table supports clickable header sorting in addition to dropdown sort.
 - Filter and sort operations are applied together for refined BOM display.
+- Style preset selector allows switching between Default, ISO, ANSI, and JIS presets.
+- Line styles table displays style name, thickness, type, and color for each style.
+- Text styles table displays style name, size, font family, and weight for each style.
+- Style tables use alternating row colors and read-only selection.
+- Preset selector updates current preset label when changed.
+- Styles command populates both line and text styles tables with current preset data.
 
 estimated_remaining_time: 70-110 weeks

@@ -150,12 +150,53 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     QLabel* style_label = new QLabel(tr("Drawing Styles:"), manage_panel);
     manage_layout->addWidget(style_label);
     
-    style_preset_label_ = new QLabel(tr("Preset: Default"), manage_panel);
+    QHBoxLayout* preset_layout = new QHBoxLayout();
+    preset_layout->addWidget(new QLabel(tr("Preset:"), manage_panel));
+    style_preset_selector_ = new QComboBox(manage_panel);
+    style_preset_selector_->addItems({tr("Default"), tr("ISO"), tr("ANSI"), tr("JIS")});
+    preset_layout->addWidget(style_preset_selector_);
+    manage_layout->addLayout(preset_layout);
+    
+    style_preset_label_ = new QLabel(tr("Current: Default"), manage_panel);
     manage_layout->addWidget(style_preset_label_);
     
     style_info_label_ = new QLabel(tr("Line styles: 0, Text styles: 0, Dimension styles: 0"), manage_panel);
     style_info_label_->setWordWrap(true);
     manage_layout->addWidget(style_info_label_);
+    
+    // Line styles table
+    QLabel* line_styles_label = new QLabel(tr("Line Styles:"), manage_panel);
+    manage_layout->addWidget(line_styles_label);
+    
+    line_styles_table_ = new QTableWidget(manage_panel);
+    line_styles_table_->setColumnCount(4);
+    line_styles_table_->setHorizontalHeaderLabels({tr("Name"), tr("Thickness"), tr("Type"), tr("Color")});
+    line_styles_table_->horizontalHeader()->setStretchLastSection(true);
+    line_styles_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    line_styles_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    line_styles_table_->setAlternatingRowColors(true);
+    line_styles_table_->setMaximumHeight(150);
+    manage_layout->addWidget(line_styles_table_);
+    
+    // Text styles table
+    QLabel* text_styles_label = new QLabel(tr("Text Styles:"), manage_panel);
+    manage_layout->addWidget(text_styles_label);
+    
+    text_styles_table_ = new QTableWidget(manage_panel);
+    text_styles_table_->setColumnCount(4);
+    text_styles_table_->setHorizontalHeaderLabels({tr("Name"), tr("Size"), tr("Font"), tr("Weight")});
+    text_styles_table_->horizontalHeader()->setStretchLastSection(true);
+    text_styles_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    text_styles_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    text_styles_table_->setAlternatingRowColors(true);
+    text_styles_table_->setMaximumHeight(150);
+    manage_layout->addWidget(text_styles_table_);
+    
+    connect(style_preset_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), 
+            this, [this](int index) {
+                QString preset = style_preset_selector_->itemText(index);
+                setCurrentStylePreset(preset);
+            });
     
     manage_layout->addStretch();
     manage_panel->setLayout(manage_layout);
@@ -322,8 +363,53 @@ void QtPropertyPanel::setStylePresets(const QStringList& presets) {
 
 void QtPropertyPanel::setCurrentStylePreset(const QString& preset) {
     if (style_preset_label_) {
-        style_preset_label_->setText(tr("Current preset: %1").arg(preset));
+        style_preset_label_->setText(tr("Current: %1").arg(preset));
     }
+    if (style_preset_selector_) {
+        int index = style_preset_selector_->findText(preset);
+        if (index >= 0) {
+            style_preset_selector_->setCurrentIndex(index);
+        }
+    }
+}
+
+void QtPropertyPanel::setStylePresetSelector(const QStringList& presets) {
+    if (style_preset_selector_) {
+        style_preset_selector_->clear();
+        style_preset_selector_->addItems(presets);
+    }
+}
+
+void QtPropertyPanel::setLineStylesTable(const QList<QStringList>& line_styles) {
+    if (!line_styles_table_) {
+        return;
+    }
+    
+    line_styles_table_->setRowCount(line_styles.size());
+    for (int i = 0; i < line_styles.size(); ++i) {
+        const QStringList& row = line_styles[i];
+        for (int j = 0; j < row.size() && j < line_styles_table_->columnCount(); ++j) {
+            line_styles_table_->setItem(i, j, new QTableWidgetItem(row[j]));
+        }
+    }
+    
+    line_styles_table_->resizeColumnsToContents();
+}
+
+void QtPropertyPanel::setTextStylesTable(const QList<QStringList>& text_styles) {
+    if (!text_styles_table_) {
+        return;
+    }
+    
+    text_styles_table_->setRowCount(text_styles.size());
+    for (int i = 0; i < text_styles.size(); ++i) {
+        const QStringList& row = text_styles[i];
+        for (int j = 0; j < row.size() && j < text_styles_table_->columnCount(); ++j) {
+            text_styles_table_->setItem(i, j, new QTableWidgetItem(row[j]));
+        }
+    }
+    
+    text_styles_table_->resizeColumnsToContents();
 }
 
 void QtPropertyPanel::setStyleInfo(const QString& info) {
