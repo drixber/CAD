@@ -130,6 +130,12 @@ completed_items:
 - Added setAnnotationItems method to QtPropertyPanel for updating annotation table.
 - Annotation table shows leader status and attachment entity information.
 - Dimension command now updates property panel with annotation items.
+- Added BOM UI enhancements: sorting, filtering, and export functionality.
+- Implemented BOM filter text field for searching by part name, part number, or quantity.
+- Added BOM sort column selector (Part Name, Quantity, Part Number).
+- Added BOM export button to export table to CSV file.
+- BOM table now supports clickable header sorting.
+- Filter and sort operations work together for BOM table management.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -137,7 +143,7 @@ pending_items:
 - Large assembly LOD/caching optimization (performance tuning).
 - Collision/interference checks refinement (geometry-based instead of bounding box).
 - Drawing styles UI editor enhancements (interactive style editing, preview).
-- BOM pipeline UI display widget enhancements (sorting, filtering, export).
+- BOM pipeline UI display widget enhancements (advanced filtering, multi-column sort).
 - Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring refinement (command parameter input, validation).
@@ -267,5 +273,10 @@ decisions_made:
 - Annotation types displayed: Text, Note, Callout, Balloon, Revision, Title, Leader.
 - Dimension command automatically updates property panel with annotation items.
 - Annotation table uses alternating row colors and read-only selection.
+- BOM filter searches across part name, part number, and quantity fields.
+- BOM sort column selector allows sorting by any column.
+- BOM export saves table data to CSV format with headers.
+- BOM table supports clickable header sorting in addition to dropdown sort.
+- Filter and sort operations are applied together for refined BOM display.
 
 estimated_remaining_time: 70-110 weeks

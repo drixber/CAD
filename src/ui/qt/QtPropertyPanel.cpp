@@ -1,9 +1,14 @@
 #include "QtPropertyPanel.h"
 
+#include <QComboBox>
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QHeaderView>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
@@ -76,6 +81,21 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     QLabel* bom_label = new QLabel(tr("Bill of Materials:"), drawing_panel);
     drawing_layout->addWidget(bom_label);
     
+    // BOM filter and sort controls
+    QHBoxLayout* bom_controls = new QHBoxLayout();
+    bom_filter_ = new QLineEdit(drawing_panel);
+    bom_filter_->setPlaceholderText(tr("Filter..."));
+    bom_filter_->setClearButtonEnabled(true);
+    bom_controls->addWidget(bom_filter_);
+    
+    bom_sort_column_ = new QComboBox(drawing_panel);
+    bom_sort_column_->addItems({tr("Part Name"), tr("Quantity"), tr("Part Number")});
+    bom_controls->addWidget(bom_sort_column_);
+    
+    bom_export_button_ = new QPushButton(tr("Export"), drawing_panel);
+    bom_controls->addWidget(bom_export_button_);
+    drawing_layout->addLayout(bom_controls);
+    
     bom_table_ = new QTableWidget(drawing_panel);
     bom_table_->setColumnCount(3);
     bom_table_->setHorizontalHeaderLabels({tr("Part Name"), tr("Quantity"), tr("Part Number")});
@@ -83,8 +103,14 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     bom_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     bom_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     bom_table_->setAlternatingRowColors(true);
+    bom_table_->setSortingEnabled(true);
     bom_table_->setMaximumHeight(200);
     drawing_layout->addWidget(bom_table_);
+    
+    // Connect signals
+    connect(bom_filter_, &QLineEdit::textChanged, this, [this]() { filterBomTable(); });
+    connect(bom_sort_column_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { sortBomTable(); });
+    connect(bom_export_button_, &QPushButton::clicked, this, [this]() { exportBomTable(); });
     
     QLabel* annotation_label = new QLabel(tr("Annotations:"), drawing_panel);
     drawing_layout->addWidget(annotation_label);
@@ -210,15 +236,81 @@ void QtPropertyPanel::updateBomTable(const QList<BomItem>& items) {
         return;
     }
     
-    bom_table_->setRowCount(items.size());
-    for (int i = 0; i < items.size(); ++i) {
-        const BomItem& item = items[i];
+    bom_items_cache_ = items;
+    filterBomTable();
+}
+
+void QtPropertyPanel::filterBomTable() {
+    if (!bom_table_ || bom_items_cache_.isEmpty()) {
+        return;
+    }
+    
+    QString filter_text = bom_filter_ ? bom_filter_->text().toLower() : QString();
+    QList<BomItem> filtered_items;
+    
+    for (const auto& item : bom_items_cache_) {
+        if (filter_text.isEmpty() ||
+            item.part_name.toLower().contains(filter_text) ||
+            item.part_number.toLower().contains(filter_text) ||
+            QString::number(item.quantity).contains(filter_text)) {
+            filtered_items.append(item);
+        }
+    }
+    
+    bom_table_->setRowCount(filtered_items.size());
+    for (int i = 0; i < filtered_items.size(); ++i) {
+        const BomItem& item = filtered_items[i];
         bom_table_->setItem(i, 0, new QTableWidgetItem(item.part_name));
         bom_table_->setItem(i, 1, new QTableWidgetItem(QString::number(item.quantity)));
         bom_table_->setItem(i, 2, new QTableWidgetItem(item.part_number));
     }
     
     bom_table_->resizeColumnsToContents();
+    sortBomTable();
+}
+
+void QtPropertyPanel::sortBomTable() {
+    if (!bom_table_ || !bom_sort_column_) {
+        return;
+    }
+    
+    int column = bom_sort_column_->currentIndex();
+    if (column >= 0 && column < bom_table_->columnCount()) {
+        bom_table_->sortItems(column, Qt::AscendingOrder);
+    }
+}
+
+void QtPropertyPanel::exportBomTable() {
+    if (!bom_table_ || bom_table_->rowCount() == 0) {
+        QMessageBox::information(this, tr("Export BOM"), tr("No BOM items to export."));
+        return;
+    }
+    
+    QString filename = QFileDialog::getSaveFileName(this, tr("Export BOM"), "", tr("CSV Files (*.csv);;All Files (*)"));
+    if (filename.isEmpty()) {
+        return;
+    }
+    
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("Export BOM"), tr("Could not open file for writing."));
+        return;
+    }
+    
+    QTextStream out(&file);
+    
+    // Write header
+    out << tr("Part Name") << "," << tr("Quantity") << "," << tr("Part Number") << "\n";
+    
+    // Write data
+    for (int row = 0; row < bom_table_->rowCount(); ++row) {
+        out << bom_table_->item(row, 0)->text() << ","
+            << bom_table_->item(row, 1)->text() << ","
+            << bom_table_->item(row, 2)->text() << "\n";
+    }
+    
+    file.close();
+    QMessageBox::information(this, tr("Export BOM"), tr("BOM exported successfully to %1").arg(filename));
 }
 
 void QtPropertyPanel::setStylePresets(const QStringList& presets) {

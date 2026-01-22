@@ -2,7 +2,10 @@
 
 #include <QWidget>
 
+#include <QComboBox>
 #include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
 #include <QStackedWidget>
 #include <QTableWidget>
 
@@ -55,10 +58,17 @@ private:
     QTableWidget* annotation_table_{nullptr};
     QLabel* style_preset_label_{nullptr};
     QLabel* style_info_label_{nullptr};
+    QLineEdit* bom_filter_{nullptr};
+    QComboBox* bom_sort_column_{nullptr};
+    QPushButton* bom_export_button_{nullptr};
+    QList<BomItem> bom_items_cache_;
     
     void updateBomTable(const QList<BomItem>& items);
     void updateStyleInfo(const QString& info);
     void updateAnnotationTable(const QList<AnnotationItem>& items);
+    void filterBomTable();
+    void sortBomTable();
+    void exportBomTable();
 };
 
 }  // namespace ui
