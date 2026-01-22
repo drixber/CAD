@@ -78,13 +78,16 @@ completed_items:
 - Initialized assembly manager LOD defaults on startup.
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
+- Expanded BOM service to extract components from Assembly objects with quantity counting and part number generation.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching implementation.
 - Collision/interference checks (full).
-- Drawing styles framework, BOM pipeline, annotations stubs (expand).
+- Drawing styles framework expansion (additional style types and customization).
+- BOM pipeline UI integration and assembly registry lookup.
+- Annotations stubs expansion (additional annotation types and positioning).
 - MBD 3D annotation rendering hook.
 - Ribbon command wiring to actual CAD operations.
 
@@ -150,5 +153,8 @@ decisions_made:
 - LOD handler expects lowercase labels.
 - Assembly LOD defaults to Simplified for Phase 2 demo.
 - Property/AI console and log/thought panels are tabified for space.
+- BOM service extracts components from Assembly objects and counts quantities.
+- BOM part numbers generated automatically from part names with index suffix.
+- BOM items sorted alphabetically by part name for consistent ordering.
 
 estimated_remaining_time: 70-110 weeks
