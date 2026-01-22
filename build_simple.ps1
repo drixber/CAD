@@ -84,6 +84,26 @@ if (-not $useNinja) {
     Write-Host "Ninja gefunden (empfohlen)" -ForegroundColor Green
 }
 
+# Qt-Pfad finden
+$qtPath = "C:\msys64\ucrt64"
+$qt5Path = "$qtPath\lib\cmake\Qt5"
+$qt6Path = "$qtPath\lib\cmake\Qt6"
+
+$cmakePrefixPath = $qtPath
+if (Test-Path $qt5Path) {
+    Write-Host "Qt5 gefunden" -ForegroundColor Green
+} elseif (Test-Path $qt6Path) {
+    Write-Host "Qt6 gefunden" -ForegroundColor Green
+} else {
+    Write-Host "Qt nicht gefunden!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Bitte in MSYS2 UCRT64 Terminal ausführen:" -ForegroundColor Yellow
+    Write-Host "  pacman -S mingw-w64-ucrt-x86_64-qt5-base" -ForegroundColor Cyan
+    Write-Host "  pacman -S mingw-w64-ucrt-x86_64-qt5-tools" -ForegroundColor Cyan
+    Read-Host "Drücken Sie Enter zum Beenden"
+    exit 1
+}
+
 # CMake konfigurieren
 Write-Host "[1/3] CMake konfigurieren..." -ForegroundColor Yellow
 
@@ -93,6 +113,7 @@ if ($useNinja) {
         -G "Ninja" `
         -DCMAKE_C_COMPILER="$msys2Path\gcc.exe" `
         -DCMAKE_CXX_COMPILER="$msys2Path\g++.exe" `
+        -DCMAKE_PREFIX_PATH="$cmakePrefixPath" `
         -DCAD_USE_QT=ON
 } else {
     # MinGW Makefiles verwenden
@@ -101,6 +122,7 @@ if ($useNinja) {
         -DCMAKE_MAKE_PROGRAM="$makePath" `
         -DCMAKE_C_COMPILER="$msys2Path\gcc.exe" `
         -DCMAKE_CXX_COMPILER="$msys2Path\g++.exe" `
+        -DCMAKE_PREFIX_PATH="$cmakePrefixPath" `
         -DCAD_USE_QT=ON
 }
 if ($LASTEXITCODE -ne 0) {
