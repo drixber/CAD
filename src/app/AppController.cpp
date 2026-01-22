@@ -200,12 +200,17 @@ void AppController::executeCommand(const std::string& command) {
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("Simulation queued");
     } else if (command == "Interference") {
-        cad::core::InterferenceResult result = interference_checker_.check("MainAssembly");
+        cad::core::InterferenceResult result = interference_checker_.checkAssembly(active_assembly_);
         main_window_.setIntegrationStatus(result.message);
         if (result.has_interference) {
-            main_window_.setViewportStatus("Interference detected");
+            std::string status = "Interference: " + std::to_string(result.overlap_count) + " overlap(s)";
+            if (!result.interference_pairs.empty()) {
+                status += " (" + result.interference_pairs[0].part_a_name + 
+                         " <-> " + result.interference_pairs[0].part_b_name + ")";
+            }
+            main_window_.setViewportStatus(status);
         } else {
-            main_window_.setViewportStatus("No interference");
+            main_window_.setViewportStatus("No interference detected");
         }
     } else if (command == "Base View" || command == "BaseView") {
         cad::modules::DrawingRequest request;
