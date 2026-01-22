@@ -46,6 +46,8 @@ public:
     void setLoadProgress(int progress);
     void setTargetFps(int fps);
     void setTargetFpsHandler(const std::function<void(int)>& handler);
+    
+    QtPropertyPanel* propertyPanel();
 
 private:
     QtRibbon* ribbon_{nullptr};

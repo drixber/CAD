@@ -109,6 +109,11 @@ completed_items:
 - Implemented LRU cache eviction strategy.
 - Added getVisibleComponentCount and getVisibleComponentIds for LOD filtering.
 - Cache now tracks hits/misses and access times.
+- Added BOM display widget to property panel with table view.
+- Implemented QTableWidget for BOM items display (Part Name, Quantity, Part Number).
+- Added setBomItems method to QtPropertyPanel for updating BOM table.
+- Integrated BOM table into Drawing context panel.
+- PartsList command now updates property panel with BOM items.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -116,7 +121,7 @@ pending_items:
 - Large assembly LOD/caching optimization (performance tuning).
 - Collision/interference checks refinement (geometry-based instead of bounding box).
 - Drawing styles UI integration and style editor.
-- BOM pipeline UI display widget (table view for BOM items).
+- BOM pipeline UI display widget enhancements (sorting, filtering, export).
 - Annotation positioning UI integration (interactive leader line editing).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring expansion (additional commands and operations).
@@ -224,5 +229,10 @@ decisions_made:
 - LOD filtering limits visible components: Full (100%), Simplified (50%), BoundingBoxes (10%).
 - getVisibleComponentIds returns filtered component IDs based on LOD mode.
 - loadAssembly checks cache first and returns cached data if available.
+- BOM table widget displays Part Name, Quantity, and Part Number columns.
+- BOM table uses alternating row colors and read-only selection.
+- Property panel Drawing context includes integrated BOM table.
+- PartsList command automatically updates property panel BOM table.
+- BOM items converted from C++ BillOfMaterialsItem to Qt BomItem structure.
 
 estimated_remaining_time: 70-110 weeks

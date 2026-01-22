@@ -360,5 +360,9 @@ void QtMainWindow::saveUiState() {
     settings.setValue("mainWindow/state", saveState());
 }
 
+QtPropertyPanel* QtMainWindow::propertyPanel() {
+    return property_panel_;
+}
+
 }  // namespace ui
 }  // namespace cad

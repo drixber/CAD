@@ -250,6 +250,25 @@ void AppController::executeCommand(const std::string& command) {
             }
             main_window_.setIntegrationStatus(bom_summary);
             main_window_.setViewportStatus("BOM displayed: " + std::to_string(bom.size()) + " items");
+            
+            // Update property panel with BOM items
+            #ifdef CAD_USE_QT
+            cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+            if (qt_window) {
+                cad::ui::QtPropertyPanel* panel = qt_window->propertyPanel();
+                if (panel) {
+                    QList<cad::ui::BomItem> bom_items;
+                    for (const auto& item : bom) {
+                        cad::ui::BomItem bom_item;
+                        bom_item.part_name = QString::fromStdString(item.part_name);
+                        bom_item.quantity = item.quantity;
+                        bom_item.part_number = QString::fromStdString(item.part_number);
+                        bom_items.append(bom_item);
+                    }
+                    panel->setBomItems(bom_items);
+                }
+            }
+            #endif
         } else {
             main_window_.setIntegrationStatus("BOM: No assembly registered");
             main_window_.setViewportStatus("BOM not available");

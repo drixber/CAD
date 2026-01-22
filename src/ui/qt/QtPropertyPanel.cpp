@@ -1,8 +1,10 @@
 #include "QtPropertyPanel.h"
 
 #include <QFormLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QTableWidget>
 #include <QVBoxLayout>
 
 namespace cad {
@@ -52,9 +54,41 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
                                         {tr("Feature"), tr("Depth")}));
     context_stack_->addWidget(makePanel(tr("Context Panel: Assembly"),
                                         {tr("Mate Type"), tr("Offset")}));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Drawing"),
-                                        {tr("View Type"), tr("Scale"), tr("Sheet"),
-                                         tr("BOM")}));
+    // Drawing panel with BOM table
+    QWidget* drawing_panel = new QWidget(context_stack_);
+    QVBoxLayout* drawing_layout = new QVBoxLayout(drawing_panel);
+    QLabel* drawing_header = new QLabel(tr("Context Panel: Drawing"), drawing_panel);
+    drawing_header->setAlignment(Qt::AlignLeft);
+    drawing_layout->addWidget(drawing_header);
+    
+    QFormLayout* drawing_form = new QFormLayout();
+    QLineEdit* view_type = new QLineEdit(drawing_panel);
+    view_type->setPlaceholderText(tr("View Type"));
+    drawing_form->addRow(tr("View Type:"), view_type);
+    QLineEdit* scale = new QLineEdit(drawing_panel);
+    scale->setPlaceholderText(tr("Scale"));
+    drawing_form->addRow(tr("Scale:"), scale);
+    QLineEdit* sheet = new QLineEdit(drawing_panel);
+    sheet->setPlaceholderText(tr("Sheet"));
+    drawing_form->addRow(tr("Sheet:"), sheet);
+    drawing_layout->addLayout(drawing_form);
+    
+    QLabel* bom_label = new QLabel(tr("Bill of Materials:"), drawing_panel);
+    drawing_layout->addWidget(bom_label);
+    
+    bom_table_ = new QTableWidget(drawing_panel);
+    bom_table_->setColumnCount(3);
+    bom_table_->setHorizontalHeaderLabels({tr("Part Name"), tr("Quantity"), tr("Part Number")});
+    bom_table_->horizontalHeader()->setStretchLastSection(true);
+    bom_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    bom_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    bom_table_->setAlternatingRowColors(true);
+    bom_table_->setMaximumHeight(200);
+    drawing_layout->addWidget(bom_table_);
+    
+    drawing_layout->addStretch();
+    drawing_panel->setLayout(drawing_layout);
+    context_stack_->addWidget(drawing_panel);
     context_stack_->addWidget(makePanel(tr("Context Panel: Inspect"),
                                         {tr("Tool"), tr("Result")}));
     context_stack_->addWidget(makePanel(tr("Context Panel: Manage"),
@@ -124,6 +158,26 @@ void QtPropertyPanel::setContextCategory(const QString& category) {
         index = 7;
     }
     context_stack_->setCurrentIndex(index);
+}
+
+void QtPropertyPanel::setBomItems(const QList<BomItem>& items) {
+    updateBomTable(items);
+}
+
+void QtPropertyPanel::updateBomTable(const QList<BomItem>& items) {
+    if (!bom_table_) {
+        return;
+    }
+    
+    bom_table_->setRowCount(items.size());
+    for (int i = 0; i < items.size(); ++i) {
+        const BomItem& item = items[i];
+        bom_table_->setItem(i, 0, new QTableWidgetItem(item.part_name));
+        bom_table_->setItem(i, 1, new QTableWidgetItem(QString::number(item.quantity)));
+        bom_table_->setItem(i, 2, new QTableWidgetItem(item.part_number));
+    }
+    
+    bom_table_->resizeColumnsToContents();
 }
 
 }  // namespace ui
