@@ -1176,7 +1176,7 @@ void QtPropertyPanel::updateAnnotationPreview() {
     // Create a simple visual preview using CSS-like styling
     // In real implementation, would override paintEvent and use QPainter
     QString style = "background-color: white; border: 1px solid gray;";
-    annotation_preview_widget_->setStyleSheet(style);
+    style_preview_widget_->setStyleSheet(style);
 }
 
 }  // namespace ui
