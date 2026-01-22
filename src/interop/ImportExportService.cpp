@@ -310,9 +310,6 @@ IoResult ImportExportService::exportStep(const std::string& path, bool ascii_mod
     
     file << "ENDSEC;\n";
     file << "END-ISO-10303-21;\n";
-    file << "ISO-10303-21;\n";
-    file << "HEADER;\n";
-    file << "FILE_DESCRIPTION(('CADursor Export'), '2;1');\n";
     
     // Extract filename from path
     std::string filename = path;
