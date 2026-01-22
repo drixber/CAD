@@ -84,8 +84,14 @@ private:
     QPushButton* edit_style_button_{nullptr};
     QLineEdit* bom_filter_{nullptr};
     QComboBox* bom_sort_column_{nullptr};
+    QComboBox* bom_filter_column_{nullptr};
+    QPushButton* bom_sort_ascending_{nullptr};
+    QPushButton* bom_sort_descending_{nullptr};
     QPushButton* bom_export_button_{nullptr};
+    QPushButton* bom_clear_filters_{nullptr};
     QList<BomItem> bom_items_cache_;
+    QList<int> bom_sort_columns_;
+    Qt::SortOrder bom_sort_order_{Qt::AscendingOrder};
     QString current_editing_style_type_;
     QString current_editing_style_name_;
     
@@ -101,6 +107,11 @@ private:
     void filterBomTable();
     void sortBomTable();
     void exportBomTable();
+    void applyMultiColumnSort();
+    void addSortColumn(int column);
+    void removeSortColumn(int column);
+    void clearAllFilters();
+    bool matchesFilter(const BomItem& item, const QString& filter_text, int filter_column) const;
 };
 
 }  // namespace ui

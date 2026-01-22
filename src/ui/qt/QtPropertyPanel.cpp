@@ -84,14 +84,38 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     
     // BOM filter and sort controls
     QHBoxLayout* bom_controls = new QHBoxLayout();
+    
+    // Filter controls
     bom_filter_ = new QLineEdit(drawing_panel);
     bom_filter_->setPlaceholderText(tr("Filter..."));
     bom_filter_->setClearButtonEnabled(true);
     bom_controls->addWidget(bom_filter_);
     
+    bom_filter_column_ = new QComboBox(drawing_panel);
+    bom_filter_column_->addItems({tr("All Columns"), tr("Part Name"), tr("Quantity"), tr("Part Number")});
+    bom_controls->addWidget(bom_filter_column_);
+    
+    bom_clear_filters_ = new QPushButton(tr("Clear"), drawing_panel);
+    bom_controls->addWidget(bom_clear_filters_);
+    
+    // Sort controls
+    QLabel* sort_label = new QLabel(tr("Sort by:"), drawing_panel);
+    bom_controls->addWidget(sort_label);
+    
     bom_sort_column_ = new QComboBox(drawing_panel);
     bom_sort_column_->addItems({tr("Part Name"), tr("Quantity"), tr("Part Number")});
     bom_controls->addWidget(bom_sort_column_);
+    
+    bom_sort_ascending_ = new QPushButton(tr("↑"), drawing_panel);
+    bom_sort_ascending_->setCheckable(true);
+    bom_sort_ascending_->setChecked(true);
+    bom_sort_ascending_->setMaximumWidth(30);
+    bom_controls->addWidget(bom_sort_ascending_);
+    
+    bom_sort_descending_ = new QPushButton(tr("↓"), drawing_panel);
+    bom_sort_descending_->setCheckable(true);
+    bom_sort_descending_->setMaximumWidth(30);
+    bom_controls->addWidget(bom_sort_descending_);
     
     bom_export_button_ = new QPushButton(tr("Export"), drawing_panel);
     bom_controls->addWidget(bom_export_button_);
@@ -110,7 +134,26 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     
     // Connect signals
     connect(bom_filter_, &QLineEdit::textChanged, this, [this]() { filterBomTable(); });
-    connect(bom_sort_column_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { sortBomTable(); });
+    connect(bom_filter_column_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { filterBomTable(); });
+    connect(bom_clear_filters_, &QPushButton::clicked, this, [this]() { clearAllFilters(); });
+    connect(bom_sort_column_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) { 
+        addSortColumn(index);
+        applyMultiColumnSort();
+    });
+    connect(bom_sort_ascending_, &QPushButton::clicked, this, [this](bool checked) {
+        if (checked) {
+            bom_sort_descending_->setChecked(false);
+            bom_sort_order_ = Qt::AscendingOrder;
+            applyMultiColumnSort();
+        }
+    });
+    connect(bom_sort_descending_, &QPushButton::clicked, this, [this](bool checked) {
+        if (checked) {
+            bom_sort_ascending_->setChecked(false);
+            bom_sort_order_ = Qt::DescendingOrder;
+            applyMultiColumnSort();
+        }
+    });
     connect(bom_export_button_, &QPushButton::clicked, this, [this]() { exportBomTable(); });
     
     QLabel* annotation_label = new QLabel(tr("Annotations:"), drawing_panel);
@@ -336,13 +379,12 @@ void QtPropertyPanel::filterBomTable() {
     }
     
     QString filter_text = bom_filter_ ? bom_filter_->text().toLower() : QString();
+    int filter_column = bom_filter_column_ ? bom_filter_column_->currentIndex() - 1 : -1;  // -1 means all columns
+    
     QList<BomItem> filtered_items;
     
     for (const auto& item : bom_items_cache_) {
-        if (filter_text.isEmpty() ||
-            item.part_name.toLower().contains(filter_text) ||
-            item.part_number.toLower().contains(filter_text) ||
-            QString::number(item.quantity).contains(filter_text)) {
+        if (matchesFilter(item, filter_text, filter_column)) {
             filtered_items.append(item);
         }
     }
@@ -356,18 +398,101 @@ void QtPropertyPanel::filterBomTable() {
     }
     
     bom_table_->resizeColumnsToContents();
-    sortBomTable();
+    applyMultiColumnSort();
+}
+
+bool QtPropertyPanel::matchesFilter(const BomItem& item, const QString& filter_text, int filter_column) const {
+    if (filter_text.isEmpty()) {
+        return true;
+    }
+    
+    if (filter_column == -1) {
+        // Filter all columns
+        return item.part_name.toLower().contains(filter_text) ||
+               item.part_number.toLower().contains(filter_text) ||
+               QString::number(item.quantity).contains(filter_text);
+    } else if (filter_column == 0) {
+        // Filter by part name
+        return item.part_name.toLower().contains(filter_text);
+    } else if (filter_column == 1) {
+        // Filter by quantity
+        return QString::number(item.quantity).contains(filter_text);
+    } else if (filter_column == 2) {
+        // Filter by part number
+        return item.part_number.toLower().contains(filter_text);
+    }
+    
+    return true;
 }
 
 void QtPropertyPanel::sortBomTable() {
-    if (!bom_table_ || !bom_sort_column_) {
+    applyMultiColumnSort();
+}
+
+void QtPropertyPanel::applyMultiColumnSort() {
+    if (!bom_table_ || bom_table_->rowCount() == 0) {
         return;
     }
     
-    int column = bom_sort_column_->currentIndex();
-    if (column >= 0 && column < bom_table_->columnCount()) {
-        bom_table_->sortItems(column, Qt::AscendingOrder);
+    if (bom_sort_columns_.isEmpty()) {
+        // Use default sort column if none specified
+        if (bom_sort_column_) {
+            int column = bom_sort_column_->currentIndex();
+            if (column >= 0 && column < bom_table_->columnCount()) {
+                bom_table_->sortItems(column, bom_sort_order_);
+            }
+        }
+    } else {
+        // Multi-column sort: sort by last column first, then by previous columns
+        for (int i = bom_sort_columns_.size() - 1; i >= 0; --i) {
+            int column = bom_sort_columns_[i];
+            if (column >= 0 && column < bom_table_->columnCount()) {
+                bom_table_->sortItems(column, (i == bom_sort_columns_.size() - 1) ? bom_sort_order_ : Qt::AscendingOrder);
+            }
+        }
     }
+}
+
+void QtPropertyPanel::addSortColumn(int column) {
+    if (column < 0 || column >= 3) {  // Only 3 columns in BOM table
+        return;
+    }
+    
+    // Remove if already exists
+    bom_sort_columns_.removeAll(column);
+    
+    // Add to end (will be primary sort)
+    bom_sort_columns_.append(column);
+    
+    // Limit to 3 sort columns
+    if (bom_sort_columns_.size() > 3) {
+        bom_sort_columns_.removeFirst();
+    }
+}
+
+void QtPropertyPanel::removeSortColumn(int column) {
+    bom_sort_columns_.removeAll(column);
+}
+
+void QtPropertyPanel::clearAllFilters() {
+    if (bom_filter_) {
+        bom_filter_->clear();
+    }
+    if (bom_filter_column_) {
+        bom_filter_column_->setCurrentIndex(0);  // "All Columns"
+    }
+    bom_sort_columns_.clear();
+    if (bom_sort_column_) {
+        bom_sort_column_->setCurrentIndex(0);  // "Part Name"
+    }
+    if (bom_sort_ascending_) {
+        bom_sort_ascending_->setChecked(true);
+    }
+    if (bom_sort_descending_) {
+        bom_sort_descending_->setChecked(false);
+    }
+    bom_sort_order_ = Qt::AscendingOrder;
+    filterBomTable();
 }
 
 void QtPropertyPanel::exportBomTable() {
