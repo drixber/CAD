@@ -87,6 +87,7 @@ protected:
 private:
     void* coin3d_viewer_{nullptr};  // SoQtExaminerViewer or similar
     void* occt_viewer_{nullptr};    // OpenCascade viewer
+    void* scene_graph_root_{nullptr};  // Coin3D scene graph root node
     ViewportCamera camera_;
     ViewportSettings settings_;
     bool selection_enabled_{true};
@@ -101,10 +102,22 @@ private:
     int last_mouse_y_{0};
     std::string drag_mode_{"orbit"};
     
+    // Scene graph management
+    std::map<std::string, void*> geometry_nodes_;  // geometry_id -> Coin3D node
+    std::map<std::string, void*> assembly_nodes_;   // assembly_id -> Coin3D node
+    std::map<std::string, void*> annotation_nodes_; // annotation_id -> Coin3D node
+    
     void initializeViewport();
     void renderGrid(QPainter& painter);
     void renderAxes(QPainter& painter);
     void renderScene(QPainter& painter);
+    
+    // Coin3D integration helpers
+    void* createCoin3DNode(const std::string& geometry_id, void* geometry_handle) const;
+    void addNodeToSceneGraph(void* node);
+    void removeNodeFromSceneGraph(const std::string& geometry_id);
+    std::string pickObjectAt(int x, int y) const;  // Ray-casting for object picking
+    void updateSceneGraphDisplayMode();
 };
 
 }  // namespace ui

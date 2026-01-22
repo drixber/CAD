@@ -30,6 +30,8 @@ Viewport3D::~Viewport3D() {
 void Viewport3D::initializeViewport() {
     // In real implementation: initialize Coin3D or OpenCascade viewer
     // coin3d_viewer_ = new SoQtExaminerViewer(this);
+    // scene_graph_root_ = new SoSeparator();
+    // coin3d_viewer_->setSceneGraph(static_cast<SoSeparator*>(scene_graph_root_));
     // or
     // occt_viewer_ = new V3d_View(...);
     
@@ -38,14 +40,20 @@ void Viewport3D::initializeViewport() {
 
 void Viewport3D::renderGeometry(const std::string& geometry_id, void* geometry_handle) {
     // In real implementation: render geometry in viewport
-    // SoSeparator* root = static_cast<SoSeparator*>(geometry_handle);
-    // coin3d_viewer_->setSceneGraph(root);
+    // void* coin3d_node = createCoin3DNode(geometry_id, geometry_handle);
+    // if (coin3d_node) {
+    //     geometry_nodes_[geometry_id] = coin3d_node;
+    //     addNodeToSceneGraph(coin3d_node);
+    //     updateSceneGraphDisplayMode();
+    // }
     
     // Track rendered geometry
     if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
         rendered_geometry_ids_.push_back(geometry_id);
     }
-    (void)geometry_handle;  // Unused for now
+    if (geometry_handle) {
+        geometry_nodes_[geometry_id] = geometry_handle;
+    }
     updateView();
 }
 
@@ -65,8 +73,14 @@ void Viewport3D::renderMbdAnnotations(const std::vector<void*>& annotation_handl
 
 void Viewport3D::clearScene() {
     // In real implementation: clear viewport scene
-    // coin3d_viewer_->setSceneGraph(new SoSeparator());
+    // if (scene_graph_root_) {
+    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
+    //     root->removeAllChildren();
+    // }
     rendered_geometry_ids_.clear();
+    geometry_nodes_.clear();
+    assembly_nodes_.clear();
+    annotation_nodes_.clear();
     updateView();
 }
 
@@ -153,6 +167,8 @@ void Viewport3D::highlightObject(const std::string& object_id, bool highlight) {
 
 void Viewport3D::setDisplayMode(DisplayMode mode) {
     display_mode_ = mode;
+    // In real implementation: update Coin3D display mode
+    // updateSceneGraphDisplayMode();
     updateView();
 }
 
@@ -200,12 +216,11 @@ void Viewport3D::mousePressEvent(QMouseEvent* event) {
         drag_mode_ = "orbit";  // Default to orbit
         
         if (selection_enabled_) {
-            // In real implementation: pick object at mouse position
-            // std::string object_id = pickObject(event->x(), event->y());
-            // if (!object_id.empty()) {
-            //     selected_objects_.push_back(object_id);
-            //     emit objectSelected(object_id);
-            // }
+            // In real implementation: pick object at mouse position using ray-casting
+            std::string object_id = pickObjectAt(event->x(), event->y());
+            if (!object_id.empty()) {
+                selectObject(object_id);
+            }
         }
     } else if (event->button() == Qt::MiddleButton) {
         is_dragging_ = true;
@@ -374,6 +389,72 @@ void Viewport3D::renderScene(QPainter& painter) {
             painter.drawText(10, 60, QString("Highlighted: %1 object(s)").arg(highlighted_objects_.size()));
         }
     }
+}
+
+void* Viewport3D::createCoin3DNode(const std::string& geometry_id, void* geometry_handle) const {
+    // In real implementation: create Coin3D node from geometry handle
+    // SoSeparator* node = new SoSeparator();
+    // // Convert geometry_handle to Coin3D geometry
+    // // Add material, transform, etc.
+    // return node;
+    (void)geometry_id;
+    (void)geometry_handle;
+    return nullptr;
+}
+
+void Viewport3D::addNodeToSceneGraph(void* node) {
+    // In real implementation: add node to Coin3D scene graph
+    // if (scene_graph_root_ && node) {
+    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
+    //     root->addChild(static_cast<SoNode*>(node));
+    // }
+    (void)node;
+}
+
+void Viewport3D::removeNodeFromSceneGraph(const std::string& geometry_id) {
+    // In real implementation: remove node from Coin3D scene graph
+    // auto it = geometry_nodes_.find(geometry_id);
+    // if (it != geometry_nodes_.end() && scene_graph_root_) {
+    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
+    //     root->removeChild(static_cast<SoNode*>(it->second));
+    //     geometry_nodes_.erase(it);
+    // }
+    (void)geometry_id;
+}
+
+std::string Viewport3D::pickObjectAt(int x, int y) const {
+    // In real implementation: ray-casting to pick object at screen coordinates
+    // if (coin3d_viewer_) {
+    //     SoRayPickAction pick_action(coin3d_viewer_->getViewportRegion());
+    //     pick_action.setPoint(SbVec2s(x, y));
+    //     pick_action.apply(static_cast<SoNode*>(scene_graph_root_));
+    //     SoPickedPoint* picked = pick_action.getPickedPoint();
+    //     if (picked) {
+    //         // Extract object ID from picked point
+    //         return extractObjectId(picked);
+    //     }
+    // }
+    (void)x;
+    (void)y;
+    return {};
+}
+
+void Viewport3D::updateSceneGraphDisplayMode() {
+    // In real implementation: update Coin3D display mode for all nodes
+    // SoDrawStyle* draw_style = new SoDrawStyle();
+    // switch (display_mode_) {
+    //     case DisplayMode::Wireframe:
+    //         draw_style->style = SoDrawStyle::LINES;
+    //         break;
+    //     case DisplayMode::Shaded:
+    //         draw_style->style = SoDrawStyle::FILLED;
+    //         break;
+    //     case DisplayMode::HiddenLine:
+    //         draw_style->style = SoDrawStyle::FILLED;
+    //         // Add hidden line removal
+    //         break;
+    // }
+    // // Apply to scene graph
 }
 
 }  // namespace ui

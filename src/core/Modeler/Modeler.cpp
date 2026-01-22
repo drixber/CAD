@@ -563,16 +563,179 @@ bool Modeler::solveConstraints(Sketch& sketch) const {
                 }
                 break;
             case ConstraintType::Parallel:
+                if (geom_a && geom_b && geom_a->type == GeometryType::Line && geom_b->type == GeometryType::Line) {
+                    // Make lines parallel (same slope)
+                    double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                    double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                    double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                    double dy_b = geom_b->end_point.y - geom_b->start_point.y;
+                    
+                    if (std::abs(dx_a) > 0.001) {
+                        double slope = dy_a / dx_a;
+                        geom_b->end_point.y = geom_b->start_point.y + slope * dx_b;
+                    } else {
+                        // Vertical line - make second line vertical too
+                        geom_b->end_point.x = geom_b->start_point.x;
+                    }
+                }
+                break;
             case ConstraintType::Perpendicular:
+                if (geom_a && geom_b && geom_a->type == GeometryType::Line && geom_b->type == GeometryType::Line) {
+                    // Make lines perpendicular (negative reciprocal slope)
+                    double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                    double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                    double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                    
+                    if (std::abs(dx_a) > 0.001) {
+                        double slope_a = dy_a / dx_a;
+                        double slope_b = -1.0 / slope_a;
+                        geom_b->end_point.y = geom_b->start_point.y + slope_b * dx_b;
+                    } else {
+                        // First line is vertical, make second horizontal
+                        geom_b->end_point.y = geom_b->start_point.y;
+                    }
+                }
+                break;
             case ConstraintType::Tangent:
+                if (geom_a && geom_b) {
+                    // Tangent constraint between line and circle/arc
+                    if (geom_a->type == GeometryType::Line && 
+                        (geom_b->type == GeometryType::Circle || geom_b->type == GeometryType::Arc)) {
+                        // Calculate distance from circle center to line
+                        // Adjust line or circle to make them tangent
+                        double dx = geom_a->end_point.x - geom_a->start_point.x;
+                        double dy = geom_a->end_point.y - geom_a->start_point.y;
+                        double length = std::sqrt(dx*dx + dy*dy);
+                        if (length > 0.001) {
+                            double dist_to_center = std::abs(
+                                (dy * geom_b->center_point.x - dx * geom_b->center_point.y + 
+                                 dx * geom_a->start_point.y - dy * geom_a->start_point.x) / length
+                            );
+                            // Adjust to make distance equal to radius
+                            if (std::abs(dist_to_center - geom_b->radius) > 0.001) {
+                                // Simple adjustment: move line perpendicular to make tangent
+                                double offset = dist_to_center - geom_b->radius;
+                                double perp_x = -dy / length;
+                                double perp_y = dx / length;
+                                geom_a->start_point.x += perp_x * offset;
+                                geom_a->start_point.y += perp_y * offset;
+                                geom_a->end_point.x += perp_x * offset;
+                                geom_a->end_point.y += perp_y * offset;
+                            }
+                        }
+                    }
+                }
+                break;
             case ConstraintType::Equal:
+                if (geom_a && geom_b) {
+                    // Make geometries equal (length for lines, radius for circles)
+                    if (geom_a->type == GeometryType::Line && geom_b->type == GeometryType::Line) {
+                        // Make line lengths equal
+                        double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                        double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                        double length_a = std::sqrt(dx_a*dx_a + dy_a*dy_a);
+                        
+                        double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                        double dy_b = geom_b->end_point.y - geom_b->start_point.y;
+                        double length_b = std::sqrt(dx_b*dx_b + dy_b*dy_b);
+                        
+                        if (length_a > 0.001 && length_b > 0.001) {
+                            double scale = length_a / length_b;
+                            geom_b->end_point.x = geom_b->start_point.x + dx_b * scale;
+                            geom_b->end_point.y = geom_b->start_point.y + dy_b * scale;
+                        }
+                    } else if (geom_a->type == GeometryType::Circle && geom_b->type == GeometryType::Circle) {
+                        // Make radii equal
+                        geom_b->radius = geom_a->radius;
+                    }
+                }
+                break;
             case ConstraintType::Angle:
-                // More complex constraints - placeholder
+                if (geom_a && geom_b && geom_a->type == GeometryType::Line && geom_b->type == GeometryType::Line) {
+                    // Apply angle constraint between two lines
+                    double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                    double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                    double angle_a = std::atan2(dy_a, dx_a);
+                    double target_angle = angle_a + constraint.value * M_PI / 180.0;
+                    
+                    double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                    double dy_b = geom_b->end_point.y - geom_b->start_point.y;
+                    double length_b = std::sqrt(dx_b*dx_b + dy_b*dy_b);
+                    
+                    if (length_b > 0.001) {
+                        geom_b->end_point.x = geom_b->start_point.x + length_b * std::cos(target_angle);
+                        geom_b->end_point.y = geom_b->start_point.y + length_b * std::sin(target_angle);
+                    }
+                }
                 break;
         }
     }
     
     return true;
+}
+
+bool Modeler::validateConstraints(const Sketch& sketch) const {
+    // Validate that constraints reference valid geometry
+    for (const auto& constraint : sketch.constraints()) {
+        if (!constraint.a.empty() && !sketch.findGeometry(constraint.a)) {
+            return false;  // Constraint references non-existent geometry
+        }
+        if (!constraint.b.empty() && !sketch.findGeometry(constraint.b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Modeler::isOverConstrained(const Sketch& sketch) const {
+    // Simple heuristic: if constraints > 2 * geometry_count, likely over-constrained
+    // In real implementation: would use proper DOF analysis
+    std::size_t geometry_count = sketch.geometry().size();
+    std::size_t constraint_count = sketch.constraints().size();
+    
+    // Each geometry entity has 2 DOF (x, y position or similar)
+    // Some constraints remove DOF, some don't
+    // Very simplified: assume each constraint removes 1 DOF on average
+    return constraint_count > 2 * geometry_count;
+}
+
+bool Modeler::isUnderConstrained(const Sketch& sketch) const {
+    // Simple heuristic: if constraints < geometry_count, likely under-constrained
+    std::size_t geometry_count = sketch.geometry().size();
+    std::size_t constraint_count = sketch.constraints().size();
+    
+    // Very simplified check
+    return constraint_count < geometry_count && geometry_count > 0;
+}
+
+int Modeler::getDegreesOfFreedom(const Sketch& sketch) const {
+    // Simplified DOF calculation
+    // Each geometry entity contributes DOF based on type
+    int total_dof = 0;
+    for (const auto& geom : sketch.geometry()) {
+        switch (geom.type) {
+            case GeometryType::Point:
+                total_dof += 2;  // x, y
+                break;
+            case GeometryType::Line:
+                total_dof += 4;  // start x, y, end x, y
+                break;
+            case GeometryType::Circle:
+                total_dof += 3;  // center x, y, radius
+                break;
+            case GeometryType::Arc:
+                total_dof += 5;  // center x, y, radius, start_angle, end_angle
+                break;
+            case GeometryType::Rectangle:
+                total_dof += 4;  // corner x, y, width, height
+                break;
+        }
+    }
+    
+    // Each constraint removes DOF (simplified: assume 1 per constraint)
+    int removed_dof = static_cast<int>(sketch.constraints().size());
+    
+    return std::max(0, total_dof - removed_dof);
 }
 
 Part Modeler::applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric) const {

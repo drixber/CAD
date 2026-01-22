@@ -16,6 +16,12 @@ public:
     bool evaluateParameters(Sketch& sketch) const;
     bool solveConstraints(Sketch& sketch) const;
     
+    // Constraint validation
+    bool validateConstraints(const Sketch& sketch) const;
+    bool isOverConstrained(const Sketch& sketch) const;
+    bool isUnderConstrained(const Sketch& sketch) const;
+    int getDegreesOfFreedom(const Sketch& sketch) const;
+    
     // Part feature operations
     Part applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric = false) const;
     Part applyRevolve(Part& part, const std::string& sketch_id, double angle, const std::string& axis = "Z") const;

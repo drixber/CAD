@@ -22,6 +22,13 @@ public:
 
     Part buildPartFromSketch(const Sketch& sketch) const;
     bool isAvailable() const;
+    
+    // Part feature synchronization
+    bool syncExtrude(const Part& part, const std::string& feature_name) const;
+    bool syncRevolve(const Part& part, const std::string& feature_name) const;
+    bool syncHole(const Part& part, const std::string& feature_name) const;
+    bool syncFillet(const Part& part, const std::string& feature_name) const;
+    bool syncLoft(const Part& part, const std::string& feature_name) const;
 
 private:
     bool initialized_{false};

@@ -1,4 +1,5 @@
 #include "AssemblyManager.h"
+#include "interop/ImportExportService.h"
 
 #include <algorithm>
 #include <chrono>
@@ -44,6 +45,17 @@ AssemblyLoadStats AssemblyManager::loadAssembly(const std::string& path) {
     }
     
     cache_misses_++;
+    // In real implementation: load from file using ImportExportService
+    // ImportExportService io_service;
+    // FileFormat format = io_service.detectFileFormat(path);
+    // ImportRequest request;
+    // request.path = path;
+    // request.format = format;
+    // IoResult result = io_service.importModel(request);
+    // if (result.success) {
+    //     // Convert imported data to Assembly
+    //     // assembly = convertToAssembly(imported_data);
+    // }
     // Simulate loading (in real implementation, would load from file)
     stats.component_count = max_components_;
     stats.applied_lod = effective_lod;

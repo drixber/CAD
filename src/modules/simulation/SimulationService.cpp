@@ -119,7 +119,10 @@ void SimulationService::setMaterialProperties(const std::string& part_id, const 
 }
 
 void SimulationService::generateMesh(const std::string& part_id, double element_size) const {
-    // In real implementation: generate finite element mesh
+    // In real implementation: generate finite element mesh using OCCT or external tool
+    // BRepMesh_IncrementalMesh mesh(shape, element_size, false, 0.5, true);
+    // mesh.Perform();
+    // Get mesh data and store element count
     // For now, estimate element count based on part size
     std::size_t estimated_elements = static_cast<std::size_t>(100.0 / element_size);
     mesh_element_counts_[part_id] = estimated_elements;
