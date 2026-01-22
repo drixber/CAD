@@ -159,7 +159,6 @@ std::size_t SimulationService::getMeshElementCount(const std::string& part_id) c
 }
 
 std::vector<double> SimulationService::getStressValues(const std::string& part_id) const {
-    // Return stress values from FEA results
     std::vector<double> stresses;
     
     auto mesh_it = mesh_node_counts_.find(part_id);
@@ -176,14 +175,6 @@ std::vector<double> SimulationService::getStressValues(const std::string& part_i
         stresses.push_back(stress);
     }
     
-    return stresses;
-    std::vector<double> stresses;
-    std::hash<std::string> hasher;
-    std::size_t hash = hasher(part_id);
-    for (int i = 0; i < 5; ++i) {
-        double base_stress = 100e6 + (hash % 100) * 1e6;
-        stresses.push_back(base_stress + i * 10e6);
-    }
     return stresses;
 }
 
