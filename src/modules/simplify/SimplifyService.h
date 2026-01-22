@@ -84,6 +84,7 @@ private:
     
     SimplifiedComponent createSimplifiedComponent(const std::string& part_id, ReplacementType type) const;
     double calculateSimplificationRatio(const std::string& original_id, const std::string& simplified_id) const;
+    double calculateGeometryComplexityRatio(const std::string& original_id, const std::string& simplified_id) const;
     bool shouldSimplify(const std::string& part_id, const SimplifyRule& rule) const;
 };
 

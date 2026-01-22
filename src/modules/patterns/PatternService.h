@@ -93,6 +93,11 @@ private:
     std::vector<PatternInstance> generateRectangularInstances(const RectangularPatternParams& params) const;
     std::vector<PatternInstance> generateCircularInstances(const CircularPatternParams& params) const;
     std::vector<PatternInstance> generateCurveInstances(const CurvePatternParams& params) const;
+    
+    double evaluateCurveX(const std::string& curve_id, double t) const;
+    double evaluateCurveY(const std::string& curve_id, double t) const;
+    double evaluateCurveZ(const std::string& curve_id, double t) const;
+    double calculateCurveTangentAngle(const std::string& curve_id, double t) const;
 };
 
 }  // namespace modules

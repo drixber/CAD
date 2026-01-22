@@ -99,6 +99,8 @@ private:
     std::size_t estimateAssemblyMemory(const Assembly& assembly) const;
     double calculatePriorityScore(const CachedAssembly& cached) const;
     LodMode adaptiveLodRecommendation() const;
+    std::size_t reduceGeometryForLod(const Assembly& assembly, LodMode lod) const;
+    void optimizeCache();
     
     LodMode lod_mode_{LodMode::Full};
     double target_fps_{30.0};

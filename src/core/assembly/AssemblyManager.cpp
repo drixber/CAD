@@ -10,6 +10,8 @@
 #include <mutex>
 #include <fstream>
 #include <cmath>
+#include <vector>
+#include <utility>
 
 namespace cad {
 namespace core {

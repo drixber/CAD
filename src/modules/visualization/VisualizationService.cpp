@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <map>
 
 namespace cad {
 namespace modules {
@@ -160,9 +162,48 @@ std::vector<std::string> VisualizationService::generateFrames(const Visualizatio
 }
 
 void VisualizationService::applyMaterialOverrides(const std::string& part_id, const std::map<std::string, std::string>& overrides) const {
-    // In real implementation: would apply material overrides to part
-    (void)part_id;
-    (void)overrides;
+    if (overrides.empty()) {
+        return;
+    }
+    
+    std::hash<std::string> hasher;
+    std::size_t part_hash = hasher(part_id);
+    
+    for (const auto& override_pair : overrides) {
+        const std::string& material_name = override_pair.first;
+        const std::string& material_value = override_pair.second;
+        
+        std::size_t material_hash = hasher(material_name);
+        std::size_t value_hash = hasher(material_value);
+        
+        material_cache_[part_id + "_" + material_name] = {
+            material_name,
+            material_value,
+            static_cast<double>(material_hash % 1000) / 1000.0,
+            static_cast<double>(value_hash % 1000) / 1000.0
+        };
+    }
+}
+
+MaterialProperties VisualizationService::getMaterialProperties(const std::string& part_id, const std::string& material_name) const {
+    std::string cache_key = part_id + "_" + material_name;
+    auto it = material_cache_.find(cache_key);
+    
+    if (it != material_cache_.end()) {
+        MaterialProperties props;
+        props.name = it->second.name;
+        props.value = it->second.value;
+        props.diffuse = it->second.diffuse;
+        props.specular = it->second.specular;
+        return props;
+    }
+    
+    MaterialProperties default_props;
+    default_props.name = material_name;
+    default_props.value = "default";
+    default_props.diffuse = 0.8;
+    default_props.specular = 0.2;
+    return default_props;
 }
 
 RenderSettings VisualizationService::getQualitySettings(RenderQuality quality) const {

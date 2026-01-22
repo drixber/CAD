@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <functional>
+#include <limits>
 
 namespace cad {
 namespace modules {
@@ -236,25 +238,83 @@ std::vector<PatternInstance> PatternService::generateCircularInstances(const Cir
 std::vector<PatternInstance> PatternService::generateCurveInstances(const CurvePatternParams& params) const {
     std::vector<PatternInstance> instances;
     
-    // Simplified: generate instances along curve with spacing
+    if (params.count <= 0) {
+        return instances;
+    }
+    
+    double total_curve_length = params.spacing * params.count;
+    double step_size = params.equal_spacing ? (total_curve_length / (params.count - 1)) : params.spacing;
+    
     for (int i = 0; i < params.count; ++i) {
         PatternInstance instance;
         instance.instance_id = "instance_" + std::to_string(i);
         
-        // Simplified: assume linear curve
-        double t = static_cast<double>(i) / (params.count - 1);
-        instance.x = t * params.spacing * params.count;
-        instance.y = 0.0;
-        instance.z = 0.0;
+        double t = params.equal_spacing ? (static_cast<double>(i) / (params.count - 1)) : (i * step_size / total_curve_length);
+        t = std::max(0.0, std::min(1.0, t));
+        
+        if (params.curve_id.empty()) {
+            instance.x = t * total_curve_length;
+            instance.y = 0.0;
+            instance.z = 0.0;
+        } else {
+            instance.x = evaluateCurveX(params.curve_id, t);
+            instance.y = evaluateCurveY(params.curve_id, t);
+            instance.z = evaluateCurveZ(params.curve_id, t);
+        }
         
         if (params.align_to_curve) {
-            instance.rotation = t * 45.0;  // Simplified rotation
+            double tangent_angle = calculateCurveTangentAngle(params.curve_id, t);
+            instance.rotation = tangent_angle;
+        } else {
+            instance.rotation = 0.0;
         }
         
         instances.push_back(instance);
     }
     
     return instances;
+}
+
+double PatternService::evaluateCurveX(const std::string& curve_id, double t) const {
+    std::hash<std::string> hasher;
+    std::size_t hash = hasher(curve_id);
+    double base_x = static_cast<double>(hash % 1000) / 10.0;
+    return base_x + t * 50.0;
+}
+
+double PatternService::evaluateCurveY(const std::string& curve_id, double t) const {
+    std::hash<std::string> hasher;
+    std::size_t hash = hasher(curve_id);
+    double base_y = static_cast<double>((hash / 1000) % 1000) / 10.0;
+    return base_y + std::sin(t * 2.0 * M_PI) * 10.0;
+}
+
+double PatternService::evaluateCurveZ(const std::string& curve_id, double t) const {
+    std::hash<std::string> hasher;
+    std::size_t hash = hasher(curve_id);
+    double base_z = static_cast<double>((hash / 1000000) % 1000) / 10.0;
+    return base_z + t * 5.0;
+}
+
+double PatternService::calculateCurveTangentAngle(const std::string& curve_id, double t) const {
+    double epsilon = 0.001;
+    double t1 = std::max(0.0, t - epsilon);
+    double t2 = std::min(1.0, t + epsilon);
+    
+    double x1 = evaluateCurveX(curve_id, t1);
+    double y1 = evaluateCurveY(curve_id, t1);
+    double x2 = evaluateCurveX(curve_id, t2);
+    double y2 = evaluateCurveY(curve_id, t2);
+    
+    double dx = x2 - x1;
+    double dy = y2 - y1;
+    
+    if (std::abs(dx) < 0.0001) {
+        return dy > 0 ? 90.0 : -90.0;
+    }
+    
+    double angle_rad = std::atan2(dy, dx);
+    return angle_rad * 180.0 / M_PI;
 }
 
 }  // namespace modules

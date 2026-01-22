@@ -1,5 +1,10 @@
 #include "MbdService.h"
 
+#include <map>
+#include <string>
+#include <sstream>
+#include <iomanip>
+
 namespace cad {
 namespace modules {
 
@@ -88,37 +93,99 @@ std::vector<cad::mbd::PmiTolerance> MbdService::getVisibleTolerances(const cad::
 }
 
 void MbdService::renderMbdInViewport(const MbdRenderResult& render_data, void* viewport_handle) const {
-    // In a real implementation, this would render PMI annotations in the 3D viewport
-    // viewport_handle would be a pointer to the viewport renderer (Coin3D/OpenCascade)
-    // For now, this is a placeholder for the integration point
+    if (!viewport_handle) {
+        return;
+    }
     
-    // Render annotations
+    PmiRenderData render_info;
+    render_info.annotation_count = render_data.visible_annotations.size();
+    render_info.datum_count = render_data.visible_datums.size();
+    render_info.tolerance_count = render_data.visible_tolerances.size();
+    
     for (const auto& annotation : render_data.visible_annotations) {
-        // In real implementation: render text at (x, y, z) with leader line
-        // if (annotation.show_leader) {
-        //     renderLeaderLine(annotation.x, annotation.y, annotation.z,
-        //                      annotation.leader_x, annotation.leader_y, annotation.leader_z);
-        // }
-        // renderText(annotation.text, annotation.x, annotation.y, annotation.z,
-        //            annotation.font_size, annotation.color);
+        PmiAnnotationRenderData ann_data;
+        ann_data.text = annotation.text;
+        ann_data.x = annotation.x;
+        ann_data.y = annotation.y;
+        ann_data.z = annotation.z;
+        ann_data.font_size = annotation.font_size;
+        ann_data.color = parseColor(annotation.color);
+        ann_data.has_leader = annotation.show_leader;
+        
+        if (annotation.show_leader) {
+            if (!annotation.leader_points.empty()) {
+                ann_data.leader_start_x = annotation.leader_points[0].x;
+                ann_data.leader_start_y = annotation.leader_points[0].y;
+                ann_data.leader_start_z = annotation.leader_points[0].z;
+            } else {
+                ann_data.leader_start_x = annotation.x - 10.0;
+                ann_data.leader_start_y = annotation.y - 10.0;
+                ann_data.leader_start_z = annotation.z;
+            }
+            ann_data.leader_end_x = annotation.x;
+            ann_data.leader_end_y = annotation.y;
+            ann_data.leader_end_z = annotation.z;
+        }
+        
+        render_info.annotations.push_back(ann_data);
     }
     
-    // Render datums
     for (const auto& datum : render_data.visible_datums) {
-        // In real implementation: render datum symbol
-        // renderDatumSymbol(datum.id, datum.type, datum.description);
+        PmiDatumRenderData datum_data;
+        datum_data.id = datum.id;
+        datum_data.type = datum.type;
+        datum_data.description = datum.description;
+        render_info.datums.push_back(datum_data);
     }
     
-    // Render tolerances
     for (const auto& tolerance : render_data.visible_tolerances) {
-        // In real implementation: render tolerance callout
-        // renderToleranceCallout(tolerance.label, tolerance.upper, tolerance.lower, tolerance.units);
+        PmiToleranceRenderData tol_data;
+        tol_data.label = tolerance.label;
+        tol_data.upper = tolerance.upper;
+        tol_data.lower = tolerance.lower;
+        tol_data.units = tolerance.units;
+        render_info.tolerances.push_back(tol_data);
     }
+    
+    rendered_pmi_data_[viewport_handle] = render_info;
+}
+
+MbdService::PmiColor MbdService::parseColor(const std::string& color_str) const {
+    PmiColor color;
+    color.r = 0.0;
+    color.g = 0.0;
+    color.b = 0.0;
+    color.a = 1.0;
+    
+    if (color_str.empty()) {
+        return color;
+    }
+    
+    if (color_str[0] == '#') {
+        if (color_str.length() >= 7) {
+            int r = std::stoi(color_str.substr(1, 2), nullptr, 16);
+            int g = std::stoi(color_str.substr(3, 2), nullptr, 16);
+            int b = std::stoi(color_str.substr(5, 2), nullptr, 16);
+            color.r = r / 255.0;
+            color.g = g / 255.0;
+            color.b = b / 255.0;
+        }
+    } else if (color_str == "black") {
+        color.r = 0.0; color.g = 0.0; color.b = 0.0;
+    } else if (color_str == "white") {
+        color.r = 1.0; color.g = 1.0; color.b = 1.0;
+    } else if (color_str == "red") {
+        color.r = 1.0; color.g = 0.0; color.b = 0.0;
+    } else if (color_str == "green") {
+        color.r = 0.0; color.g = 1.0; color.b = 0.0;
+    } else if (color_str == "blue") {
+        color.r = 0.0; color.g = 0.0; color.b = 1.0;
+    }
+    
+    return color;
 }
 
 void MbdService::updateMbdVisibility(const std::string& part_id, bool show_annotations, bool show_datums, bool show_tolerances) const {
-    // Update visibility state for MBD elements in viewport
-    // In real implementation, would update viewport renderer state
     MbdRenderRequest request;
     request.part_id = part_id;
     request.show_annotations = show_annotations;
@@ -126,8 +193,15 @@ void MbdService::updateMbdVisibility(const std::string& part_id, bool show_annot
     request.show_tolerances = show_tolerances;
     
     MbdRenderResult result = prepareForRendering(request);
-    // In real implementation: update viewport with new visibility
-    // updateViewportVisibility(result);
+    
+    visibility_state_[part_id] = {
+        show_annotations,
+        show_datums,
+        show_tolerances,
+        result.visible_annotations.size(),
+        result.visible_datums.size(),
+        result.visible_tolerances.size()
+    };
 }
 
 std::vector<cad::mbd::PmiAnnotation> MbdService::getAnnotationsForViewport(const std::string& part_id, double view_scale) const {

@@ -73,8 +73,25 @@ public:
     VisualizationResult generatePreview(const std::string& part_id, RenderQuality quality) const;
     
 private:
+    struct MaterialCacheEntry {
+        std::string name;
+        std::string value;
+        double diffuse;
+        double specular;
+    };
+    
+    struct MaterialProperties {
+        std::string name;
+        std::string value;
+        double diffuse;
+        double specular;
+    };
+    
+    mutable std::map<std::string, MaterialCacheEntry> material_cache_;
+    
     std::vector<std::string> generateFrames(const VisualizationRequest& request) const;
     void applyMaterialOverrides(const std::string& part_id, const std::map<std::string, std::string>& overrides) const;
+    MaterialProperties getMaterialProperties(const std::string& part_id, const std::string& material_name) const;
     RenderSettings getQualitySettings(RenderQuality quality) const;
 };
 
