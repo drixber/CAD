@@ -171,7 +171,7 @@ bool QtCommandLine::validateCommand(ParsedCommand& parsed) const {
 }
 
 void QtCommandLine::initializeValidCommands() {
-    valid_commands_ = {
+    valid_commands_ = QStringList({
         "Parameters", "Line", "Rectangle", "Circle", "Arc", "Constraint",
         "Extrude", "Revolve", "Loft", "Hole", "Fillet",
         "Flange", "Bend", "Unfold", "Refold",
@@ -185,7 +185,7 @@ void QtCommandLine::initializeValidCommands() {
         "Styles", "AddIns", "Import", "Export", "ExportRFA", "MbdNote",
         "Visibility", "Appearance", "Environment",
         "Illustration", "Rendering", "Animation", "MBDView"
-    };
+    });
     
     // Update completer model
     if (completion_model_) {
