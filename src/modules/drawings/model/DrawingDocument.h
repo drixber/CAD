@@ -25,10 +25,34 @@ struct DrawingSheet {
     std::string scale_label{"1:1"};
 };
 
+enum class AnnotationType {
+    Text,
+    Note,
+    Callout,
+    Leader,
+    Balloon,
+    Revision,
+    Title
+};
+
+enum class TextAlignment {
+    Left,
+    Center,
+    Right,
+    Justified
+};
+
 struct Annotation {
     std::string text;
     double x{0.0};
     double y{0.0};
+    AnnotationType type{AnnotationType::Text};
+    TextAlignment alignment{TextAlignment::Left};
+    double rotation{0.0};
+    std::string style_name{"Annotation"};
+    double font_size{2.5};
+    std::string view_name;
+    bool attached_to_view{false};
 };
 
 struct Dimension {

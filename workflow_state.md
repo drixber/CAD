@@ -79,6 +79,9 @@ completed_items:
 - Added status bar FPS indicator bound to viewport.
 - Docked AI panels into tabs for UI layout clarity.
 - Expanded BOM service to extract components from Assembly objects with quantity counting and part number generation.
+- Expanded annotation service with multiple annotation types (Text, Note, Callout, Balloon, Revision, Title).
+- Added annotation positioning options (alignment, rotation, font size, style).
+- Added view-attached annotations and sheet annotation builders.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -87,7 +90,7 @@ pending_items:
 - Collision/interference checks (full).
 - Drawing styles framework expansion (additional style types and customization).
 - BOM pipeline UI integration and assembly registry lookup.
-- Annotations stubs expansion (additional annotation types and positioning).
+- Annotation positioning refinement (leader lines, attachment points).
 - MBD 3D annotation rendering hook.
 - Ribbon command wiring to actual CAD operations.
 
@@ -156,5 +159,9 @@ decisions_made:
 - BOM service extracts components from Assembly objects and counts quantities.
 - BOM part numbers generated automatically from part names with index suffix.
 - BOM items sorted alphabetically by part name for consistent ordering.
+- Annotation types include Text, Note, Callout, Balloon, Revision, and Title.
+- Annotations support alignment (Left, Center, Right, Justified), rotation, and font size.
+- Annotations can be attached to views or placed on sheets independently.
+- AnnotationService provides factory methods for creating different annotation types.
 
 estimated_remaining_time: 70-110 weeks
