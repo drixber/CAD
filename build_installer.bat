@@ -7,10 +7,22 @@ echo.
 REM Prüfe ob CMake vorhanden ist
 where cmake >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo FEHLER: CMake nicht gefunden!
-    echo Bitte installieren Sie CMake von https://cmake.org/download/
-    pause
-    exit /b 1
+    REM Versuche typische Installationspfade
+    if exist "C:\Program Files\CMake\bin\cmake.exe" (
+        set "PATH=%PATH%;C:\Program Files\CMake\bin"
+        echo CMake gefunden in: C:\Program Files\CMake\bin
+    ) else if exist "C:\Program Files (x86)\CMake\bin\cmake.exe" (
+        set "PATH=%PATH%;C:\Program Files (x86)\CMake\bin"
+        echo CMake gefunden in: C:\Program Files (x86)\CMake\bin
+    ) else (
+        echo FEHLER: CMake nicht gefunden!
+        echo.
+        echo Bitte installieren Sie CMake von: https://cmake.org/download/
+        echo Oder fügen Sie CMake zum PATH hinzu.
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 REM Prüfe ob NSIS vorhanden ist

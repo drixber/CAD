@@ -7,9 +7,33 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 # Prüfe CMake
-if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+$cmakeFound = $false
+$cmakePaths = @(
+    "C:\Program Files\CMake\bin\cmake.exe",
+    "C:\Program Files (x86)\CMake\bin\cmake.exe"
+)
+
+if (Get-Command cmake -ErrorAction SilentlyContinue) {
+    $cmakeFound = $true
+    Write-Host "CMake gefunden im PATH" -ForegroundColor Green
+} else {
+    foreach ($path in $cmakePaths) {
+        if (Test-Path $path) {
+            $cmakeDir = Split-Path $path -Parent
+            $env:PATH = "$cmakeDir;$env:PATH"
+            Write-Host "CMake gefunden in: $cmakeDir" -ForegroundColor Green
+            $cmakeFound = $true
+            break
+        }
+    }
+}
+
+if (-not $cmakeFound) {
     Write-Host "FEHLER: CMake nicht gefunden!" -ForegroundColor Red
-    Write-Host "Bitte installieren Sie CMake von https://cmake.org/download/" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Bitte installieren Sie CMake von: https://cmake.org/download/" -ForegroundColor Yellow
+    Write-Host "Oder fügen Sie CMake zum PATH hinzu." -ForegroundColor Yellow
+    Write-Host ""
     Read-Host "Drücken Sie Enter zum Beenden"
     exit 1
 }
