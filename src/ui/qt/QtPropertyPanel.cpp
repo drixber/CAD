@@ -91,8 +91,36 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     context_stack_->addWidget(drawing_panel);
     context_stack_->addWidget(makePanel(tr("Context Panel: Inspect"),
                                         {tr("Tool"), tr("Result")}));
-    context_stack_->addWidget(makePanel(tr("Context Panel: Manage"),
-                                        {tr("Parameter"), tr("Value")}));
+    
+    // Manage panel with style editor
+    QWidget* manage_panel = new QWidget(context_stack_);
+    QVBoxLayout* manage_layout = new QVBoxLayout(manage_panel);
+    QLabel* manage_header = new QLabel(tr("Context Panel: Manage"), manage_panel);
+    manage_header->setAlignment(Qt::AlignLeft);
+    manage_layout->addWidget(manage_header);
+    
+    QFormLayout* manage_form = new QFormLayout();
+    QLineEdit* parameter = new QLineEdit(manage_panel);
+    parameter->setPlaceholderText(tr("Parameter"));
+    manage_form->addRow(tr("Parameter:"), parameter);
+    QLineEdit* value = new QLineEdit(manage_panel);
+    value->setPlaceholderText(tr("Value"));
+    manage_form->addRow(tr("Value:"), value);
+    manage_layout->addLayout(manage_form);
+    
+    QLabel* style_label = new QLabel(tr("Drawing Styles:"), manage_panel);
+    manage_layout->addWidget(style_label);
+    
+    style_preset_label_ = new QLabel(tr("Preset: Default"), manage_panel);
+    manage_layout->addWidget(style_preset_label_);
+    
+    style_info_label_ = new QLabel(tr("Line styles: 0, Text styles: 0, Dimension styles: 0"), manage_panel);
+    style_info_label_->setWordWrap(true);
+    manage_layout->addWidget(style_info_label_);
+    
+    manage_layout->addStretch();
+    manage_panel->setLayout(manage_layout);
+    context_stack_->addWidget(manage_panel);
     context_stack_->addWidget(makePanel(tr("Context Panel: View"),
                                         {tr("Appearance"), tr("Environment")}));
     layout->addWidget(context_stack_);
@@ -178,6 +206,29 @@ void QtPropertyPanel::updateBomTable(const QList<BomItem>& items) {
     }
     
     bom_table_->resizeColumnsToContents();
+}
+
+void QtPropertyPanel::setStylePresets(const QStringList& presets) {
+    if (style_preset_label_) {
+        QString preset_text = tr("Available presets: ") + presets.join(", ");
+        style_preset_label_->setText(preset_text);
+    }
+}
+
+void QtPropertyPanel::setCurrentStylePreset(const QString& preset) {
+    if (style_preset_label_) {
+        style_preset_label_->setText(tr("Current preset: %1").arg(preset));
+    }
+}
+
+void QtPropertyPanel::setStyleInfo(const QString& info) {
+    updateStyleInfo(info);
+}
+
+void QtPropertyPanel::updateStyleInfo(const QString& info) {
+    if (style_info_label_) {
+        style_info_label_->setText(info);
+    }
 }
 
 }  // namespace ui

@@ -114,13 +114,17 @@ completed_items:
 - Added setBomItems method to QtPropertyPanel for updating BOM table.
 - Integrated BOM table into Drawing context panel.
 - PartsList command now updates property panel with BOM items.
+- Added drawing styles UI integration to Manage context panel.
+- Implemented style preset display and style information labels.
+- Added setStylePresets, setCurrentStylePreset, and setStyleInfo methods.
+- Styles command now updates property panel with style preset information.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching optimization (performance tuning).
 - Collision/interference checks refinement (geometry-based instead of bounding box).
-- Drawing styles UI integration and style editor.
+- Drawing styles UI editor enhancements (interactive style editing, preview).
 - BOM pipeline UI display widget enhancements (sorting, filtering, export).
 - Annotation positioning UI integration (interactive leader line editing).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
@@ -234,5 +238,9 @@ decisions_made:
 - Property panel Drawing context includes integrated BOM table.
 - PartsList command automatically updates property panel BOM table.
 - BOM items converted from C++ BillOfMaterialsItem to Qt BomItem structure.
+- Style editor displays available presets (Default, ISO, ANSI, JIS).
+- Style information shows counts of line, text, dimension, and hatch styles.
+- Manage context panel includes style preset and style information labels.
+- Styles command updates property panel with current style preset and statistics.
 
 estimated_remaining_time: 70-110 weeks

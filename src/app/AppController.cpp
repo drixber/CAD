@@ -303,6 +303,7 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "Styles") {
         cad::drawings::DrawingStyleSet iso_styles = drawing_service_.isoStyles();
         cad::drawings::DrawingStyleSet ansi_styles = drawing_service_.ansiStyles();
+        cad::drawings::DrawingStyleSet default_styles = drawing_service_.defaultStyles();
         std::string style_summary = "Styles: ISO (" + 
             std::to_string(iso_styles.line_styles.size()) + " lines, " +
             std::to_string(iso_styles.text_styles.size()) + " texts), ANSI (" +
@@ -310,6 +311,26 @@ void AppController::executeCommand(const std::string& command) {
             std::to_string(ansi_styles.text_styles.size()) + " texts)";
         main_window_.setIntegrationStatus(style_summary);
         main_window_.setViewportStatus("Style editor available");
+        
+        // Update property panel with style information
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window) {
+            cad::ui::QtPropertyPanel* panel = qt_window->propertyPanel();
+            if (panel) {
+                QStringList presets = {"Default", "ISO", "ANSI", "JIS"};
+                panel->setStylePresets(presets);
+                
+                QString style_info = QString("Line styles: %1, Text styles: %2, Dimension styles: %3, Hatch styles: %4")
+                    .arg(default_styles.line_styles.size())
+                    .arg(default_styles.text_styles.size())
+                    .arg(default_styles.dimension_styles.size())
+                    .arg(default_styles.hatch_styles.size());
+                panel->setCurrentStylePreset(QString::fromStdString("Default"));
+                panel->setStyleInfo(style_info);
+            }
+        }
+        #endif
     } else if (command == "MBD View" || command == "MbdView") {
         cad::modules::MbdRenderRequest render_request;
         render_request.part_id = "Bracket";

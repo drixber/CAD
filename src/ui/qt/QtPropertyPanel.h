@@ -28,6 +28,9 @@ public:
     void setContextPlaceholder(const QString& context);
     void setContextCategory(const QString& category);
     void setBomItems(const QList<BomItem>& items);
+    void setStylePresets(const QStringList& presets);
+    void setCurrentStylePreset(const QString& preset);
+    void setStyleInfo(const QString& info);
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -38,8 +41,11 @@ private:
     QLabel* context_label_{nullptr};
     QStackedWidget* context_stack_{nullptr};
     QTableWidget* bom_table_{nullptr};
+    QLabel* style_preset_label_{nullptr};
+    QLabel* style_info_label_{nullptr};
     
     void updateBomTable(const QList<BomItem>& items);
+    void updateStyleInfo(const QString& info);
 };
 
 }  // namespace ui
