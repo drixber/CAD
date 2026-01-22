@@ -6,6 +6,7 @@ add_library(cad_app
 target_include_directories(cad_app
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(cad_app
