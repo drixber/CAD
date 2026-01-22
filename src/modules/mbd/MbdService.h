@@ -104,6 +104,7 @@ private:
     
     mutable std::map<void*, PmiRenderData> rendered_pmi_data_;
     mutable std::map<std::string, VisibilityState> visibility_state_;
+    mutable std::map<std::string, cad::mbd::PmiDataSet> pmi_data_cache_;
     
     PmiColor parseColor(const std::string& color_str) const;
 };

@@ -297,16 +297,14 @@ IoResult ImportExportService::exportStep(const std::string& path, bool ascii_mod
     file << "DATA;\n";
     
     int entity_id = 1;
-    for (const auto& part : request.parts) {
-        file << "#" << entity_id << " = CARTESIAN_POINT('', (" << 0.0 << ", " << 0.0 << ", " << 0.0 << "));\n";
-        entity_id++;
-        file << "#" << entity_id << " = DIRECTION('', (" << 1.0 << ", " << 0.0 << ", " << 0.0 << "));\n";
-        entity_id++;
-        file << "#" << entity_id << " = DIRECTION('', (" << 0.0 << ", " << 1.0 << ", " << 0.0 << "));\n";
-        entity_id++;
-        file << "#" << entity_id << " = AXIS2_PLACEMENT_3D('', #" << (entity_id - 3) << ", #" << (entity_id - 2) << ", #" << (entity_id - 1) << ");\n";
-        entity_id++;
-    }
+    file << "#" << entity_id << " = CARTESIAN_POINT('', (" << 0.0 << ", " << 0.0 << ", " << 0.0 << "));\n";
+    entity_id++;
+    file << "#" << entity_id << " = DIRECTION('', (" << 1.0 << ", " << 0.0 << ", " << 0.0 << "));\n";
+    entity_id++;
+    file << "#" << entity_id << " = DIRECTION('', (" << 0.0 << ", " << 1.0 << ", " << 0.0 << "));\n";
+    entity_id++;
+    file << "#" << entity_id << " = AXIS2_PLACEMENT_3D('', #" << (entity_id - 3) << ", #" << (entity_id - 2) << ", #" << (entity_id - 1) << ");\n";
+    entity_id++;
     
     file << "ENDSEC;\n";
     file << "END-ISO-10303-21;\n";
@@ -483,7 +481,6 @@ IoResult ImportExportService::exportStl(const std::string& path, bool ascii_mode
         std::copy(header_text.begin(), header_text.end(), header);
         file.write(header, 80);
         
-        // Number of triangles (placeholder: 12 for cube)
         uint32_t num_triangles = 12;
         file.write(reinterpret_cast<const char*>(&num_triangles), sizeof(uint32_t));
         

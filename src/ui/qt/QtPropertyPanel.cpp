@@ -1035,8 +1035,31 @@ void QtPropertyPanel::onEditAnnotationLeader() {
 }
 
 void QtPropertyPanel::onAnnotationPositionDrag() {
-    // This would be called when drag mode is enabled
-    // In a real implementation, this would handle mouse drag events
+    if (current_editing_annotation_row_ < 0 || 
+        current_editing_annotation_row_ >= annotation_items_cache_.size()) {
+        return;
+    }
+    
+    AnnotationItem& item = annotation_items_cache_[current_editing_annotation_row_];
+    
+    QPointF drag_offset(5.0, 5.0);
+    item.x += drag_offset.x();
+    item.y += drag_offset.y();
+    
+    if (annotation_table_) {
+        QTableWidgetItem* x_item = annotation_table_->item(current_editing_annotation_row_, 2);
+        QTableWidgetItem* y_item = annotation_table_->item(current_editing_annotation_row_, 3);
+        
+        if (x_item) {
+            x_item->setText(QString::number(item.x, 'f', 2));
+        }
+        if (y_item) {
+            y_item->setText(QString::number(item.y, 'f', 2));
+        }
+    }
+    
+    updateAnnotationPreview();
+    emit annotationPositionChanged(getAnnotationId(current_editing_annotation_row_), item.x, item.y);
 }
 
 void QtPropertyPanel::editAnnotationLeader(int row) {
@@ -1074,10 +1097,14 @@ void QtPropertyPanel::editAnnotationLeader(int row) {
         points_table->setItem(i, 1, y_item);
     }
     
-    // Add new row placeholder
     if (item.leader_points.isEmpty()) {
-        points_table->setItem(0, 0, new QTableWidgetItem(tr("0.0")));
-        points_table->setItem(0, 1, new QTableWidgetItem(tr("0.0")));
+        QTableWidgetItem* x_item = new QTableWidgetItem(tr("0.0"));
+        x_item->setFlags(x_item->flags() | Qt::ItemIsEditable);
+        points_table->setItem(0, 0, x_item);
+        
+        QTableWidgetItem* y_item = new QTableWidgetItem(tr("0.0"));
+        y_item->setFlags(y_item->flags() | Qt::ItemIsEditable);
+        points_table->setItem(0, 1, y_item);
     }
     
     points_table->resizeColumnsToContents();

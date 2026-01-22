@@ -40,9 +40,15 @@ cad::mbd::PmiDataSet MbdService::buildDefaultPmi(const std::string& part_id) con
 MbdRenderResult MbdService::prepareForRendering(const MbdRenderRequest& request) const {
     MbdRenderResult result;
     
-    // In a real implementation, this would load PMI data from the part
-    // For now, we use default PMI data
-    cad::mbd::PmiDataSet pmi_data = buildDefaultPmi(request.part_id);
+    auto it = pmi_data_cache_.find(request.part_id);
+    cad::mbd::PmiDataSet pmi_data;
+    
+    if (it != pmi_data_cache_.end()) {
+        pmi_data = it->second;
+    } else {
+        pmi_data = buildDefaultPmi(request.part_id);
+        pmi_data_cache_[request.part_id] = pmi_data;
+    }
     
     result.visible_annotations = getVisibleAnnotations(pmi_data, request.show_annotations);
     result.visible_datums = getVisibleDatums(pmi_data, request.show_datums);

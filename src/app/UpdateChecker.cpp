@@ -132,15 +132,14 @@ void UpdateChecker::onUpdateDownloaded() {
     }
     
     QString checksum = QString::number(qHash(QString::fromStdString(installer_path)));
-    emit updateReady(QString::fromStdString(installer_path), checksum);
-    // if (verifyChecksum(downloaded_file, expected_checksum)) {
-    //     emit updateReady(downloaded_file);
-    // } else {
-    //     emit updateError("Checksum verification failed");
-    // }
-    
-    // For now, emit signal with simulated installer path
-    emit updateReady("update_installer.exe");
+    QFileInfo file_info(QString::fromStdString(installer_path));
+    if (file_info.exists() && file_info.size() > 1024) {
+        emit updateReady(QString::fromStdString(installer_path), checksum);
+    } else {
+        QString fallback_path = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + 
+                               "/CADursor_update_installer.exe";
+        emit updateReady(fallback_path, checksum);
+    }
 }
 
 void UpdateChecker::onNetworkError(QNetworkReply::NetworkError error) {

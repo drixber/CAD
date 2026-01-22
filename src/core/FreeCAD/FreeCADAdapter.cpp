@@ -109,8 +109,6 @@ bool FreeCADAdapter::syncConstraints(const Sketch& sketch) const {
         return false;
     }
     
-    // Map constraints to FreeCAD Sketcher constraints
-    // First, build geometry index map (would be done during geometry sync)
     std::map<std::string, int> geometry_index_map;
     int current_index = 0;
     for (const auto& geom : sketch.geometry()) {

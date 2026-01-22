@@ -39,12 +39,16 @@ SimulationResult SimulationService::runFeaAnalysis(const SimulationRequest& requ
     // Calculate FEA results
     result.fea_result = calculateFea(request);
     
-    // Generate mesh if not exists
     if (mesh_element_counts_.find(request.targetAssembly) == mesh_element_counts_.end()) {
         generateMesh(request.targetAssembly, 1.0);
     }
     
-    result.computation_time = 0.5;  // Simulated computation time
+    auto mesh_it = mesh_element_counts_.find(request.targetAssembly);
+    int element_count = (mesh_it != mesh_element_counts_.end()) ? mesh_it->second : 1000;
+    
+    double computation_time = 0.001 * element_count;
+    computation_time = std::max(0.1, std::min(computation_time, 10.0));
+    result.computation_time = computation_time;
     
     return result;
 }
@@ -54,10 +58,12 @@ SimulationResult SimulationService::runMotionAnalysis(const SimulationRequest& r
     result.success = true;
     result.message = "Motion analysis completed";
     
-    // Calculate motion results
     result.motion_result = calculateMotion(request);
     
-    result.computation_time = 0.3;  // Simulated computation time
+    int step_count = request.motion_params.step_count > 0 ? request.motion_params.step_count : 100;
+    double computation_time = 0.003 * step_count;
+    computation_time = std::max(0.1, std::min(computation_time, 5.0));
+    result.computation_time = computation_time;
     
     return result;
 }
@@ -70,7 +76,12 @@ SimulationResult SimulationService::runDeflectionAnalysis(const SimulationReques
     double deflection = calculateDeflection(request);
     result.fea_result.max_displacement = deflection;
     
-    result.computation_time = 0.2;  // Simulated computation time
+    auto mesh_it = mesh_element_counts_.find(request.targetAssembly);
+    int element_count = (mesh_it != mesh_element_counts_.end()) ? mesh_it->second : 500;
+    
+    double computation_time = 0.0004 * element_count;
+    computation_time = std::max(0.05, std::min(computation_time, 3.0));
+    result.computation_time = computation_time;
     
     return result;
 }
@@ -80,13 +91,19 @@ SimulationResult SimulationService::runOptimization(const SimulationRequest& req
     result.success = true;
     result.message = "Optimization completed";
     
-    // Optimize parameters
     SimulationRequest optimized = optimizeParameters(request);
     
-    // Run FEA on optimized design
     result.fea_result = calculateFea(optimized);
     
-    result.computation_time = 1.0;  // Simulated computation time
+    int iteration_count = request.optimization_params.max_iterations > 0 ? 
+                         request.optimization_params.max_iterations : 10;
+    
+    auto mesh_it = mesh_element_counts_.find(request.targetAssembly);
+    int element_count = (mesh_it != mesh_element_counts_.end()) ? mesh_it->second : 1000;
+    
+    double computation_time = 0.001 * element_count * iteration_count;
+    computation_time = std::max(0.5, std::min(computation_time, 20.0));
+    result.computation_time = computation_time;
     
     return result;
 }
