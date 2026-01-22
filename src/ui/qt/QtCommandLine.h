@@ -48,11 +48,16 @@ public:
     QStringList getCommandCompletions(const QString& prefix) const;
     QStringList getParameterCompletions(const QString& command, int param_index) const;
     QString getCommandHelp(const QString& command) const;
+    QString getParameterHint(const QString& command, int param_index) const;
+    void showCommandTooltip(const QString& command);
+    void showParameterHint(const QString& command, int param_index);
 
 signals:
     void commandParsed(const ParsedCommand& parsed);
     void commandCompletionRequested(const QString& prefix, const QStringList& completions);
     void validationError(const QString& error);
+    void helpRequested(const QString& command);
+    void parameterHintRequested(const QString& command, int param_index);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;

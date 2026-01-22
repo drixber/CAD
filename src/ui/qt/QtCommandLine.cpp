@@ -80,6 +80,20 @@ void QtCommandLine::keyPressEvent(QKeyEvent* event) {
         event->accept();
         return;
     }
+    if (event->key() == Qt::Key_F1) {
+        // Show help for current command
+        QString current_text = text().trimmed();
+        QStringList parts = current_text.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        if (!parts.isEmpty()) {
+            QString cmd = parts[0];
+            if (isValidCommandName(cmd)) {
+                showCommandTooltip(cmd);
+                emit helpRequested(cmd);
+            }
+        }
+        event->accept();
+        return;
+    }
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
         QString cmd = takeCurrentCommand();
         if (!cmd.isEmpty()) {
@@ -429,6 +443,45 @@ QStringList QtCommandLine::getCommandSuggestions(const QString& partial) const {
     }
     
     return suggestions;
+}
+
+QString QtCommandLine::getParameterHint(const QString& command, int param_index) const {
+    QString cmd_lower = command.toLower();
+    if (!command_definitions_.contains(cmd_lower)) {
+        return QString();
+    }
+    
+    const CommandDefinition& def = command_definitions_[cmd_lower];
+    if (param_index < 0 || param_index >= def.parameters.size()) {
+        return QString();
+    }
+    
+    const CommandParameter& param = def.parameters[param_index];
+    QString hint = param.name + " (" + param.type + ")";
+    if (!param.description.isEmpty()) {
+        hint += ": " + param.description;
+    }
+    if (param.type == "enum" && !param.enum_values.isEmpty()) {
+        hint += " [" + param.enum_values.join(", ") + "]";
+    }
+    if (param.has_range) {
+        hint += QString(" [%1-%2]").arg(param.min_value).arg(param.max_value);
+    }
+    return hint;
+}
+
+void QtCommandLine::showCommandTooltip(const QString& command) {
+    QString help = getCommandHelp(command);
+    setToolTip(help);
+    // In real implementation, would show a tooltip or help dialog
+}
+
+void QtCommandLine::showParameterHint(const QString& command, int param_index) {
+    QString hint = getParameterHint(command, param_index);
+    if (!hint.isEmpty()) {
+        setToolTip(hint);
+        emit parameterHintRequested(command, param_index);
+    }
 }
 
 }  // namespace ui

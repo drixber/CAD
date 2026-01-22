@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <future>
+#include <mutex>
 
 namespace cad {
 namespace core {
@@ -116,6 +118,8 @@ LodMode AssemblyManager::recommendedLod() const {
 }
 
 void AssemblyManager::cacheAssembly(const std::string& path, const Assembly& assembly) {
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    
     // Evict if cache is full (by entries or memory)
     while ((cache_.size() >= cache_limit_ || 
             total_memory_usage_ >= memory_limit_mb_ * 1024 * 1024) && 
@@ -147,6 +151,8 @@ void AssemblyManager::cacheAssembly(const std::string& path, const Assembly& ass
 }
 
 bool AssemblyManager::getCachedAssembly(const std::string& path, Assembly& out_assembly) const {
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    
     auto it = cache_.find(path);
     if (it != cache_.end()) {
         // Update access info
@@ -261,7 +267,35 @@ void AssemblyManager::enableAdaptiveLod(bool enabled) {
 
 void AssemblyManager::preloadAssembly(const std::string& path) {
     // Preload assembly in background
-    enqueueLoad(path);
+    if (multi_threaded_loading_) {
+        loadAssemblyAsync(path);
+    } else {
+        enqueueLoad(path);
+    }
+}
+
+void AssemblyManager::enableMultiThreadedLoading(bool enabled) {
+    multi_threaded_loading_ = enabled;
+}
+
+void AssemblyManager::setThreadPoolSize(std::size_t thread_count) {
+    thread_pool_size_ = thread_count > 0 ? thread_count : 4;
+}
+
+std::future<AssemblyLoadStats> AssemblyManager::loadAssemblyAsync(const std::string& path) {
+    return std::async(std::launch::async, [this, path]() {
+        std::lock_guard<std::mutex> lock(load_mutex_);
+        return loadAssembly(path);
+    });
+}
+
+void AssemblyManager::waitForLoadCompletion() {
+    for (auto& future : active_loads_) {
+        if (future.valid()) {
+            future.wait();
+        }
+    }
+    active_loads_.clear();
 }
 
 double AssemblyManager::getCacheHitRate() const {

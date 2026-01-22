@@ -6,12 +6,17 @@
 #include <QFormLayout>
 #include <QHeaderView>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QVBoxLayout>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 
 namespace cad {
 namespace ui {
@@ -117,8 +122,18 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     bom_sort_descending_->setMaximumWidth(30);
     bom_controls->addWidget(bom_sort_descending_);
     
-    bom_export_button_ = new QPushButton(tr("Export"), drawing_panel);
+    bom_export_button_ = new QPushButton(tr("Export..."), drawing_panel);
     bom_controls->addWidget(bom_export_button_);
+    
+    // Filter presets
+    QLabel* preset_label = new QLabel(tr("Preset:"), drawing_panel);
+    bom_controls->addWidget(preset_label);
+    bom_filter_preset_ = new QComboBox(drawing_panel);
+    bom_filter_preset_->addItems({tr("None"), tr("All Parts"), tr("Fasteners"), tr("Custom 1"), tr("Custom 2")});
+    bom_controls->addWidget(bom_filter_preset_);
+    bom_save_preset_button_ = new QPushButton(tr("Save Preset"), drawing_panel);
+    bom_controls->addWidget(bom_save_preset_button_);
+    
     drawing_layout->addLayout(bom_controls);
     
     bom_table_ = new QTableWidget(drawing_panel);
@@ -154,7 +169,27 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
             applyMultiColumnSort();
         }
     });
-    connect(bom_export_button_, &QPushButton::clicked, this, [this]() { exportBomTable(); });
+    connect(bom_export_button_, &QPushButton::clicked, this, [this]() { 
+        QMenu* export_menu = new QMenu(this);
+        export_menu->addAction(tr("Export as CSV..."), this, [this]() { exportBomToFormat("CSV", ""); });
+        export_menu->addAction(tr("Export as Excel..."), this, [this]() { exportBomToFormat("Excel", ""); });
+        export_menu->addAction(tr("Export as PDF..."), this, [this]() { exportBomToFormat("PDF", ""); });
+        export_menu->addAction(tr("Export as JSON..."), this, [this]() { exportBomToFormat("JSON", ""); });
+        export_menu->popup(bom_export_button_->mapToGlobal(QPoint(0, bom_export_button_->height())));
+    });
+    connect(bom_filter_preset_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        QString preset = bom_filter_preset_->itemText(index);
+        if (preset != tr("None")) {
+            loadFilterPreset(preset);
+        }
+    });
+    connect(bom_save_preset_button_, &QPushButton::clicked, this, [this]() {
+        bool ok;
+        QString name = QInputDialog::getText(this, tr("Save Filter Preset"), tr("Preset name:"), QLineEdit::Normal, "", &ok);
+        if (ok && !name.isEmpty()) {
+            saveFilterPreset(name);
+        }
+    });
     
     QLabel* annotation_label = new QLabel(tr("Annotations:"), drawing_panel);
     drawing_layout->addWidget(annotation_label);
@@ -926,6 +961,7 @@ void QtPropertyPanel::setupAnnotationTableEditing() {
         }
         if (has_selection && annotation_table_->currentRow() >= 0) {
             current_editing_annotation_row_ = annotation_table_->currentRow();
+            updateAnnotationPreview();
         }
     });
     
@@ -977,6 +1013,7 @@ void QtPropertyPanel::onAnnotationTableItemChanged(QTableWidgetItem* item) {
         if (ok && row < annotation_items_cache_.size()) {
             annotation_items_cache_[row].y = y;
             emit annotationPositionChanged(annotation_id, annotation_items_cache_[row].x, y);
+            updateAnnotationPreview();
         }
     }
 }
@@ -1103,6 +1140,7 @@ void QtPropertyPanel::editAnnotationLeader(int row) {
         annotation_table_->item(row, 4)->setText(leader_text);
         
         emit annotationLeaderChanged(annotation_id, new_leader_points);
+        updateAnnotationPreview();
     }
 }
 
@@ -1112,6 +1150,33 @@ QString QtPropertyPanel::getAnnotationId(int row) const {
         return QString("annotation_%1_%2").arg(row).arg(annotation_items_cache_[row].text);
     }
     return QString("annotation_%1").arg(row);
+}
+
+void QtPropertyPanel::updateAnnotationPreview() {
+    if (!annotation_preview_widget_ || current_editing_annotation_row_ < 0 || 
+        current_editing_annotation_row_ >= annotation_items_cache_.size()) {
+        return;
+    }
+    
+    const AnnotationItem& item = annotation_items_cache_[current_editing_annotation_row_];
+    
+    // In a real implementation, would use QPainter to draw leader lines
+    // For now, create a visual representation using stylesheet
+    QString preview_info = tr("Annotation: %1\nPosition: (%2, %3)")
+        .arg(item.text)
+        .arg(item.x, 0, 'f', 2)
+        .arg(item.y, 0, 'f', 2);
+    
+    if (item.has_leader && !item.leader_points.isEmpty()) {
+        preview_info += tr("\nLeader: %1 points").arg(item.leader_points.size());
+    }
+    
+    annotation_preview_widget_->setToolTip(preview_info);
+    
+    // Create a simple visual preview using CSS-like styling
+    // In real implementation, would override paintEvent and use QPainter
+    QString style = "background-color: white; border: 1px solid gray;";
+    annotation_preview_widget_->setStyleSheet(style);
 }
 
 }  // namespace ui

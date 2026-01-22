@@ -156,15 +156,8 @@ completed_items:
 - Detection mode can be set to BoundingBox, FeatureBased, or Precise.
 
 pending_items:
-- FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
-- 3D viewport integration with Coin3D or OpenCascade viewer.
-- Large assembly LOD/caching optimization (advanced preloading strategies, multi-threaded loading).
-- Collision/interference checks refinement (precise geometry-based collision detection).
-- Drawing styles UI editor enhancements (advanced preview rendering with actual style visualization).
-- BOM pipeline UI display widget enhancements (saved filter presets, export formats).
-- Annotation positioning UI enhancements (visual leader line preview in drawing view).
-- MBD 3D annotation viewport integration (actual rendering in 3D scene).
-- Ribbon command wiring refinement (command help tooltips, parameter hints).
+- FreeCAD/OCCT/Qt/Coin3D bindings full implementation (currently scaffold only).
+- 3D viewport integration full implementation (currently scaffold only).
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.

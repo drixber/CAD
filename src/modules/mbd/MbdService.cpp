@@ -87,5 +87,66 @@ std::vector<cad::mbd::PmiTolerance> MbdService::getVisibleTolerances(const cad::
     return pmi_data.tolerances;
 }
 
+void MbdService::renderMbdInViewport(const MbdRenderResult& render_data, void* viewport_handle) const {
+    // In a real implementation, this would render PMI annotations in the 3D viewport
+    // viewport_handle would be a pointer to the viewport renderer (Coin3D/OpenCascade)
+    // For now, this is a placeholder for the integration point
+    
+    // Render annotations
+    for (const auto& annotation : render_data.visible_annotations) {
+        // In real implementation: render text at (x, y, z) with leader line
+        // if (annotation.show_leader) {
+        //     renderLeaderLine(annotation.x, annotation.y, annotation.z,
+        //                      annotation.leader_x, annotation.leader_y, annotation.leader_z);
+        // }
+        // renderText(annotation.text, annotation.x, annotation.y, annotation.z,
+        //            annotation.font_size, annotation.color);
+    }
+    
+    // Render datums
+    for (const auto& datum : render_data.visible_datums) {
+        // In real implementation: render datum symbol
+        // renderDatumSymbol(datum.id, datum.type, datum.description);
+    }
+    
+    // Render tolerances
+    for (const auto& tolerance : render_data.visible_tolerances) {
+        // In real implementation: render tolerance callout
+        // renderToleranceCallout(tolerance.label, tolerance.upper, tolerance.lower, tolerance.units);
+    }
+}
+
+void MbdService::updateMbdVisibility(const std::string& part_id, bool show_annotations, bool show_datums, bool show_tolerances) const {
+    // Update visibility state for MBD elements in viewport
+    // In real implementation, would update viewport renderer state
+    MbdRenderRequest request;
+    request.part_id = part_id;
+    request.show_annotations = show_annotations;
+    request.show_datums = show_datums;
+    request.show_tolerances = show_tolerances;
+    
+    MbdRenderResult result = prepareForRendering(request);
+    // In real implementation: update viewport with new visibility
+    // updateViewportVisibility(result);
+}
+
+std::vector<cad::mbd::PmiAnnotation> MbdService::getAnnotationsForViewport(const std::string& part_id, double view_scale) const {
+    // Get annotations scaled for viewport display
+    MbdRenderRequest request;
+    request.part_id = part_id;
+    request.view_scale = view_scale;
+    request.show_annotations = true;
+    
+    MbdRenderResult result = prepareForRendering(request);
+    
+    // Scale annotations based on view scale
+    for (auto& annotation : result.visible_annotations) {
+        annotation.font_size *= view_scale;
+        // Scale leader line positions if needed
+    }
+    
+    return result.visible_annotations;
+}
+
 }  // namespace modules
 }  // namespace cad

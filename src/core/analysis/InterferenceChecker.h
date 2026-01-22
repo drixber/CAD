@@ -52,6 +52,10 @@ private:
     double calculateOverlapVolume(const BoundingBox& a, const BoundingBox& b) const;
     bool checkFeatureCollision(const Part& part_a, const Transform& transform_a,
                                const Part& part_b, const Transform& transform_b) const;
+    bool checkPreciseCollision(const Part& part_a, const Transform& transform_a,
+                               const Part& part_b, const Transform& transform_b) const;
+    double calculateIntersectionVolume(const Part& part_a, const Transform& transform_a,
+                                       const Part& part_b, const Transform& transform_b) const;
     
     CollisionDetectionMode detection_mode_{CollisionDetectionMode::FeatureBased};
 };

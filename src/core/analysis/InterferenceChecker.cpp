@@ -52,7 +52,12 @@ InterferenceResult InterferenceChecker::checkAssembly(const Assembly& assembly) 
             bool has_collision = false;
             
             if (detection_mode_ == CollisionDetectionMode::Precise) {
-                // Use feature-based collision check for precise mode
+                // Use precise geometry-based collision check
+                has_collision = checkPreciseCollision(
+                    components[i].part, components[i].transform,
+                    components[j].part, components[j].transform);
+            } else if (detection_mode_ == CollisionDetectionMode::FeatureBased) {
+                // Use feature-based collision check
                 has_collision = checkFeatureCollision(
                     components[i].part, components[i].transform,
                     components[j].part, components[j].transform);
@@ -69,8 +74,10 @@ InterferenceResult InterferenceChecker::checkAssembly(const Assembly& assembly) 
                 pair.part_b_name = components[j].part.name();
                 
                 if (detection_mode_ == CollisionDetectionMode::Precise) {
-                    // Estimate volume from bounding boxes for precise mode
-                    pair.overlap_volume = calculateOverlapVolume(boxes[i], boxes[j]);
+                    // Calculate precise intersection volume
+                    pair.overlap_volume = calculateIntersectionVolume(
+                        components[i].part, components[i].transform,
+                        components[j].part, components[j].transform);
                 } else {
                     pair.overlap_volume = calculateOverlapVolume(boxes[i], boxes[j]);
                 }
@@ -203,6 +210,73 @@ bool InterferenceChecker::checkFeatureCollision(const Part& part_a, const Transf
     
     // Default to bounding box overlap result
     return true;
+}
+
+bool InterferenceChecker::checkPreciseCollision(const Part& part_a, const Transform& transform_a,
+                                                 const Part& part_b, const Transform& transform_b) const {
+    // Precise geometry-based collision detection
+    // In a real implementation, this would use actual geometry intersection tests
+    
+    // First check bounding box overlap
+    BoundingBox box_a = estimateBoundingBoxFromFeatures(part_a, transform_a);
+    BoundingBox box_b = estimateBoundingBoxFromFeatures(part_b, transform_b);
+    
+    if (!boxesOverlap(box_a, box_b)) {
+        return false;
+    }
+    
+    // Check feature-based geometry intersection
+    const auto& features_a = part_a.features();
+    const auto& features_b = part_b.features();
+    
+    // For each feature in part_a, check intersection with features in part_b
+    for (const auto& feat_a : features_a) {
+        for (const auto& feat_b : features_b) {
+            // Extrude features: check if extrusions intersect
+            if (feat_a.type == "Extrude" && feat_b.type == "Extrude") {
+                // Simplified: check if bounding boxes of extrusions overlap significantly
+                double overlap_vol = calculateOverlapVolume(box_a, box_b);
+                double volume_a = (box_a.max_x - box_a.min_x) * (box_a.max_y - box_a.min_y) * (box_a.max_z - box_a.min_z);
+                double volume_b = (box_b.max_x - box_b.min_x) * (box_b.max_y - box_b.min_y) * (box_b.max_z - box_b.min_z);
+                double min_volume = std::min(volume_a, volume_b);
+                
+                // If overlap is significant (>10% of smaller volume), consider it a collision
+                if (overlap_vol > min_volume * 0.1) {
+                    return true;
+                }
+            }
+            
+            // Holes don't cause interference (they remove material)
+            if (feat_a.type == "Hole" || feat_b.type == "Hole") {
+                continue;
+            }
+        }
+    }
+    
+    // If we get here and boxes overlap, it's a potential collision
+    return true;
+}
+
+double InterferenceChecker::calculateIntersectionVolume(const Part& part_a, const Transform& transform_a,
+                                                         const Part& part_b, const Transform& transform_b) const {
+    // Calculate precise intersection volume
+    BoundingBox box_a = estimateBoundingBoxFromFeatures(part_a, transform_a);
+    BoundingBox box_b = estimateBoundingBoxFromFeatures(part_b, transform_b);
+    
+    if (!boxesOverlap(box_a, box_b)) {
+        return 0.0;
+    }
+    
+    // Calculate intersection box
+    double min_x = std::max(box_a.min_x, box_b.min_x);
+    double max_x = std::min(box_a.max_x, box_b.max_x);
+    double min_y = std::max(box_a.min_y, box_b.min_y);
+    double max_y = std::min(box_a.max_y, box_b.max_y);
+    double min_z = std::max(box_a.min_z, box_b.min_z);
+    double max_z = std::min(box_a.max_z, box_b.max_z);
+    
+    double volume = (max_x - min_x) * (max_y - min_y) * (max_z - min_z);
+    return volume;
 }
 
 bool InterferenceChecker::boxesOverlap(const BoundingBox& a, const BoundingBox& b) const {

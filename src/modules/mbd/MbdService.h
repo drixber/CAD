@@ -41,6 +41,11 @@ public:
     std::vector<cad::mbd::PmiAnnotation> getVisibleAnnotations(const cad::mbd::PmiDataSet& pmi_data, bool show_annotations) const;
     std::vector<cad::mbd::PmiDatum> getVisibleDatums(const cad::mbd::PmiDataSet& pmi_data, bool show_datums) const;
     std::vector<cad::mbd::PmiTolerance> getVisibleTolerances(const cad::mbd::PmiDataSet& pmi_data, bool show_tolerances) const;
+    
+    // Viewport integration
+    void renderMbdInViewport(const MbdRenderResult& render_data, void* viewport_handle) const;
+    void updateMbdVisibility(const std::string& part_id, bool show_annotations, bool show_datums, bool show_tolerances) const;
+    std::vector<cad::mbd::PmiAnnotation> getAnnotationsForViewport(const std::string& part_id, double view_scale) const;
 };
 
 }  // namespace modules

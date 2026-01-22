@@ -1,9 +1,13 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <deque>
+#include <future>
 #include <map>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "../Modeler/Assembly.h"
@@ -81,6 +85,12 @@ public:
     void preloadAssembly(const std::string& path);
     double getCacheHitRate() const;
     std::size_t getMemoryUsage() const;
+    
+    // Multi-threaded loading
+    void enableMultiThreadedLoading(bool enabled);
+    void setThreadPoolSize(std::size_t thread_count);
+    std::future<AssemblyLoadStats> loadAssemblyAsync(const std::string& path);
+    void waitForLoadCompletion();
 
 private:
     void evictOldestCacheEntry();
@@ -97,7 +107,12 @@ private:
     std::size_t memory_limit_mb_{1024};  // 1GB default
     bool background_loading_{true};
     bool adaptive_lod_{true};
+    bool multi_threaded_loading_{false};
+    std::size_t thread_pool_size_{4};
     std::deque<AssemblyLoadJob> load_queue_{};
+    std::vector<std::future<AssemblyLoadStats>> active_loads_{};
+    std::mutex cache_mutex_;
+    std::mutex load_mutex_;
     
     // Cache storage
     std::map<std::string, CachedAssembly> cache_;

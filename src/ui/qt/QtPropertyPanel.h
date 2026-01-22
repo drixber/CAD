@@ -101,6 +101,8 @@ private:
     QPushButton* bom_sort_descending_{nullptr};
     QPushButton* bom_export_button_{nullptr};
     QPushButton* bom_clear_filters_{nullptr};
+    QComboBox* bom_filter_preset_{nullptr};
+    QPushButton* bom_save_preset_button_{nullptr};
     QList<BomItem> bom_items_cache_;
     QList<int> bom_sort_columns_;
     Qt::SortOrder bom_sort_order_{Qt::AscendingOrder};
@@ -126,9 +128,14 @@ private:
     void removeSortColumn(int column);
     void clearAllFilters();
     bool matchesFilter(const BomItem& item, const QString& filter_text, int filter_column) const;
+    void saveFilterPreset(const QString& preset_name);
+    void loadFilterPreset(const QString& preset_name);
+    QStringList getFilterPresets() const;
+    void exportBomToFormat(const QString& format, const QString& filename);
     void setupAnnotationTableEditing();
     void editAnnotationLeader(int row);
     QString getAnnotationId(int row) const;
+    void updateAnnotationPreview();
 };
 
 }  // namespace ui

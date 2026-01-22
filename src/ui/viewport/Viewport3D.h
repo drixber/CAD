@@ -1,0 +1,90 @@
+#pragma once
+
+#include <QWidget>
+#include <string>
+#include <vector>
+
+namespace cad {
+namespace ui {
+
+// 3D viewport integration scaffold
+// This provides the interface for 3D viewport rendering with Coin3D or OpenCascade
+
+struct ViewportCamera {
+    double position_x{0.0};
+    double position_y{0.0};
+    double position_z{10.0};
+    double target_x{0.0};
+    double target_y{0.0};
+    double target_z{0.0};
+    double up_x{0.0};
+    double up_y{1.0};
+    double up_z{0.0};
+    double field_of_view{45.0};
+};
+
+struct ViewportSettings {
+    bool show_grid{true};
+    bool show_axes{true};
+    bool show_background{true};
+    std::string background_color{"#2b2b2b"};
+    double grid_size{10.0};
+    int grid_subdivisions{10};
+};
+
+class Viewport3D : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit Viewport3D(QWidget* parent = nullptr);
+    ~Viewport3D();
+    
+    // Rendering
+    void renderGeometry(const std::string& geometry_id, void* geometry_handle);
+    void renderAssembly(const std::string& assembly_id);
+    void renderMbdAnnotations(const std::vector<void*>& annotation_handles);
+    void clearScene();
+    void updateView();
+    
+    // Camera control
+    void setCamera(const ViewportCamera& camera);
+    ViewportCamera getCamera() const;
+    void resetCamera();
+    void fitToView();
+    
+    // Viewport settings
+    void setSettings(const ViewportSettings& settings);
+    ViewportSettings getSettings() const;
+    
+    // Interaction
+    void enableSelection(bool enabled);
+    std::vector<std::string> getSelectedObjects() const;
+    
+signals:
+    void objectSelected(const std::string& object_id);
+    void viewportUpdated();
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
+
+private:
+    void* coin3d_viewer_{nullptr};  // SoQtExaminerViewer or similar
+    void* occt_viewer_{nullptr};    // OpenCascade viewer
+    ViewportCamera camera_;
+    ViewportSettings settings_;
+    bool selection_enabled_{true};
+    std::vector<std::string> selected_objects_;
+    
+    void initializeViewport();
+    void renderGrid();
+    void renderAxes();
+};
+
+}  // namespace ui
+}  // namespace cad
+
