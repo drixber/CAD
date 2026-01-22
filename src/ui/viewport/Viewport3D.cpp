@@ -7,6 +7,8 @@
 #include <QWheelEvent>
 #include <QColor>
 #include <cmath>
+#include <map>
+#include <algorithm>
 
 namespace cad {
 namespace ui {
