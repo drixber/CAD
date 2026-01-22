@@ -192,19 +192,25 @@ bool ImportExportService::validateFileFormat(const std::string& path, FileFormat
 
 FileFormat ImportExportService::detectFileFormat(const std::string& path) const {
     // In real implementation: would detect format from file extension or header
-    if (path.ends_with(".step") || path.ends_with(".stp")) {
+    // C++17 compatible: use rfind instead of ends_with (C++20)
+    auto endsWith = [](const std::string& str, const std::string& suffix) {
+        return str.size() >= suffix.size() && 
+               str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+    };
+    
+    if (endsWith(path, ".step") || endsWith(path, ".stp")) {
         return FileFormat::Step;
-    } else if (path.ends_with(".iges") || path.ends_with(".igs")) {
+    } else if (endsWith(path, ".iges") || endsWith(path, ".igs")) {
         return FileFormat::Iges;
-    } else if (path.ends_with(".stl")) {
+    } else if (endsWith(path, ".stl")) {
         return FileFormat::Stl;
-    } else if (path.ends_with(".dwg")) {
+    } else if (endsWith(path, ".dwg")) {
         return FileFormat::Dwg;
-    } else if (path.ends_with(".dxf")) {
+    } else if (endsWith(path, ".dxf")) {
         return FileFormat::Dxf;
-    } else if (path.ends_with(".sat")) {
+    } else if (endsWith(path, ".sat")) {
         return FileFormat::Sat;
-    } else if (path.ends_with(".rfa")) {
+    } else if (endsWith(path, ".rfa")) {
         return FileFormat::Rfa;
     }
     return FileFormat::Step;  // Default

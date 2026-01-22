@@ -88,7 +88,7 @@ public:
     PatternType getPatternType(const std::string& pattern_id) const;
     
 private:
-    std::map<std::string, PatternResult> patterns_;
+    mutable std::map<std::string, PatternResult> patterns_;
     
     std::vector<PatternInstance> generateRectangularInstances(const RectangularPatternParams& params) const;
     std::vector<PatternInstance> generateCircularInstances(const CircularPatternParams& params) const;

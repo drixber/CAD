@@ -67,7 +67,7 @@ public:
     void setMaterialProperties(const std::string& part_id, const std::map<std::string, double>& properties);
     
     // Mesh generation
-    void generateMesh(const std::string& part_id, double element_size);
+    void generateMesh(const std::string& part_id, double element_size) const;
     std::size_t getMeshElementCount(const std::string& part_id) const;
     
     // Results visualization
@@ -75,8 +75,8 @@ public:
     std::vector<double> getDisplacementValues(const std::string& part_id) const;
     
 private:
-    std::map<std::string, std::map<std::string, double>> material_properties_;
-    std::map<std::string, std::size_t> mesh_element_counts_;
+    mutable std::map<std::string, std::map<std::string, double>> material_properties_;
+    mutable std::map<std::string, std::size_t> mesh_element_counts_;
     
     FeaResult calculateFea(const SimulationRequest& request) const;
     MotionResult calculateMotion(const SimulationRequest& request) const;

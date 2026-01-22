@@ -118,7 +118,7 @@ void SimulationService::setMaterialProperties(const std::string& part_id, const 
     material_properties_[part_id] = properties;
 }
 
-void SimulationService::generateMesh(const std::string& part_id, double element_size) {
+void SimulationService::generateMesh(const std::string& part_id, double element_size) const {
     // In real implementation: generate finite element mesh
     // For now, estimate element count based on part size
     std::size_t estimated_elements = static_cast<std::size_t>(100.0 / element_size);

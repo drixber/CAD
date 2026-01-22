@@ -80,7 +80,7 @@ public:
     SimplifyRequest createBalancedPreset() const;
     
 private:
-    std::map<std::string, SimplifyResult> simplified_assemblies_;
+    mutable std::map<std::string, SimplifyResult> simplified_assemblies_;
     
     SimplifiedComponent createSimplifiedComponent(const std::string& part_id, ReplacementType type) const;
     double calculateSimplificationRatio(const std::string& original_id, const std::string& simplified_id) const;

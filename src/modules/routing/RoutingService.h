@@ -98,7 +98,7 @@ public:
                            RoutingType type, const std::vector<std::string>& obstacles) const;
     
 private:
-    std::map<std::string, RoutingResult> routes_;
+    mutable std::map<std::string, RoutingResult> routes_;
     
     std::vector<RouteSegment> generateSegments(const std::vector<RoutePoint>& waypoints, 
                                                RoutingType type, const RoutingRequest& request) const;
