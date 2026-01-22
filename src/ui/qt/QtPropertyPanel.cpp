@@ -1,6 +1,7 @@
 #include "QtPropertyPanel.h"
 
 #include <QComboBox>
+#include <QDialog>
 #include <QFileDialog>
 #include <QFormLayout>
 #include <QHeaderView>
@@ -172,10 +173,11 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     line_styles_table_->setColumnCount(4);
     line_styles_table_->setHorizontalHeaderLabels({tr("Name"), tr("Thickness"), tr("Type"), tr("Color")});
     line_styles_table_->horizontalHeader()->setStretchLastSection(true);
-    line_styles_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    line_styles_table_->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
     line_styles_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     line_styles_table_->setAlternatingRowColors(true);
     line_styles_table_->setMaximumHeight(150);
+    setupStyleTableEditing(line_styles_table_);
     manage_layout->addWidget(line_styles_table_);
     
     // Text styles table
@@ -186,17 +188,64 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     text_styles_table_->setColumnCount(4);
     text_styles_table_->setHorizontalHeaderLabels({tr("Name"), tr("Size"), tr("Font"), tr("Weight")});
     text_styles_table_->horizontalHeader()->setStretchLastSection(true);
-    text_styles_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    text_styles_table_->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
     text_styles_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     text_styles_table_->setAlternatingRowColors(true);
     text_styles_table_->setMaximumHeight(150);
+    setupStyleTableEditing(text_styles_table_);
     manage_layout->addWidget(text_styles_table_);
+    
+    // Dimension styles table
+    QLabel* dimension_styles_label = new QLabel(tr("Dimension Styles:"), manage_panel);
+    manage_layout->addWidget(dimension_styles_label);
+    
+    dimension_styles_table_ = new QTableWidget(manage_panel);
+    dimension_styles_table_->setColumnCount(5);
+    dimension_styles_table_->setHorizontalHeaderLabels({tr("Name"), tr("Text Height"), tr("Arrow Size"), tr("Units"), tr("Color")});
+    dimension_styles_table_->horizontalHeader()->setStretchLastSection(true);
+    dimension_styles_table_->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
+    dimension_styles_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    dimension_styles_table_->setAlternatingRowColors(true);
+    dimension_styles_table_->setMaximumHeight(150);
+    setupStyleTableEditing(dimension_styles_table_);
+    manage_layout->addWidget(dimension_styles_table_);
+    
+    // Hatch styles table
+    QLabel* hatch_styles_label = new QLabel(tr("Hatch Styles:"), manage_panel);
+    manage_layout->addWidget(hatch_styles_label);
+    
+    hatch_styles_table_ = new QTableWidget(manage_panel);
+    hatch_styles_table_->setColumnCount(4);
+    hatch_styles_table_->setHorizontalHeaderLabels({tr("Name"), tr("Pattern"), tr("Scale"), tr("Color")});
+    hatch_styles_table_->horizontalHeader()->setStretchLastSection(true);
+    hatch_styles_table_->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
+    hatch_styles_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    hatch_styles_table_->setAlternatingRowColors(true);
+    hatch_styles_table_->setMaximumHeight(150);
+    setupStyleTableEditing(hatch_styles_table_);
+    manage_layout->addWidget(hatch_styles_table_);
+    
+    // Style preview widget
+    QLabel* preview_label = new QLabel(tr("Style Preview:"), manage_panel);
+    manage_layout->addWidget(preview_label);
+    
+    style_preview_widget_ = new QWidget(manage_panel);
+    style_preview_widget_->setMinimumHeight(100);
+    style_preview_widget_->setStyleSheet("background-color: white; border: 1px solid gray;");
+    manage_layout->addWidget(style_preview_widget_);
+    
+    // Edit style button
+    edit_style_button_ = new QPushButton(tr("Edit Style Properties..."), manage_panel);
+    edit_style_button_->setEnabled(false);
+    manage_layout->addWidget(edit_style_button_);
     
     connect(style_preset_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), 
             this, [this](int index) {
                 QString preset = style_preset_selector_->itemText(index);
                 setCurrentStylePreset(preset);
             });
+    
+    connect(edit_style_button_, &QPushButton::clicked, this, &QtPropertyPanel::onEditStyleProperties);
     
     manage_layout->addStretch();
     manage_panel->setLayout(manage_layout);
@@ -381,6 +430,10 @@ void QtPropertyPanel::setStylePresetSelector(const QStringList& presets) {
 }
 
 void QtPropertyPanel::setLineStylesTable(const QList<QStringList>& line_styles) {
+    updateLineStylesTable(line_styles);
+}
+
+void QtPropertyPanel::updateLineStylesTable(const QList<QStringList>& line_styles) {
     if (!line_styles_table_) {
         return;
     }
@@ -389,7 +442,11 @@ void QtPropertyPanel::setLineStylesTable(const QList<QStringList>& line_styles) 
     for (int i = 0; i < line_styles.size(); ++i) {
         const QStringList& row = line_styles[i];
         for (int j = 0; j < row.size() && j < line_styles_table_->columnCount(); ++j) {
-            line_styles_table_->setItem(i, j, new QTableWidgetItem(row[j]));
+            QTableWidgetItem* item = new QTableWidgetItem(row[j]);
+            if (j > 0) {  // Make non-name columns editable
+                item->setFlags(item->flags() | Qt::ItemIsEditable);
+            }
+            line_styles_table_->setItem(i, j, item);
         }
     }
     
@@ -397,6 +454,10 @@ void QtPropertyPanel::setLineStylesTable(const QList<QStringList>& line_styles) 
 }
 
 void QtPropertyPanel::setTextStylesTable(const QList<QStringList>& text_styles) {
+    updateTextStylesTable(text_styles);
+}
+
+void QtPropertyPanel::updateTextStylesTable(const QList<QStringList>& text_styles) {
     if (!text_styles_table_) {
         return;
     }
@@ -405,11 +466,262 @@ void QtPropertyPanel::setTextStylesTable(const QList<QStringList>& text_styles) 
     for (int i = 0; i < text_styles.size(); ++i) {
         const QStringList& row = text_styles[i];
         for (int j = 0; j < row.size() && j < text_styles_table_->columnCount(); ++j) {
-            text_styles_table_->setItem(i, j, new QTableWidgetItem(row[j]));
+            QTableWidgetItem* item = new QTableWidgetItem(row[j]);
+            if (j > 0) {  // Make non-name columns editable
+                item->setFlags(item->flags() | Qt::ItemIsEditable);
+            }
+            text_styles_table_->setItem(i, j, item);
         }
     }
     
     text_styles_table_->resizeColumnsToContents();
+}
+
+void QtPropertyPanel::setDimensionStylesTable(const QList<QStringList>& dimension_styles) {
+    updateDimensionStylesTable(dimension_styles);
+}
+
+void QtPropertyPanel::updateDimensionStylesTable(const QList<QStringList>& dimension_styles) {
+    if (!dimension_styles_table_) {
+        return;
+    }
+    
+    dimension_styles_table_->setRowCount(dimension_styles.size());
+    for (int i = 0; i < dimension_styles.size(); ++i) {
+        const QStringList& row = dimension_styles[i];
+        for (int j = 0; j < row.size() && j < dimension_styles_table_->columnCount(); ++j) {
+            QTableWidgetItem* item = new QTableWidgetItem(row[j]);
+            if (j > 0) {  // Make non-name columns editable
+                item->setFlags(item->flags() | Qt::ItemIsEditable);
+            }
+            dimension_styles_table_->setItem(i, j, item);
+        }
+    }
+    
+    dimension_styles_table_->resizeColumnsToContents();
+}
+
+void QtPropertyPanel::setHatchStylesTable(const QList<QStringList>& hatch_styles) {
+    updateHatchStylesTable(hatch_styles);
+}
+
+void QtPropertyPanel::updateHatchStylesTable(const QList<QStringList>& hatch_styles) {
+    if (!hatch_styles_table_) {
+        return;
+    }
+    
+    hatch_styles_table_->setRowCount(hatch_styles.size());
+    for (int i = 0; i < hatch_styles.size(); ++i) {
+        const QStringList& row = hatch_styles[i];
+        for (int j = 0; j < row.size() && j < hatch_styles_table_->columnCount(); ++j) {
+            QTableWidgetItem* item = new QTableWidgetItem(row[j]);
+            if (j > 0) {  // Make non-name columns editable
+                item->setFlags(item->flags() | Qt::ItemIsEditable);
+            }
+            hatch_styles_table_->setItem(i, j, item);
+        }
+    }
+    
+    hatch_styles_table_->resizeColumnsToContents();
+}
+
+void QtPropertyPanel::setupStyleTableEditing(QTableWidget* table) {
+    if (!table) {
+        return;
+    }
+    
+    connect(table, &QTableWidget::cellDoubleClicked, this, &QtPropertyPanel::onStyleTableDoubleClicked);
+    connect(table, &QTableWidget::itemChanged, this, &QtPropertyPanel::onStyleTableItemChanged);
+    connect(table, &QTableWidget::itemSelectionChanged, this, [this, table]() {
+        bool has_selection = table->selectedItems().size() > 0;
+        if (edit_style_button_) {
+            edit_style_button_->setEnabled(has_selection);
+        }
+        
+        // Determine which table was selected
+        if (table == line_styles_table_) {
+            current_editing_style_type_ = "Line";
+        } else if (table == text_styles_table_) {
+            current_editing_style_type_ = "Text";
+        } else if (table == dimension_styles_table_) {
+            current_editing_style_type_ = "Dimension";
+        } else if (table == hatch_styles_table_) {
+            current_editing_style_type_ = "Hatch";
+        }
+        
+        if (has_selection && table->currentRow() >= 0) {
+            QTableWidgetItem* name_item = table->item(table->currentRow(), 0);
+            if (name_item) {
+                current_editing_style_name_ = name_item->text();
+            }
+        }
+        
+        updateStylePreview();
+    });
+}
+
+void QtPropertyPanel::onStyleTableDoubleClicked(int row, int column) {
+    QTableWidget* table = qobject_cast<QTableWidget*>(sender());
+    if (!table) {
+        return;
+    }
+    
+    QTableWidgetItem* item = table->item(row, column);
+    if (item && column > 0) {  // Allow editing non-name columns
+        table->editItem(item);
+    }
+}
+
+void QtPropertyPanel::onStyleTableItemChanged(QTableWidgetItem* item) {
+    if (!item) {
+        return;
+    }
+    
+    QTableWidget* table = qobject_cast<QTableWidget*>(sender());
+    if (!table) {
+        return;
+    }
+    
+    int row = item->row();
+    int col = item->column();
+    
+    // Get style name from first column
+    QTableWidgetItem* name_item = table->item(row, 0);
+    QString style_name = name_item ? name_item->text() : QString();
+    
+    // Determine style type
+    QString style_type;
+    if (table == line_styles_table_) {
+        style_type = "Line";
+    } else if (table == text_styles_table_) {
+        style_type = "Text";
+    } else if (table == dimension_styles_table_) {
+        style_type = "Dimension";
+    } else if (table == hatch_styles_table_) {
+        style_type = "Hatch";
+    }
+    
+    // Build properties map
+    QVariantMap properties;
+    QString header = table->horizontalHeaderItem(col) ? table->horizontalHeaderItem(col)->text() : QString();
+    properties[header] = item->text();
+    
+    // Emit signal
+    emit styleChanged(style_type, style_name, properties);
+    
+    // Update preview
+    updateStylePreview();
+}
+
+void QtPropertyPanel::onEditStyleProperties() {
+    QTableWidget* table = nullptr;
+    if (line_styles_table_ && line_styles_table_->hasFocus()) {
+        table = line_styles_table_;
+    } else if (text_styles_table_ && text_styles_table_->hasFocus()) {
+        table = text_styles_table_;
+    } else if (dimension_styles_table_ && dimension_styles_table_->hasFocus()) {
+        table = dimension_styles_table_;
+    } else if (hatch_styles_table_ && hatch_styles_table_->hasFocus()) {
+        table = hatch_styles_table_;
+    } else if (line_styles_table_ && line_styles_table_->currentRow() >= 0) {
+        table = line_styles_table_;
+    } else if (text_styles_table_ && text_styles_table_->currentRow() >= 0) {
+        table = text_styles_table_;
+    } else if (dimension_styles_table_ && dimension_styles_table_->currentRow() >= 0) {
+        table = dimension_styles_table_;
+    } else if (hatch_styles_table_ && hatch_styles_table_->currentRow() >= 0) {
+        table = hatch_styles_table_;
+    }
+    
+    if (!table || table->currentRow() < 0) {
+        return;
+    }
+    
+    // Create properties dialog
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Edit Style Properties"));
+    QVBoxLayout* layout = new QVBoxLayout(&dialog);
+    
+    QTableWidgetItem* name_item = table->item(table->currentRow(), 0);
+    QString style_name = name_item ? name_item->text() : QString();
+    
+    QLabel* name_label = new QLabel(tr("Style: %1").arg(style_name), &dialog);
+    layout->addWidget(name_label);
+    
+    QFormLayout* form = new QFormLayout();
+    for (int col = 0; col < table->columnCount(); ++col) {
+        QTableWidgetItem* item = table->item(table->currentRow(), col);
+        if (!item) {
+            continue;
+        }
+        
+        QString header = table->horizontalHeaderItem(col) ? table->horizontalHeaderItem(col)->text() : QString();
+        QLineEdit* edit = new QLineEdit(item->text(), &dialog);
+        if (col == 0) {
+            edit->setEnabled(false);  // Name is read-only
+        }
+        form->addRow(header + ":", edit);
+    }
+    layout->addLayout(form);
+    
+    QPushButton* ok_button = new QPushButton(tr("OK"), &dialog);
+    QPushButton* cancel_button = new QPushButton(tr("Cancel"), &dialog);
+    QHBoxLayout* button_layout = new QHBoxLayout();
+    button_layout->addStretch();
+    button_layout->addWidget(ok_button);
+    button_layout->addWidget(cancel_button);
+    layout->addLayout(button_layout);
+    
+    connect(ok_button, &QPushButton::clicked, &dialog, &QDialog::accept);
+    connect(cancel_button, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        // Update table items from dialog
+        int form_index = 0;
+        for (int col = 0; col < table->columnCount(); ++col) {
+            QTableWidgetItem* item = table->item(table->currentRow(), col);
+            if (!item) {
+                continue;
+            }
+            
+            QLineEdit* edit = qobject_cast<QLineEdit*>(form->itemAt(form_index, QFormLayout::FieldRole)->widget());
+            if (edit && col > 0) {  // Don't update name
+                item->setText(edit->text());
+            }
+            form_index++;
+        }
+        
+        // Emit change signal
+        QVariantMap properties;
+        for (int col = 1; col < table->columnCount(); ++col) {
+            QTableWidgetItem* item = table->item(table->currentRow(), col);
+            if (item) {
+                QString header = table->horizontalHeaderItem(col) ? table->horizontalHeaderItem(col)->text() : QString();
+                properties[header] = item->text();
+            }
+        }
+        
+        emit styleChanged(current_editing_style_type_, style_name, properties);
+        updateStylePreview();
+    }
+}
+
+void QtPropertyPanel::onStylePreviewUpdate() {
+    updateStylePreview();
+}
+
+void QtPropertyPanel::updateStylePreview() {
+    if (!style_preview_widget_) {
+        return;
+    }
+    
+    // Simple preview rendering (in real implementation, would render actual style)
+    QString preview_text = tr("Style Preview");
+    if (!current_editing_style_name_.isEmpty()) {
+        preview_text = tr("Preview: %1 (%2)").arg(current_editing_style_name_, current_editing_style_type_);
+    }
+    
+    style_preview_widget_->setToolTip(preview_text);
 }
 
 void QtPropertyPanel::setStyleInfo(const QString& info) {

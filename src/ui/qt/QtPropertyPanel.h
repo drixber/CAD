@@ -3,11 +3,14 @@
 #include <QWidget>
 
 #include <QComboBox>
+#include <QDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTableWidget>
+#include <QVariantMap>
+#include <QWidget>
 
 namespace cad {
 namespace ui {
@@ -48,6 +51,17 @@ public:
     void setStylePresetSelector(const QStringList& presets);
     void setLineStylesTable(const QList<QStringList>& line_styles);
     void setTextStylesTable(const QList<QStringList>& text_styles);
+    void setDimensionStylesTable(const QList<QStringList>& dimension_styles);
+    void setHatchStylesTable(const QList<QStringList>& hatch_styles);
+    
+signals:
+    void styleChanged(const QString& style_type, const QString& style_name, const QVariantMap& properties);
+
+private slots:
+    void onStyleTableDoubleClicked(int row, int column);
+    void onStyleTableItemChanged(QTableWidgetItem* item);
+    void onEditStyleProperties();
+    void onStylePreviewUpdate();
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -64,14 +78,26 @@ private:
     QComboBox* style_preset_selector_{nullptr};
     QTableWidget* line_styles_table_{nullptr};
     QTableWidget* text_styles_table_{nullptr};
+    QTableWidget* dimension_styles_table_{nullptr};
+    QTableWidget* hatch_styles_table_{nullptr};
+    QWidget* style_preview_widget_{nullptr};
+    QPushButton* edit_style_button_{nullptr};
     QLineEdit* bom_filter_{nullptr};
     QComboBox* bom_sort_column_{nullptr};
     QPushButton* bom_export_button_{nullptr};
     QList<BomItem> bom_items_cache_;
+    QString current_editing_style_type_;
+    QString current_editing_style_name_;
     
     void updateBomTable(const QList<BomItem>& items);
     void updateStyleInfo(const QString& info);
     void updateAnnotationTable(const QList<AnnotationItem>& items);
+    void updateLineStylesTable(const QList<QStringList>& line_styles);
+    void updateTextStylesTable(const QList<QStringList>& text_styles);
+    void updateDimensionStylesTable(const QList<QStringList>& dimension_styles);
+    void updateHatchStylesTable(const QList<QStringList>& hatch_styles);
+    void updateStylePreview();
+    void setupStyleTableEditing(QTableWidget* table);
     void filterBomTable();
     void sortBomTable();
     void exportBomTable();

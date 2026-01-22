@@ -160,7 +160,7 @@ pending_items:
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching optimization (advanced preloading strategies, multi-threaded loading).
 - Collision/interference checks refinement (precise geometry-based collision detection).
-- Drawing styles UI editor enhancements (style property editing, preview rendering).
+- Drawing styles UI editor enhancements (advanced preview rendering with actual style visualization).
 - BOM pipeline UI display widget enhancements (advanced filtering, multi-column sort).
 - Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
