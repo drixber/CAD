@@ -158,7 +158,7 @@ completed_items:
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
-- Large assembly LOD/caching optimization (performance tuning).
+- Large assembly LOD/caching optimization (advanced preloading strategies, multi-threaded loading).
 - Collision/interference checks refinement (precise geometry-based collision detection).
 - Drawing styles UI editor enhancements (style property editing, preview rendering).
 - BOM pipeline UI display widget enhancements (advanced filtering, multi-column sort).
