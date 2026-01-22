@@ -82,7 +82,7 @@ void UpdateChecker::scheduleAutoCheck() {
 }
 
 void UpdateChecker::downloadUpdateInstaller(const QString& url) {
-    QNetworkRequest request(QUrl(url));
+    QNetworkRequest request{QUrl(url)};
     QNetworkReply* reply = network_manager_->get(request);
     
     connect(reply, &QNetworkReply::downloadProgress, this, [this](qint64 bytesReceived, qint64 bytesTotal) {
