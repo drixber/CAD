@@ -156,8 +156,7 @@ completed_items:
 - Detection mode can be set to BoundingBox, FeatureBased, or Precise.
 
 pending_items:
-- FreeCAD/OCCT/Qt/Coin3D bindings full implementation (currently scaffold only).
-- 3D viewport integration full implementation (currently scaffold only).
+- OCCT (OpenCASCADE) Kernel-Bindings vollständige Integration (optional, kann später hinzugefügt werden).
 - Production deployment and testing.
 
 decisions_made:
