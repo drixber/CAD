@@ -1,0 +1,75 @@
+================================================================================
+CADursor - Installationsanleitung
+================================================================================
+
+SCHNELLSTART:
+-------------
+
+1. Projekt kompilieren:
+   --------------------
+   PowerShell öffnen und ins Projektverzeichnis wechseln:
+   
+   cd "C:\Users\Darius Herrmann\cad\CAD"
+   
+   CMake konfigurieren:
+   cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCAD_USE_QT=ON
+   
+   Projekt bauen:
+   cmake --build build --config Release
+   
+   Die .exe wird erstellt in: build\Release\cad_desktop.exe
+
+
+2. Installer erstellen:
+   --------------------
+   NSIS installieren (falls noch nicht vorhanden):
+   Download von: https://nsis.sourceforge.io/Download
+   
+   Installer kompilieren:
+   cd installer
+   "C:\Program Files (x86)\NSIS\makensis.exe" cadursor.nsi
+   
+   Oder NSIS GUI öffnen und cadursor.nsi laden und kompilieren.
+   
+   Der Installer wird erstellt als: installer\CADursorSetup.exe
+
+
+3. Installation:
+   -------------
+   Doppelklick auf CADursorSetup.exe
+   Dem Installationsassistenten folgen
+   Fertig!
+
+
+DETAILLIERTE ANLEITUNG:
+-----------------------
+
+Siehe: docs\INSTALLATION.md
+
+
+DIREKTE AUSFÜHRUNG (ohne Installer):
+-------------------------------------
+
+Sie können die Anwendung auch direkt ausführen ohne Installation:
+
+1. Kompilieren Sie das Projekt (siehe oben)
+2. Führen Sie aus: build\Release\cad_desktop.exe
+
+Hinweis: Stellen Sie sicher, dass alle Qt-DLLs im gleichen Verzeichnis sind.
+
+
+VORAUSSETZUNGEN:
+---------------
+
+- Windows 10/11 (64-bit)
+- Visual Studio 2019 oder höher
+- CMake 3.26+
+- Qt 5.15+ oder Qt 6.x
+- NSIS 3.0+ (nur für Installer-Erstellung)
+
+
+PROBLEME?
+---------
+
+Siehe: docs\INSTALLATION.md Abschnitt "Troubleshooting"
+
