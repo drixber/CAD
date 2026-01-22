@@ -30,7 +30,14 @@ target_include_directories(cad_ui
 )
 
 if(CAD_USE_QT)
-    find_package(Qt6 REQUIRED COMPONENTS Widgets)
-    target_link_libraries(cad_ui PUBLIC Qt6::Widgets)
-    target_compile_definitions(cad_ui PUBLIC CAD_USE_QT=1)
+    # Versuche zuerst Qt6, dann Qt5
+    find_package(Qt6 QUIET COMPONENTS Widgets)
+    if(Qt6_FOUND)
+        target_link_libraries(cad_ui PUBLIC Qt6::Widgets)
+        target_compile_definitions(cad_ui PUBLIC CAD_USE_QT=1)
+    else()
+        find_package(Qt5 REQUIRED COMPONENTS Widgets)
+        target_link_libraries(cad_ui PUBLIC Qt5::Widgets)
+        target_compile_definitions(cad_ui PUBLIC CAD_USE_QT=1)
+    endif()
 endif()
