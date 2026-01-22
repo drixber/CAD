@@ -85,6 +85,9 @@ completed_items:
 - Expanded drawing styles framework with LineType, FontWeight, DimensionStyle, and HatchStyle.
 - Added style presets for ISO, ANSI, and JIS standards.
 - Added factory methods for creating line, text, and dimension styles.
+- Added MBD 3D annotation rendering hook with visibility controls.
+- Extended PmiAnnotation with visibility, font size, color, and leader line support.
+- Added prepareForRendering method to filter visible PMI data for viewport.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -94,7 +97,7 @@ pending_items:
 - Drawing styles UI integration and style editor.
 - BOM pipeline UI integration and assembly registry lookup.
 - Annotation positioning refinement (leader lines, attachment points).
-- MBD 3D annotation rendering hook.
+- MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring to actual CAD operations.
 
 decisions_made:
@@ -171,5 +174,9 @@ decisions_made:
 - Dimension styles include arrow size, extension line settings, units, and decimal places.
 - Hatch styles support pattern, scale, angle, and color.
 - Style presets implemented for ISO, ANSI, and JIS standards with appropriate measurements.
+- MBD rendering hook provides prepareForRendering method for viewport integration.
+- PmiAnnotation supports visibility modes (Always, OnSelection, OnHover, Hidden).
+- PMI annotations include font size, color, and leader line endpoints for 3D positioning.
+- MbdRenderRequest controls visibility of annotations, datums, and tolerances separately.
 
 estimated_remaining_time: 70-110 weeks
