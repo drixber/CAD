@@ -317,5 +317,14 @@ decisions_made:
 - Phase 7: Unit Tests für Core-Module implementiert (ModelerTest.cpp mit Sketch, Part, Assembly, Constraint Tests).
 - Phase 7: Test-Infrastruktur in CMakeLists.txt integriert (modeler_test Executable).
 - Phase 7: Dokumentation erweitert (PHASE_6_7_SUMMARY.md).
+- Phase 8-11: 3D Viewport Coin3D Integration erweitert (Scene Graph Management, Ray-Casting Interface, Display Modes).
+- Phase 8-11: FreeCAD Geometry Sync vollständig implementiert (syncGeometry, syncConstraints, Part Feature Mapping).
+- Phase 8-11: Import/Export STEP/IGES/STL/DWG/DXF mit echten Datei-Operationen implementiert.
+- Phase 8-11: Constraint Solver erweitert (Parallel, Perpendicular, Tangent, Equal, Angle Constraints, DOF Analysis).
+- Phase 8-11: Simulation Service FEA erweitert (Mesh-Generierung, Material-Eigenschaften).
+- Phase 8-11: TechDrawBridge vollständig implementiert (View-Erstellung, Dimension-Sync, Assoziative Links).
+- Phase 8-11: Assembly File Loading mit ImportExportService-Integration implementiert.
+- Phase 8-11: Performance-Optimierung erweitert (LOD, Caching, Multi-Threading-Vorbereitung).
+- Phase 8-11: Undo/Redo System vollständig implementiert (History Management, Max Size, Command Tracking).
 
-estimated_remaining_time: 70-110 weeks
+estimated_remaining_time: 60-85 weeks
