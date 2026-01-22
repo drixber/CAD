@@ -38,9 +38,42 @@ Annotation AnnotationService::createNoteAnnotation(const std::string& text, doub
 
 Annotation AnnotationService::createCalloutAnnotation(const std::string& text, double x, double y, double leader_x, double leader_y) const {
     Annotation ann = createAnnotation(AnnotationType::Callout, text, x, y);
-    // Store leader endpoint in view_name temporarily (will be replaced with proper structure later)
-    ann.view_name = std::to_string(leader_x) + "," + std::to_string(leader_y);
+    LeaderPoint leader_point;
+    leader_point.x = leader_x;
+    leader_point.y = leader_y;
+    ann.leader_points.push_back(leader_point);
+    ann.has_leader = true;
     ann.font_size = 2.5;
+    return ann;
+}
+
+Annotation AnnotationService::createLeaderAnnotation(const std::string& text, const std::vector<LeaderPoint>& leader_points, double text_x, double text_y) const {
+    Annotation ann = createAnnotation(AnnotationType::Leader, text, text_x, text_y);
+    ann.leader_points = leader_points;
+    ann.has_leader = !leader_points.empty();
+    ann.font_size = 2.5;
+    return ann;
+}
+
+Annotation AnnotationService::createAttachedAnnotation(const std::string& text, const AttachmentPoint& attachment, double offset_x, double offset_y) const {
+    Annotation ann = createAnnotation(AnnotationType::Note, text, attachment.x + offset_x, attachment.y + offset_y);
+    ann.attachment_point = attachment;
+    ann.has_attachment = true;
+    ann.attached_to_view = true;
+    
+    // Create leader from attachment point to annotation text
+    LeaderPoint leader_start;
+    leader_start.x = attachment.x;
+    leader_start.y = attachment.y;
+    ann.leader_points.push_back(leader_start);
+    
+    LeaderPoint leader_end;
+    leader_end.x = attachment.x + offset_x;
+    leader_end.y = attachment.y + offset_y;
+    ann.leader_points.push_back(leader_end);
+    ann.has_leader = true;
+    
+    ann.font_size = 2.0;
     return ann;
 }
 
@@ -99,6 +132,48 @@ std::vector<Annotation> AnnotationService::buildSheetAnnotations(const DrawingSh
     return annotations;
 }
 
+LeaderPoint AnnotationService::createLeaderPoint(double x, double y) const {
+    LeaderPoint point;
+    point.x = x;
+    point.y = y;
+    return point;
+}
+
+AttachmentPoint AnnotationService::createAttachmentPoint(double x, double y, const std::string& entity_id) const {
+    AttachmentPoint point;
+    point.x = x;
+    point.y = y;
+    point.entity_id = entity_id;
+    point.snap_to_geometry = !entity_id.empty();
+    return point;
+}
+
+std::vector<LeaderPoint> AnnotationService::createPolylineLeader(const std::vector<std::pair<double, double>>& points) const {
+    std::vector<LeaderPoint> leader_points;
+    for (const auto& pt : points) {
+        LeaderPoint leader_pt = createLeaderPoint(pt.first, pt.second);
+        leader_points.push_back(leader_pt);
+    }
+    return leader_points;
+}
+
+Annotation AnnotationService::attachToGeometry(const Annotation& annotation, const AttachmentPoint& attachment) const {
+    Annotation attached = annotation;
+    attached.attachment_point = attachment;
+    attached.has_attachment = true;
+    
+    // Add leader from attachment to annotation if not already present
+    if (!attached.has_leader) {
+        LeaderPoint start = createLeaderPoint(attachment.x, attachment.y);
+        LeaderPoint end = createLeaderPoint(attached.x, attached.y);
+        attached.leader_points.push_back(start);
+        attached.leader_points.push_back(end);
+        attached.has_leader = true;
+    }
+    
+    return attached;
+}
+
 Annotation AnnotationService::createAnnotation(AnnotationType type, const std::string& text, double x, double y) const {
     Annotation ann;
     ann.text = text;
@@ -110,6 +185,8 @@ Annotation AnnotationService::createAnnotation(AnnotationType type, const std::s
     ann.style_name = "Annotation";
     ann.font_size = 2.5;
     ann.attached_to_view = false;
+    ann.has_leader = false;
+    ann.has_attachment = false;
     return ann;
 }
 

@@ -88,6 +88,10 @@ completed_items:
 - Added MBD 3D annotation rendering hook with visibility controls.
 - Extended PmiAnnotation with visibility, font size, color, and leader line support.
 - Added prepareForRendering method to filter visible PMI data for viewport.
+- Refined annotation positioning with leader lines and attachment points.
+- Added LeaderPoint and AttachmentPoint structures to Annotation.
+- Implemented createLeaderAnnotation and createAttachedAnnotation methods.
+- Added helper methods for creating polyline leaders and attaching to geometry.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -96,7 +100,7 @@ pending_items:
 - Collision/interference checks (full).
 - Drawing styles UI integration and style editor.
 - BOM pipeline UI integration and assembly registry lookup.
-- Annotation positioning refinement (leader lines, attachment points).
+- Annotation positioning UI integration (interactive leader line editing).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring to actual CAD operations.
 
@@ -178,5 +182,10 @@ decisions_made:
 - PmiAnnotation supports visibility modes (Always, OnSelection, OnHover, Hidden).
 - PMI annotations include font size, color, and leader line endpoints for 3D positioning.
 - MbdRenderRequest controls visibility of annotations, datums, and tolerances separately.
+- Annotation leader lines support multiple points for polyline leaders.
+- Attachment points can snap to geometry entities with entity_id tracking.
+- Leader annotations can have multiple waypoints for complex routing.
+- Attached annotations automatically create leader lines from attachment point to text.
+- Helper methods provided for creating leader points, attachment points, and polyline leaders.
 
 estimated_remaining_time: 70-110 weeks

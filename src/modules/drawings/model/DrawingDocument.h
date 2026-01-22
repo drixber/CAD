@@ -42,6 +42,18 @@ enum class TextAlignment {
     Justified
 };
 
+struct LeaderPoint {
+    double x{0.0};
+    double y{0.0};
+};
+
+struct AttachmentPoint {
+    double x{0.0};
+    double y{0.0};
+    std::string entity_id;
+    bool snap_to_geometry{true};
+};
+
 struct Annotation {
     std::string text;
     double x{0.0};
@@ -53,6 +65,10 @@ struct Annotation {
     double font_size{2.5};
     std::string view_name;
     bool attached_to_view{false};
+    std::vector<LeaderPoint> leader_points;
+    AttachmentPoint attachment_point;
+    bool has_leader{false};
+    bool has_attachment{false};
 };
 
 struct Dimension {
