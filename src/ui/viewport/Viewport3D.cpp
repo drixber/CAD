@@ -6,9 +6,14 @@
 #include <QResizeEvent>
 #include <QWheelEvent>
 #include <QColor>
+#include <QPolygon>
 #include <cmath>
 #include <map>
 #include <algorithm>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace cad {
 namespace ui {
@@ -359,37 +364,136 @@ void Viewport3D::renderAxes(QPainter& painter) {
 }
 
 void Viewport3D::renderScene(QPainter& painter) {
-    // Render any stored geometry
-    // In real implementation: would render 3D geometry using proper projection
-    // For now, just show that rendering is active
-    if (!rendered_geometry_ids_.empty()) {
-        QString display_mode_str;
-        switch (display_mode_) {
-            case DisplayMode::Wireframe:
-                display_mode_str = "Wireframe";
-                break;
-            case DisplayMode::Shaded:
-                display_mode_str = "Shaded";
-                break;
-            case DisplayMode::HiddenLine:
-                display_mode_str = "HiddenLine";
-                break;
+    // Render 3D geometry using isometric projection
+    if (rendered_geometry_ids_.empty()) {
+        return;
+    }
+    
+    int center_x = width() / 2;
+    int center_y = height() / 2;
+    double scale = 20.0;  // Scale factor for 3D to 2D projection
+    
+    // Isometric projection matrix
+    // Standard isometric angles: 30 degrees
+    const double iso_angle = 30.0 * M_PI / 180.0;
+    const double cos_iso = std::cos(iso_angle);
+    const double sin_iso = std::sin(iso_angle);
+    
+    // Project 3D point to 2D screen coordinates
+    auto project3D = [&](double x, double y, double z) -> QPoint {
+        // Apply camera transform
+        double dx = x - camera_.target_x;
+        double dy = y - camera_.target_y;
+        double dz = z - camera_.target_z;
+        
+        // Simple rotation around Y axis (based on camera position)
+        double cam_angle = std::atan2(camera_.position_x - camera_.target_x, 
+                                      camera_.position_z - camera_.target_z);
+        double cos_cam = std::cos(cam_angle);
+        double sin_cam = std::sin(cam_angle);
+        double rot_x = dx * cos_cam - dz * sin_cam;
+        double rot_z = dx * sin_cam + dz * cos_cam;
+        
+        // Isometric projection
+        int screen_x = center_x + static_cast<int>((rot_x - rot_z) * cos_iso * scale);
+        int screen_y = center_y - static_cast<int>((rot_x + rot_z) * sin_iso * scale + dy * scale);
+        
+        return QPoint(screen_x, screen_y);
+    };
+    
+    // Render each geometry object
+    int obj_index = 0;
+    for (const auto& geom_id : rendered_geometry_ids_) {
+        bool is_selected = std::find(selected_objects_.begin(), selected_objects_.end(), geom_id) != selected_objects_.end();
+        bool is_highlighted = std::find(highlighted_objects_.begin(), highlighted_objects_.end(), geom_id) != highlighted_objects_.end();
+        
+        QColor obj_color = QColor(150, 150, 200);
+        if (is_selected) {
+            obj_color = QColor(255, 255, 0);
+        } else if (is_highlighted) {
+            obj_color = QColor(0, 255, 255);
         }
         
-        painter.setPen(QPen(QColor(200, 200, 200), 2));
-        painter.drawText(10, 20, QString("Rendering %1 object(s) - %2").arg(rendered_geometry_ids_.size()).arg(display_mode_str));
+        // Render simple 3D representation based on geometry type
+        // For now, render as wireframe boxes/circles
+        double offset_x = (obj_index % 5) * 2.0 - 4.0;
+        double offset_y = (obj_index / 5) * 2.0 - 4.0;
+        double offset_z = 0.0;
         
-        // Show selection info
-        if (!selected_objects_.empty()) {
-            painter.setPen(QPen(QColor(255, 255, 0), 2));
-            painter.drawText(10, 40, QString("Selected: %1 object(s)").arg(selected_objects_.size()));
+        if (display_mode_ == DisplayMode::Wireframe || display_mode_ == DisplayMode::HiddenLine) {
+            // Draw wireframe box
+            painter.setPen(QPen(obj_color, 1));
+            
+            // Bottom face
+            QPoint p1 = project3D(offset_x, offset_y, offset_z);
+            QPoint p2 = project3D(offset_x + 1.0, offset_y, offset_z);
+            QPoint p3 = project3D(offset_x + 1.0, offset_y + 1.0, offset_z);
+            QPoint p4 = project3D(offset_x, offset_y + 1.0, offset_z);
+            painter.drawLine(p1, p2);
+            painter.drawLine(p2, p3);
+            painter.drawLine(p3, p4);
+            painter.drawLine(p4, p1);
+            
+            // Top face
+            QPoint p5 = project3D(offset_x, offset_y, offset_z + 1.0);
+            QPoint p6 = project3D(offset_x + 1.0, offset_y, offset_z + 1.0);
+            QPoint p7 = project3D(offset_x + 1.0, offset_y + 1.0, offset_z + 1.0);
+            QPoint p8 = project3D(offset_x, offset_y + 1.0, offset_z + 1.0);
+            painter.drawLine(p5, p6);
+            painter.drawLine(p6, p7);
+            painter.drawLine(p7, p8);
+            painter.drawLine(p8, p5);
+            
+            // Vertical edges
+            painter.drawLine(p1, p5);
+            painter.drawLine(p2, p6);
+            painter.drawLine(p3, p7);
+            painter.drawLine(p4, p8);
+        } else {
+            // Shaded mode: draw filled polygon
+            QPoint p1 = project3D(offset_x, offset_y, offset_z);
+            QPoint p2 = project3D(offset_x + 1.0, offset_y, offset_z);
+            QPoint p3 = project3D(offset_x + 1.0, offset_y + 1.0, offset_z);
+            QPoint p4 = project3D(offset_x, offset_y + 1.0, offset_z);
+            
+            QPolygon front_face;
+            front_face << p1 << p2 << p3 << p4;
+            
+            QColor fill_color = obj_color;
+            fill_color.setAlpha(180);
+            painter.setBrush(QBrush(fill_color));
+            painter.setPen(QPen(obj_color.darker(), 1));
+            painter.drawPolygon(front_face);
         }
         
-        // Show highlighted objects
-        if (!highlighted_objects_.empty()) {
-            painter.setPen(QPen(QColor(0, 255, 255), 2));
-            painter.drawText(10, 60, QString("Highlighted: %1 object(s)").arg(highlighted_objects_.size()));
-        }
+        obj_index++;
+    }
+    
+    // Show status info
+    QString display_mode_str;
+    switch (display_mode_) {
+        case DisplayMode::Wireframe:
+            display_mode_str = "Wireframe";
+            break;
+        case DisplayMode::Shaded:
+            display_mode_str = "Shaded";
+            break;
+        case DisplayMode::HiddenLine:
+            display_mode_str = "HiddenLine";
+            break;
+    }
+    
+    painter.setPen(QPen(QColor(200, 200, 200), 1));
+    painter.drawText(10, height() - 40, QString("Objects: %1 | Mode: %2").arg(rendered_geometry_ids_.size()).arg(display_mode_str));
+    
+    if (!selected_objects_.empty()) {
+        painter.setPen(QPen(QColor(255, 255, 0), 1));
+        painter.drawText(10, height() - 25, QString("Selected: %1").arg(selected_objects_.size()));
+    }
+    
+    if (!highlighted_objects_.empty()) {
+        painter.setPen(QPen(QColor(0, 255, 255), 1));
+        painter.drawText(10, height() - 10, QString("Highlighted: %1").arg(highlighted_objects_.size()));
     }
 }
 
@@ -425,24 +529,50 @@ void Viewport3D::removeNodeFromSceneGraph(const std::string& geometry_id) {
 }
 
 std::string Viewport3D::pickObjectAt(int x, int y) const {
-    // In real implementation: ray-casting to pick object at screen coordinates
+    // Simple object picking using bounding box check
+    // In real implementation with Coin3D: would use ray-casting
     // if (coin3d_viewer_) {
     //     SoRayPickAction pick_action(coin3d_viewer_->getViewportRegion());
     //     pick_action.setPoint(SbVec2s(x, y));
     //     pick_action.apply(static_cast<SoNode*>(scene_graph_root_));
     //     SoPickedPoint* picked = pick_action.getPickedPoint();
     //     if (picked) {
-    //         // Extract object ID from picked point
     //         return extractObjectId(picked);
     //     }
     // }
-    (void)x;
-    (void)y;
+    
+    // For now: check if click is near any rendered geometry
+    int center_x = width() / 2;
+    int center_y = height() / 2;
+    double scale = 20.0;
+    const double iso_angle = 30.0 * M_PI / 180.0;
+    const double cos_iso = std::cos(iso_angle);
+    const double sin_iso = std::sin(iso_angle);
+    
+    int obj_index = 0;
+    for (const auto& geom_id : rendered_geometry_ids_) {
+        double offset_x = (obj_index % 5) * 2.0 - 4.0;
+        double offset_y = (obj_index / 5) * 2.0 - 4.0;
+        
+        // Project center of object to screen
+        int screen_x = center_x + static_cast<int>((offset_x - 0.0) * cos_iso * scale);
+        int screen_y = center_y - static_cast<int>((offset_x + 0.0) * sin_iso * scale + offset_y * scale);
+        
+        // Check if click is within bounding box (simple square check)
+        int tolerance = 30;
+        if (std::abs(x - screen_x) < tolerance && std::abs(y - screen_y) < tolerance) {
+            return geom_id;
+        }
+        
+        obj_index++;
+    }
+    
     return {};
 }
 
 void Viewport3D::updateSceneGraphDisplayMode() {
-    // In real implementation: update Coin3D display mode for all nodes
+    // Update display mode for rendering
+    // In real implementation with Coin3D: would update scene graph nodes
     // SoDrawStyle* draw_style = new SoDrawStyle();
     // switch (display_mode_) {
     //     case DisplayMode::Wireframe:
@@ -456,7 +586,13 @@ void Viewport3D::updateSceneGraphDisplayMode() {
     //         // Add hidden line removal
     //         break;
     // }
-    // // Apply to scene graph
+    // if (scene_graph_root_) {
+    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
+    //     root->insertChild(draw_style, 0);
+    // }
+    
+    // Trigger repaint to apply new display mode
+    updateView();
 }
 
 }  // namespace ui

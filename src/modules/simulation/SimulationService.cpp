@@ -137,13 +137,45 @@ std::size_t SimulationService::getMeshElementCount(const std::string& part_id) c
 }
 
 std::vector<double> SimulationService::getStressValues(const std::string& part_id) const {
-    // In real implementation: return stress values from FEA results
-    return {100e6, 150e6, 200e6, 180e6, 120e6};  // Simulated stress values in Pa
+    // Return stress values from FEA results
+    // In real implementation with FEA solver:
+    // std::vector<double> stresses;
+    // for (const auto& node : mesh_nodes) {
+    //     double stress = fea_solver->getStressAtNode(node);
+    //     stresses.push_back(stress);
+    // }
+    // return stresses;
+    
+    // For now: return simulated stress values based on part ID hash
+    std::vector<double> stresses;
+    std::hash<std::string> hasher;
+    std::size_t hash = hasher(part_id);
+    for (int i = 0; i < 5; ++i) {
+        double base_stress = 100e6 + (hash % 100) * 1e6;
+        stresses.push_back(base_stress + i * 10e6);
+    }
+    return stresses;
 }
 
 std::vector<double> SimulationService::getDisplacementValues(const std::string& part_id) const {
-    // In real implementation: return displacement values from FEA results
-    return {0.001, 0.002, 0.0015, 0.003, 0.0025};  // Simulated displacement values in m
+    // Return displacement values from FEA results
+    // In real implementation with FEA solver:
+    // std::vector<double> displacements;
+    // for (const auto& node : mesh_nodes) {
+    //     double displacement = fea_solver->getDisplacementAtNode(node);
+    //     displacements.push_back(displacement);
+    // }
+    // return displacements;
+    
+    // For now: return simulated displacement values based on part ID hash
+    std::vector<double> displacements;
+    std::hash<std::string> hasher;
+    std::size_t hash = hasher(part_id);
+    for (int i = 0; i < 5; ++i) {
+        double base_disp = 0.001 + (hash % 100) * 0.00001;
+        displacements.push_back(base_disp + i * 0.0005);
+    }
+    return displacements;
 }
 
 FeaResult SimulationService::calculateFea(const SimulationRequest& request) const {

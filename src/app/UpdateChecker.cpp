@@ -60,11 +60,31 @@ void UpdateChecker::onAutoCheckTimer() {
 void UpdateChecker::onUpdateInfoReceived() {
     // Handle update info response
     // In real implementation: would parse JSON response
+    // QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+    // QJsonObject obj = doc.object();
+    // UpdateInfo info;
+    // info.version = obj["version"].toString().toStdString();
+    // info.download_url = obj["download_url"].toString().toStdString();
+    // // ... parse other fields
+    // emit updateAvailable(info);
+    
+    // For now, emit signal with simulated data
+    UpdateInfo info;
+    info.version = "1.1.0";
+    info.download_url = "https://updates.cadursor.com/downloads/CADursor-1.1.0.exe";
+    emit updateAvailable(info);
 }
 
 void UpdateChecker::onUpdateDownloaded() {
     // Handle downloaded update
-    // In real implementation: would verify and prepare installer
+    // In real implementation: would verify checksum and prepare installer
+    // if (verifyChecksum(downloaded_file, expected_checksum)) {
+    //     emit updateReady(downloaded_file);
+    // } else {
+    //     emit updateError("Checksum verification failed");
+    // }
+    
+    // For now, emit signal with simulated installer path
     emit updateReady("update_installer.exe");
 }
 

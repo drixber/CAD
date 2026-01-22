@@ -48,8 +48,15 @@ bool UpdateService::isUpdateAvailable() const {
 
 bool UpdateService::downloadUpdate(const UpdateInfo& update_info,
                                    std::function<void(const UpdateProgress&)> progress_callback) {
-    // In real implementation: would download from update_info.download_url
-    // For now, simulate download
+    // Download update from server
+    // In real implementation: would use HTTP client to download from update_info.download_url
+    // QNetworkAccessManager* manager = new QNetworkAccessManager();
+    // QNetworkRequest request(QUrl(update_info.download_url));
+    // QNetworkReply* reply = manager->get(request);
+    // // Connect to downloadProgress signal for progress updates
+    // // Save to file as download progresses
+    
+    // For now, simulate download with progress callbacks
     
     UpdateProgress progress;
     progress.total_bytes = update_info.file_size;
@@ -149,8 +156,14 @@ bool UpdateService::performManualUpdate() {
 }
 
 bool UpdateService::fetchUpdateInfo() {
-    // In real implementation: would fetch from update_server_url_/latest
-    // For now, simulate fetch
+    // Fetch update information from server
+    // In real implementation: would use HTTP client
+    // QNetworkAccessManager* manager = new QNetworkAccessManager();
+    // QNetworkRequest request(QUrl(update_server_url_ + "/latest"));
+    // QNetworkReply* reply = manager->get(request);
+    // // Parse JSON response to populate latest_update_info_
+    
+    // For now, simulate fetch with hardcoded values
     
     latest_update_info_.version = "1.1.0";
     latest_update_info_.download_url = update_server_url_ + "/downloads/CADursor-1.1.0.exe";
@@ -163,32 +176,74 @@ bool UpdateService::fetchUpdateInfo() {
 }
 
 bool UpdateService::verifyUpdateFile(const std::string& file_path, const std::string& checksum) const {
-    // In real implementation: would calculate file checksum and compare
-    // For now, just check if file exists
-    std::ifstream file(file_path);
-    return file.good();
+    // Verify update file checksum
+    // In real implementation: would calculate SHA256 or MD5 checksum
+    // std::string calculated_checksum = calculateFileChecksum(file_path);
+    // return calculated_checksum == checksum;
+    
+    // For now, check if file exists and has reasonable size
+    std::ifstream file(file_path, std::ios::binary);
+    if (!file.good()) {
+        return false;
+    }
+    file.seekg(0, std::ios::end);
+    std::streampos file_size = file.tellg();
+    file.close();
+    
+    // Basic validation: file should be at least 1KB
+    return file_size > 1024;
 }
 
 bool UpdateService::extractUpdatePackage(const std::string& file_path, const std::string& extract_path) const {
-    // In real implementation: would extract ZIP/installer package
-    // For now, just create directory
+    // Extract update package
+    // In real implementation: would use ZIP library (e.g., minizip, zlib)
+    // unzFile zip_file = unzOpen(file_path.c_str());
+    // if (!zip_file) {
+    //     return false;
+    // }
+    // // Extract all files to extract_path
+    // unzClose(zip_file);
+    
+    // For now, validate that source file exists
+    std::ifstream file(file_path);
+    if (!file.good()) {
+        return false;
+    }
+    file.close();
+    
+    // In real implementation, would create extract_path directory and extract files
     return true;
 }
 
 bool UpdateService::applyUpdate(const std::string& extract_path) const {
+    // Apply update to installation
     // In real implementation: would:
-    // 1. Stop application
-    // 2. Backup current installation
-    // 3. Copy new files
-    // 4. Update registry
-    // 5. Restart application
+    // 1. Stop application services
+    // 2. Backup current installation directory
+    // 3. Copy new files from extract_path to installation directory
+    // 4. Update Windows registry entries (if needed)
+    // 5. Update version information
+    // 6. Restart application
+    
+    // For now, validate extract path exists
+    std::ifstream test_file(extract_path + "/version.txt");
+    if (!test_file.good()) {
+        // Path might not exist yet, which is OK for simulation
+        return true;
+    }
+    test_file.close();
     
     return true;
 }
 
 void UpdateService::cleanupUpdateFiles(const std::string& file_path) const {
-    // In real implementation: would delete temporary update files
-    // For now, just mark for cleanup
+    // Cleanup temporary update files
+    // In real implementation: would delete downloaded and extracted files
+    // std::remove(file_path.c_str());
+    // std::remove((file_path + "_extracted").c_str());
+    
+    // For now, files are left for manual cleanup
+    // In production, would schedule cleanup or delete immediately
 }
 
 }  // namespace app
