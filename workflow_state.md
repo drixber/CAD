@@ -82,13 +82,16 @@ completed_items:
 - Expanded annotation service with multiple annotation types (Text, Note, Callout, Balloon, Revision, Title).
 - Added annotation positioning options (alignment, rotation, font size, style).
 - Added view-attached annotations and sheet annotation builders.
+- Expanded drawing styles framework with LineType, FontWeight, DimensionStyle, and HatchStyle.
+- Added style presets for ISO, ANSI, and JIS standards.
+- Added factory methods for creating line, text, and dimension styles.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching implementation.
 - Collision/interference checks (full).
-- Drawing styles framework expansion (additional style types and customization).
+- Drawing styles UI integration and style editor.
 - BOM pipeline UI integration and assembly registry lookup.
 - Annotation positioning refinement (leader lines, attachment points).
 - MBD 3D annotation rendering hook.
@@ -163,5 +166,10 @@ decisions_made:
 - Annotations support alignment (Left, Center, Right, Justified), rotation, and font size.
 - Annotations can be attached to views or placed on sheets independently.
 - AnnotationService provides factory methods for creating different annotation types.
+- Drawing styles support LineType (Solid, Dashed, Dotted, DashDot, CenterLine, Phantom).
+- Text styles support FontWeight (Normal, Bold, Light), font family, and color.
+- Dimension styles include arrow size, extension line settings, units, and decimal places.
+- Hatch styles support pattern, scale, angle, and color.
+- Style presets implemented for ISO, ANSI, and JIS standards with appropriate measurements.
 
 estimated_remaining_time: 70-110 weeks
