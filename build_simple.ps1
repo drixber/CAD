@@ -61,42 +61,48 @@ if (Test-Path "build") {
     Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Prüfe make - suche in verschiedenen Pfaden
-$makePath = $null
-$makePaths = @(
-    "$msys2Path\make.exe",
-    "$msys2Path\mingw32-make.exe",
-    "C:\msys64\usr\bin\make.exe"
-)
+# Prüfe Ninja (besser für Windows)
+$ninjaPath = "$msys2Path\ninja.exe"
+$useNinja = Test-Path $ninjaPath
 
-foreach ($path in $makePaths) {
-    if (Test-Path $path) {
-        $makePath = $path
-        break
+if (-not $useNinja) {
+    # Fallback: mingw32-make
+    $makePath = "$msys2Path\mingw32-make.exe"
+    if (-not (Test-Path $makePath)) {
+        Write-Host "Ninja oder mingw32-make nicht gefunden!" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Bitte in MSYS2 UCRT64 Terminal ausführen:" -ForegroundColor Yellow
+        Write-Host "  pacman -S ninja" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Oder:" -ForegroundColor Yellow
+        Write-Host "  pacman -S mingw-w64-ucrt-x86_64-make" -ForegroundColor Cyan
+        Read-Host "Drücken Sie Enter zum Beenden"
+        exit 1
     }
+    Write-Host "mingw32-make gefunden" -ForegroundColor Gray
+} else {
+    Write-Host "Ninja gefunden (empfohlen)" -ForegroundColor Green
 }
-
-if (-not $makePath) {
-    Write-Host "make.exe nicht gefunden!" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Bitte in MSYS2 UCRT64 Terminal ausführen:" -ForegroundColor Yellow
-    Write-Host "  pacman -S make" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Oder versuchen Sie:" -ForegroundColor Yellow
-    Write-Host "  pacman -S mingw-w64-ucrt-x86_64-make" -ForegroundColor Cyan
-    Read-Host "Drücken Sie Enter zum Beenden"
-    exit 1
-}
-Write-Host "make gefunden: $makePath" -ForegroundColor Gray
 
 # CMake konfigurieren
 Write-Host "[1/3] CMake konfigurieren..." -ForegroundColor Yellow
-& "$msys2Path\cmake.exe" -S . -B build `
-    -G "MinGW Makefiles" `
-    -DCMAKE_MAKE_PROGRAM="$makePath" `
-    -DCMAKE_C_COMPILER="$msys2Path\gcc.exe" `
-    -DCMAKE_CXX_COMPILER="$msys2Path\g++.exe" `
-    -DCAD_USE_QT=ON
+
+if ($useNinja) {
+    # Ninja verwenden (empfohlen)
+    & "$msys2Path\cmake.exe" -S . -B build `
+        -G "Ninja" `
+        -DCMAKE_C_COMPILER="$msys2Path\gcc.exe" `
+        -DCMAKE_CXX_COMPILER="$msys2Path\g++.exe" `
+        -DCAD_USE_QT=ON
+} else {
+    # MinGW Makefiles verwenden
+    & "$msys2Path\cmake.exe" -S . -B build `
+        -G "MinGW Makefiles" `
+        -DCMAKE_MAKE_PROGRAM="$makePath" `
+        -DCMAKE_C_COMPILER="$msys2Path\gcc.exe" `
+        -DCMAKE_CXX_COMPILER="$msys2Path\g++.exe" `
+        -DCAD_USE_QT=ON
+}
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FEHLER bei CMake Konfiguration!" -ForegroundColor Red
     Read-Host "Drücken Sie Enter zum Beenden"
