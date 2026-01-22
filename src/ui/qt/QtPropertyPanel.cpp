@@ -1153,7 +1153,7 @@ QString QtPropertyPanel::getAnnotationId(int row) const {
 }
 
 void QtPropertyPanel::updateAnnotationPreview() {
-    if (!annotation_preview_widget_ || current_editing_annotation_row_ < 0 || 
+    if (!style_preview_widget_ || current_editing_annotation_row_ < 0 || 
         current_editing_annotation_row_ >= annotation_items_cache_.size()) {
         return;
     }
@@ -1171,7 +1171,7 @@ void QtPropertyPanel::updateAnnotationPreview() {
         preview_info += tr("\nLeader: %1 points").arg(item.leader_points.size());
     }
     
-    annotation_preview_widget_->setToolTip(preview_info);
+    style_preview_widget_->setToolTip(preview_info);
     
     // Create a simple visual preview using CSS-like styling
     // In real implementation, would override paintEvent and use QPainter

@@ -270,7 +270,7 @@ void QtCommandLine::initializeCommandDefinitions() {
     mate_type.type = "enum";
     mate_type.description = tr("Mate type");
     mate_type.required = true;
-    mate_type.enum_values = {"Coincident", "Parallel", "Perpendicular", "Tangent", "Concentric"};
+    mate_type.enum_values = QStringList({"Coincident", "Parallel", "Perpendicular", "Tangent", "Concentric"});
     mate.parameters.append(mate_type);
     command_definitions_["mate"] = mate;
 }
