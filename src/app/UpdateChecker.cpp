@@ -9,7 +9,7 @@
 #include <QDir>
 
 namespace cad {
-namespace app {
+namespace ui {
 
 UpdateChecker::UpdateChecker(QObject* parent) : QObject(parent) {
     update_service_ = new cad::app::UpdateService();
@@ -108,6 +108,6 @@ void UpdateChecker::downloadUpdateInstaller(const QString& url) {
     });
 }
 
-}  // namespace app
+}  // namespace ui
 }  // namespace cad
 
