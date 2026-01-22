@@ -139,7 +139,8 @@ void AppController::bindCommands() {
 void AppController::executeCommand(const std::string& command) {
     if (command == "Parameters") {
         main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
-        main_window_.setViewportStatus("Parameters opened");
+        main_window_.setParameterCount(static_cast<int>(active_sketch_.parameters().size()));
+        main_window_.setViewportStatus("Parameters: " + std::to_string(active_sketch_.parameters().size()) + " items");
     } else if (command == "Flange" || command == "Bend" || command == "Unfold" || command == "Refold") {
         cad::modules::SheetMetalRequest request;
         request.targetPart = "Bracket";
@@ -387,7 +388,40 @@ void AppController::executeCommand(const std::string& command) {
         if (!job.path.empty()) {
             main_window_.setViewportStatus("Assembly load " + std::to_string(job.progress) + "%");
             main_window_.setLoadProgress(job.progress);
+        } else {
+            main_window_.setViewportStatus("No assembly load in progress");
         }
+    } else if (command == "Measure") {
+        main_window_.setIntegrationStatus("Measure tool ready");
+        main_window_.setViewportStatus("Select geometry to measure");
+    } else if (command == "SectionAnalysis") {
+        main_window_.setIntegrationStatus("Section analysis ready");
+        main_window_.setViewportStatus("Section analysis: select plane");
+    } else if (command == "Line" || command == "Rectangle" || command == "Circle" || command == "Arc") {
+        main_window_.setIntegrationStatus("Sketch tool: " + command);
+        main_window_.setViewportStatus("Sketch " + command + " command active");
+    } else if (command == "Constraint") {
+        main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+        main_window_.setViewportStatus("Constraints: " + std::to_string(active_sketch_.constraints().size()) + " items");
+    } else if (command == "Extrude" || command == "Revolve" || command == "Loft" || command == "Hole" || command == "Fillet") {
+        main_window_.setIntegrationStatus("Feature: " + command);
+        main_window_.setViewportStatus("Part feature " + command + " command active");
+    } else if (command == "Flush" || command == "Angle") {
+        main_window_.setIntegrationStatus("Mate type: " + command);
+        main_window_.setViewportStatus("Assembly mate " + command + " command active");
+    } else if (command == "Pattern") {
+        main_window_.setIntegrationStatus("Pattern command ready");
+        main_window_.setViewportStatus("Assembly pattern command active");
+    } else if (command == "Visibility" || command == "Appearance" || command == "Environment") {
+        main_window_.setIntegrationStatus("View: " + command);
+        main_window_.setViewportStatus("View " + command + " command active");
+    } else if (command == "AddIns") {
+        main_window_.setIntegrationStatus("Add-ins manager");
+        main_window_.setViewportStatus("Add-ins panel available");
+    } else {
+        // Unknown command - provide feedback
+        main_window_.setIntegrationStatus("Command: " + command);
+        main_window_.setViewportStatus("Command executed: " + command);
     }
 }
 

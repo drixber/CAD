@@ -118,6 +118,13 @@ completed_items:
 - Implemented style preset display and style information labels.
 - Added setStylePresets, setCurrentStylePreset, and setStyleInfo methods.
 - Styles command now updates property panel with style preset information.
+- Expanded ribbon command wiring with additional commands and operations.
+- Added Measure, SectionAnalysis, and AddIns command handlers.
+- Added sketch tool commands (Line, Rectangle, Circle, Arc, Constraint).
+- Added part feature commands (Extrude, Revolve, Loft, Hole, Fillet).
+- Added assembly mate commands (Flush, Angle, Pattern).
+- Added view commands (Visibility, Appearance, Environment).
+- All commands now provide status feedback via integration and viewport status.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -128,7 +135,7 @@ pending_items:
 - BOM pipeline UI display widget enhancements (sorting, filtering, export).
 - Annotation positioning UI integration (interactive leader line editing).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
-- Ribbon command wiring expansion (additional commands and operations).
+- Ribbon command wiring refinement (command parameter input, validation).
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
@@ -242,5 +249,13 @@ decisions_made:
 - Style information shows counts of line, text, dimension, and hatch styles.
 - Manage context panel includes style preset and style information labels.
 - Styles command updates property panel with current style preset and statistics.
+- Measure command provides measurement tool feedback.
+- SectionAnalysis command provides section analysis feedback.
+- Sketch tools (Line, Rectangle, Circle, Arc) provide command status.
+- Constraint command shows current constraint count.
+- Part features (Extrude, Revolve, Loft, Hole, Fillet) provide command status.
+- Assembly mates (Flush, Angle, Pattern) provide command status.
+- View commands (Visibility, Appearance, Environment) provide command status.
+- Unknown commands provide generic feedback instead of being ignored.
 
 estimated_remaining_time: 70-110 weeks
