@@ -3,6 +3,8 @@
 #include <QCompleter>
 #include <QKeyEvent>
 #include <QRegularExpression>
+#include <QToolTip>
+#include <QPoint>
 #include <QStringListModel>
 
 namespace cad {
@@ -473,7 +475,9 @@ QString QtCommandLine::getParameterHint(const QString& command, int param_index)
 void QtCommandLine::showCommandTooltip(const QString& command) {
     QString help = getCommandHelp(command);
     setToolTip(help);
-    // In real implementation, would show a tooltip or help dialog
+    
+    QToolTip::showText(mapToGlobal(QPoint(0, height())), help, this, 
+        QRect(0, 0, width(), height()), 5000);
 }
 
 void QtCommandLine::showParameterHint(const QString& command, int param_index) {

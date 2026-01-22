@@ -17,6 +17,11 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QPainter>
+#include <QPixmap>
+#include <QSettings>
+#include <QTextStream>
+#include <QDateTime>
 
 namespace cad {
 namespace ui {
@@ -890,7 +895,12 @@ void QtPropertyPanel::updateStylePreview() {
         return;
     }
     
-    // Simple preview rendering (in real implementation, would render actual style)
+    QPixmap preview(100, 100);
+    preview.fill(QColor(255, 255, 255));
+    QPainter painter(&preview);
+    painter.setPen(QPen(QColor(0, 0, 0), 2));
+    painter.drawRect(10, 10, 80, 80);
+    style_preview_widget_->setPixmap(preview);
     QString preview_text = tr("Style Preview");
     if (!current_editing_style_name_.isEmpty()) {
         preview_text = tr("Preview: %1 (%2)").arg(current_editing_style_name_, current_editing_style_type_);
@@ -1160,8 +1170,25 @@ void QtPropertyPanel::updateAnnotationPreview() {
     
     const AnnotationItem& item = annotation_items_cache_[current_editing_annotation_row_];
     
-    // In a real implementation, would use QPainter to draw leader lines
-    // For now, create a visual representation using stylesheet
+    QPixmap preview(200, 200);
+    preview.fill(QColor(255, 255, 255));
+    QPainter painter(&preview);
+    painter.setPen(QPen(QColor(0, 0, 255), 2));
+    
+    double scale = 10.0;
+    QPointF annotation_pos(item.x * scale + 100, item.y * scale + 100);
+    painter.drawEllipse(annotation_pos, 5, 5);
+    
+    if (item.has_leader && !item.leader_points.isEmpty()) {
+        QPointF last_point = annotation_pos;
+        for (const QPointF& point : item.leader_points) {
+            QPointF scaled_point(point.x() * scale + 100, point.y() * scale + 100);
+            painter.drawLine(last_point, scaled_point);
+            last_point = scaled_point;
+        }
+    }
+    
+    style_preview_widget_->setPixmap(preview);
     QString preview_info = tr("Annotation: %1\nPosition: (%2, %3)")
         .arg(item.text)
         .arg(item.x, 0, 'f', 2)
@@ -1173,28 +1200,89 @@ void QtPropertyPanel::updateAnnotationPreview() {
     
     style_preview_widget_->setToolTip(preview_info);
     
-    // Create a simple visual preview using CSS-like styling
-    // In real implementation, would override paintEvent and use QPainter
-    QString style = "background-color: white; border: 1px solid gray;";
-    style_preview_widget_->setStyleSheet(style);
 }
 
 void QtPropertyPanel::exportBomToFormat(const QString& format, const QString& filename) {
-    // In real implementation: would export BOM to specified format
+    QString actual_filename = filename;
+    if (actual_filename.isEmpty()) {
+        QString default_name = QString("bom_export.%1").arg(format.toLower());
+        actual_filename = QFileDialog::getSaveFileName(this, tr("Export BOM"), default_name,
+            tr("%1 Files (*.%2)").arg(format).arg(format.toLower()));
+    }
+    
+    if (actual_filename.isEmpty()) {
+        return;
+    }
+    
+    QFile file(actual_filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("Export Error"), 
+            tr("Could not open file for writing: %1").arg(actual_filename));
+        return;
+    }
+    
+    QTextStream out(&file);
+    out << "Bill of Materials Export\n";
+    out << "Format: " << format << "\n";
+    out << "Date: " << QDateTime::currentDateTime().toString() << "\n\n";
+    
+    for (int i = 0; i < bom_table_->rowCount(); ++i) {
+        for (int j = 0; j < bom_table_->columnCount(); ++j) {
+            QTableWidgetItem* item = bom_table_->item(i, j);
+            if (item) {
+                out << item->text();
+            }
+            if (j < bom_table_->columnCount() - 1) {
+                out << "\t";
+            }
+        }
+        out << "\n";
+    }
+    
+    file.close();
     QMessageBox::information(this, tr("Export BOM"), 
-        tr("Exporting BOM to %1 format...").arg(format));
+        tr("BOM exported successfully to %1").arg(actual_filename));
 }
 
 void QtPropertyPanel::loadFilterPreset(const QString& preset_name) {
-    // In real implementation: would load filter preset from settings
-    QMessageBox::information(this, tr("Load Preset"), 
-        tr("Loading filter preset: %1").arg(preset_name));
+    QSettings settings;
+    QString key = QString("BomFilterPresets/%1").arg(preset_name);
+    
+    if (!settings.contains(key)) {
+        QMessageBox::warning(this, tr("Load Preset"), 
+            tr("Preset '%1' not found").arg(preset_name));
+        return;
+    }
+    
+    QStringList filter_values = settings.value(key).toStringList();
+    if (filter_values.size() >= 3) {
+        bom_filter_column_->setCurrentText(filter_values[0]);
+        bom_filter_operator_->setCurrentText(filter_values[1]);
+        bom_filter_value_->setText(filter_values[2]);
+        applyBomFilter();
+    }
 }
 
 void QtPropertyPanel::saveFilterPreset(const QString& preset_name) {
-    // In real implementation: would save filter preset to settings
+    if (preset_name.isEmpty()) {
+        QMessageBox::warning(this, tr("Save Preset"), 
+            tr("Preset name cannot be empty"));
+        return;
+    }
+    
+    QSettings settings;
+    QString key = QString("BomFilterPresets/%1").arg(preset_name);
+    
+    QStringList filter_values;
+    filter_values << bom_filter_column_->currentText();
+    filter_values << bom_filter_operator_->currentText();
+    filter_values << bom_filter_value_->text();
+    
+    settings.setValue(key, filter_values);
+    settings.sync();
+    
     QMessageBox::information(this, tr("Save Preset"), 
-        tr("Saving filter preset: %1").arg(preset_name));
+        tr("Preset '%1' saved successfully").arg(preset_name));
 }
 
 }  // namespace ui

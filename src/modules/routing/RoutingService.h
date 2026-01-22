@@ -106,7 +106,9 @@ private:
     bool checkCollisions(const std::vector<RouteSegment>& segments, 
                         const std::vector<std::string>& obstacle_ids) const;
     std::vector<RoutePoint> optimizeWaypoints(const std::vector<RoutePoint>& waypoints,
-                                             const std::vector<std::string>& obstacles) const;
+                                              const std::vector<std::string>& obstacles) const;
+    std::vector<RoutePoint> findPath(const std::string& start, const std::string& end,
+                                     const std::vector<std::string>& obstacles) const;
 };
 
 }  // namespace modules

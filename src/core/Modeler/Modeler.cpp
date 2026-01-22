@@ -337,38 +337,78 @@ std::string Assembly::createInsert(std::uint64_t component_a, std::uint64_t comp
 }
 
 bool Assembly::solveMates() {
-    // Simple mate solver - updates component transforms based on mates
-    // In real implementation: would use a proper constraint solver
+    const int max_iterations = 10;
+    const double tolerance = 0.001;
     
-    for (const auto& mate : mates_) {
-        AssemblyComponent* comp_a = findComponent(mate.component_a);
-        AssemblyComponent* comp_b = findComponent(mate.component_b);
+    for (int iteration = 0; iteration < max_iterations; ++iteration) {
+        bool converged = true;
         
-        if (!comp_a || !comp_b) {
-            continue;
+        for (const auto& mate : mates_) {
+            AssemblyComponent* comp_a = findComponent(mate.component_a);
+            AssemblyComponent* comp_b = findComponent(mate.component_b);
+            
+            if (!comp_a || !comp_b) {
+                continue;
+            }
+            
+            double error = 0.0;
+            
+            switch (mate.type) {
+                case MateType::Mate: {
+                    double dx = comp_b->transform.tx - (comp_a->transform.tx + mate.value);
+                    double dy = comp_b->transform.ty - comp_a->transform.ty;
+                    double dz = comp_b->transform.tz - comp_a->transform.tz;
+                    error = std::sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (error > tolerance) {
+                        comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                        comp_b->transform.ty = comp_a->transform.ty;
+                        comp_b->transform.tz = comp_a->transform.tz;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Flush: {
+                    double dx = comp_b->transform.tx - (comp_a->transform.tx + mate.value);
+                    error = std::abs(dx);
+                    
+                    if (error > tolerance) {
+                        comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Angle: {
+                    double angle_diff = comp_b->transform.rz - (comp_a->transform.rz + mate.value);
+                    while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+                    while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+                    error = std::abs(angle_diff);
+                    
+                    if (error > tolerance) {
+                        comp_b->transform.rz = comp_a->transform.rz + mate.value;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Insert: {
+                    double dx = comp_b->transform.tx - comp_a->transform.tx;
+                    double dy = comp_b->transform.ty - comp_a->transform.ty;
+                    double dz = comp_b->transform.tz - comp_a->transform.tz;
+                    error = std::sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (error > tolerance) {
+                        comp_b->transform.tx = comp_a->transform.tx;
+                        comp_b->transform.ty = comp_a->transform.ty;
+                        comp_b->transform.tz = comp_a->transform.tz;
+                        converged = false;
+                    }
+                    break;
+                }
+            }
         }
         
-        switch (mate.type) {
-            case MateType::Mate:
-                // Align components (simple: move component_b to component_a position + offset)
-                comp_b->transform.tx = comp_a->transform.tx + mate.value;
-                comp_b->transform.ty = comp_a->transform.ty;
-                comp_b->transform.tz = comp_a->transform.tz;
-                break;
-            case MateType::Flush:
-                // Make faces flush
-                comp_b->transform.tx = comp_a->transform.tx + mate.value;
-                break;
-            case MateType::Angle:
-                // Apply angle constraint (simple: rotate around Z axis)
-                comp_b->transform.rz = comp_a->transform.rz + mate.value;
-                break;
-            case MateType::Insert:
-                // Insert constraint (align centers)
-                comp_b->transform.tx = comp_a->transform.tx;
-                comp_b->transform.ty = comp_a->transform.ty;
-                comp_b->transform.tz = comp_a->transform.tz;
-                break;
+        if (converged) {
+            return true;
         }
     }
     
@@ -522,10 +562,16 @@ bool Modeler::evaluateParameters(Sketch& sketch) const {
 }
 
 bool Modeler::solveConstraints(Sketch& sketch) const {
-    // Simple constraint solver - applies constraints to geometry
-    // In real implementation: would use a proper constraint solver (e.g., PlanarGCS)
+    const std::vector<Constraint>& constraints = sketch.constraints();
     
-    for (const auto& constraint : sketch.constraints()) {
+    int max_iterations = 100;
+    double tolerance = 1e-6;
+    double damping = 0.1;
+    
+    for (int iter = 0; iter < max_iterations; ++iter) {
+        double max_error = 0.0;
+        
+        for (const auto& constraint : constraints) {
         GeometryEntity* geom_a = sketch.findGeometry(constraint.a);
         GeometryEntity* geom_b = sketch.findGeometry(constraint.b);
         
@@ -692,10 +738,54 @@ bool Modeler::validateConstraints(const Sketch& sketch) const {
 }
 
 bool Modeler::isOverConstrained(const Sketch& sketch) const {
-    // Simple heuristic: if constraints > 2 * geometry_count, likely over-constrained
-    // In real implementation: would use proper DOF analysis
     std::size_t geometry_count = sketch.geometry().size();
     std::size_t constraint_count = sketch.constraints().size();
+    
+    int total_dof = 0;
+    for (const auto& geom : sketch.geometry()) {
+        switch (geom.type) {
+            case GeometryType::Point:
+                total_dof += 2;
+                break;
+            case GeometryType::Line:
+                total_dof += 4;
+                break;
+            case GeometryType::Circle:
+                total_dof += 3;
+                break;
+            case GeometryType::Arc:
+                total_dof += 5;
+                break;
+            case GeometryType::Rectangle:
+                total_dof += 4;
+                break;
+        }
+    }
+    
+    int constraint_dof = 0;
+    for (const auto& constraint : sketch.constraints()) {
+        switch (constraint.type) {
+            case ConstraintType::Coincident:
+                constraint_dof += 2;
+                break;
+            case ConstraintType::Horizontal:
+            case ConstraintType::Vertical:
+                constraint_dof += 1;
+                break;
+            case ConstraintType::Distance:
+            case ConstraintType::Angle:
+                constraint_dof += 1;
+                break;
+            case ConstraintType::Parallel:
+            case ConstraintType::Perpendicular:
+            case ConstraintType::Tangent:
+            case ConstraintType::Equal:
+                constraint_dof += 1;
+                break;
+        }
+    }
+    
+    return constraint_dof > total_dof;
     
     // Each geometry entity has 2 DOF (x, y position or similar)
     // Some constraints remove DOF, some don't

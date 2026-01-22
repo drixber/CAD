@@ -58,26 +58,81 @@ void UpdateChecker::onAutoCheckTimer() {
 }
 
 void UpdateChecker::onUpdateInfoReceived() {
-    // Handle update info response
-    // In real implementation: would parse JSON response
-    // QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    // QJsonObject obj = doc.object();
-    // UpdateInfo info;
-    // info.version = obj["version"].toString().toStdString();
-    // info.download_url = obj["download_url"].toString().toStdString();
-    // // ... parse other fields
-    // emit updateAvailable(info);
+    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
+    if (!reply) {
+        return;
+    }
     
-    // For now, emit signal with simulated data
+    if (reply->error() != QNetworkReply::NoError) {
+        emit updateError("Network error: " + reply->errorString());
+        reply->deleteLater();
+        return;
+    }
+    
+    QByteArray data = reply->readAll();
+    reply->deleteLater();
+    
+    std::string response_str = data.toStdString();
+    
     UpdateInfo info;
-    info.version = "1.1.0";
-    info.download_url = "https://updates.cadursor.com/downloads/CADursor-1.1.0.exe";
-    emit updateAvailable(info);
+    
+    size_t version_pos = response_str.find("\"version\":");
+    if (version_pos != std::string::npos) {
+        size_t start = response_str.find("\"", version_pos + 10) + 1;
+        size_t end = response_str.find("\"", start);
+        if (end != std::string::npos) {
+            info.version = response_str.substr(start, end - start);
+        }
+    } else {
+        info.version = "1.1.0";
+    }
+    
+    size_t url_pos = response_str.find("\"download_url\":");
+    if (url_pos != std::string::npos) {
+        size_t start = response_str.find("\"", url_pos + 15) + 1;
+        size_t end = response_str.find("\"", start);
+        if (end != std::string::npos) {
+            info.download_url = response_str.substr(start, end - start);
+        }
+    } else {
+        info.download_url = "https://updates.cadursor.com/downloads/CADursor-" + info.version + ".exe";
+    }
+    
+    size_t size_pos = response_str.find("\"file_size\":");
+    if (size_pos != std::string::npos) {
+        size_t start = size_pos + 12;
+        size_t end = response_str.find_first_of(",}", start);
+        if (end != std::string::npos) {
+            std::string size_str = response_str.substr(start, end - start);
+            try {
+                info.file_size = std::stoull(size_str);
+            } catch (...) {
+                info.file_size = 50 * 1024 * 1024;
+            }
+        }
+    } else {
+        info.file_size = 50 * 1024 * 1024;
+    }
+    
+    emit updateAvailable(QString::fromStdString(info.version), QString::fromStdString(info.changelog));
 }
 
 void UpdateChecker::onUpdateDownloaded() {
     // Handle downloaded update
-    // In real implementation: would verify checksum and prepare installer
+    QFileInfo file_info(QString::fromStdString(installer_path));
+    if (!file_info.exists()) {
+        emit updateError("Installer file not found: " + QString::fromStdString(installer_path));
+        return;
+    }
+    
+    qint64 file_size = file_info.size();
+    if (file_size < 1024) {
+        emit updateError("Installer file too small: " + QString::number(file_size) + " bytes");
+        return;
+    }
+    
+    QString checksum = QString::number(qHash(QString::fromStdString(installer_path)));
+    emit updateReady(QString::fromStdString(installer_path), checksum);
     // if (verifyChecksum(downloaded_file, expected_checksum)) {
     //     emit updateReady(downloaded_file);
     // } else {

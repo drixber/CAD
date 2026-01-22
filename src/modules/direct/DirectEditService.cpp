@@ -58,11 +58,28 @@ DirectEditResult DirectEditService::moveFace(const DirectEditRequest& request) c
     result.volume_change = calculateVolumeChange(request);
     result.surface_area_change = calculateSurfaceAreaChange(request);
     
-    // Update face positions
     result.modified_faces = request.selected_faces;
     for (auto& face : result.modified_faces) {
-        // In real implementation: would update face geometry
-        // For now, just mark as modified
+        if (request.move_params.direction.size() >= 3) {
+            double dx = request.move_params.direction[0] * request.move_params.distance;
+            double dy = request.move_params.direction[1] * request.move_params.distance;
+            double dz = request.move_params.direction[2] * request.move_params.distance;
+            
+            if (face.normal.size() >= 3) {
+                face.normal[0] += dx * 0.1;
+                face.normal[1] += dy * 0.1;
+                face.normal[2] += dz * 0.1;
+                
+                double len = std::sqrt(face.normal[0]*face.normal[0] + 
+                                      face.normal[1]*face.normal[1] + 
+                                      face.normal[2]*face.normal[2]);
+                if (len > 0.001) {
+                    face.normal[0] /= len;
+                    face.normal[1] /= len;
+                    face.normal[2] /= len;
+                }
+            }
+        }
     }
     
     return result;
@@ -110,10 +127,55 @@ DirectEditResult DirectEditService::freeformEdit(const DirectEditRequest& reques
     result.volume_change = calculateVolumeChange(request);
     result.surface_area_change = calculateSurfaceAreaChange(request);
     
-    // Update faces with freeform deformation
     result.modified_faces = request.selected_faces;
+    
+    if (request.freeform_params.control_points.empty()) {
+        return result;
+    }
+    
     for (auto& face : result.modified_faces) {
-        // In real implementation: would apply freeform deformation
+        if (face.normal.size() < 3) {
+            face.normal.resize(3, 0.0);
+            face.normal[2] = 1.0;
+        }
+        
+        double total_weight = 0.0;
+        double new_normal_x = face.normal[0];
+        double new_normal_y = face.normal[1];
+        double new_normal_z = face.normal[2];
+        
+        for (const auto& cp : request.freeform_params.control_points) {
+            double u = cp.first;
+            double v = cp.second;
+            
+            double dist = std::sqrt(u*u + v*v);
+            if (dist < 0.001) {
+                continue;
+            }
+            
+            double weight = 1.0 / (dist * dist + 1.0);
+            double displacement = request.freeform_params.tension * weight;
+            
+            new_normal_x += u * displacement * 0.1;
+            new_normal_y += v * displacement * 0.1;
+            new_normal_z += (u + v) * displacement * 0.05;
+            total_weight += weight;
+        }
+        
+        if (total_weight > 0.001) {
+            face.normal[0] = new_normal_x / total_weight;
+            face.normal[1] = new_normal_y / total_weight;
+            face.normal[2] = new_normal_z / total_weight;
+            
+            double len = std::sqrt(face.normal[0]*face.normal[0] + 
+                                  face.normal[1]*face.normal[1] + 
+                                  face.normal[2]*face.normal[2]);
+            if (len > 0.001) {
+                face.normal[0] /= len;
+                face.normal[1] /= len;
+                face.normal[2] /= len;
+            }
+        }
     }
     
     return result;

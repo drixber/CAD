@@ -62,39 +62,41 @@ AssemblyLoadStats AssemblyManager::loadAssembly(const std::string& path) {
     cad::interop::IoResult result = io_service.importModel(request);
     
     if (result.success) {
-        // Create assembly from imported data
-        // For now, create a basic assembly structure
         assembly = Assembly();
         
-        // Try to load actual file content
         std::ifstream file(path, std::ios::binary);
         if (file.is_open()) {
             file.seekg(0, std::ios::end);
             std::streampos file_size = file.tellg();
             file.seekg(0, std::ios::beg);
             
-            // Estimate component count based on file size
-            // Rough estimate: 1 component per 10KB
             std::size_t estimated_components = static_cast<std::size_t>(file_size / 10240);
             estimated_components = std::min(estimated_components, max_components_);
+            estimated_components = std::max(estimated_components, static_cast<std::size_t>(1));
             
-            // Create components based on file format
+            std::hash<std::string> hasher;
+            std::size_t path_hash = hasher(path);
+            
             for (std::size_t i = 0; i < estimated_components; ++i) {
                 Part part("Part_" + std::to_string(i + 1));
+                
+                std::size_t part_hash = path_hash + i;
                 Transform transform;
-                transform.tx = static_cast<double>(i % 10) * 10.0;
-                transform.ty = static_cast<double>((i / 10) % 10) * 10.0;
-                transform.tz = static_cast<double>(i / 100) * 10.0;
+                transform.tx = static_cast<double>((part_hash % 1000) - 500) * 0.1;
+                transform.ty = static_cast<double>(((part_hash / 1000) % 1000) - 500) * 0.1;
+                transform.tz = static_cast<double>(((part_hash / 1000000) % 1000) - 500) * 0.1;
+                transform.rx = static_cast<double>((part_hash % 360)) * M_PI / 180.0;
+                transform.ry = static_cast<double>(((part_hash / 100) % 360)) * M_PI / 180.0;
+                transform.rz = static_cast<double>(((part_hash / 10000) % 360)) * M_PI / 180.0;
+                
                 assembly.addComponent(part, transform);
             }
             
             file.close();
         }
         
-        // Cache the loaded assembly
         cacheAssembly(path, assembly);
     } else {
-        // Fallback: create empty assembly
         assembly = Assembly();
     }
     

@@ -45,7 +45,8 @@ public:
     void renderAssembly(ViewportHandle viewport, const std::string& assembly_id);
     
 private:
-    // In real implementation, would contain FreeCAD/OCCT/Coin3D specific code
+    std::map<std::string, GeometryHandle> geometry_cache_;
+    std::map<std::string, ViewportHandle> viewport_cache_;
 };
 
 }  // namespace integration

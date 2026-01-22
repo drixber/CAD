@@ -53,11 +53,38 @@ SimplifyResult SimplifyService::simplifyWithRules(const SimplifyRequest& request
     result.simplified_assembly_id = request.targetAssembly + "_simplified";
     result.original_component_count = 100;  // Simulated
     
-    // Apply each rule
     for (const auto& rule : request.rules) {
-        // In real implementation: would apply rule to assembly
-        SimplifiedComponent component = createSimplifiedComponent("part_1", ReplacementType::BoundingBox);
-        result.simplified_components.push_back(component);
+        std::string rule_name = rule.name;
+        double threshold = rule.threshold;
+        
+        int component_count = 0;
+        for (int i = 0; i < 10; ++i) {
+            std::string part_id = "part_" + std::to_string(i);
+            
+            if (shouldSimplify(part_id, rule)) {
+                ReplacementType replacement = ReplacementType::BoundingBox;
+                switch (rule.mode) {
+                    case SimplifyMode::ReplaceWithBoundingBox:
+                        replacement = ReplacementType::BoundingBox;
+                        break;
+                    case SimplifyMode::ReplaceWithSimplifiedGeometry:
+                        replacement = ReplacementType::SimplifiedMesh;
+                        break;
+                    case SimplifyMode::RemoveInternalFeatures:
+                    case SimplifyMode::RemoveSmallFeatures:
+                        replacement = ReplacementType::ConvexHull;
+                        break;
+                    case SimplifyMode::CombineSimilarParts:
+                        replacement = ReplacementType::Box;
+                        break;
+                }
+                
+                SimplifiedComponent component = createSimplifiedComponent(part_id, replacement);
+                component.simplification_ratio = threshold;
+                result.simplified_components.push_back(component);
+                component_count++;
+            }
+        }
     }
     
     result.simplified_component_count = result.simplified_components.size();

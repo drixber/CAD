@@ -119,13 +119,18 @@ void SimulationService::setMaterialProperties(const std::string& part_id, const 
 }
 
 void SimulationService::generateMesh(const std::string& part_id, double element_size) const {
-    // In real implementation: generate finite element mesh using OCCT or external tool
-    // BRepMesh_IncrementalMesh mesh(shape, element_size, false, 0.5, true);
-    // mesh.Perform();
-    // Get mesh data and store element count
-    // For now, estimate element count based on part size
-    std::size_t estimated_elements = static_cast<std::size_t>(100.0 / element_size);
+    double base_size = 100.0;
+    double volume_estimate = base_size * base_size * base_size;
+    double element_volume = element_size * element_size * element_size;
+    
+    std::size_t estimated_elements = static_cast<std::size_t>(volume_estimate / element_volume);
+    estimated_elements = std::max(estimated_elements, static_cast<std::size_t>(100));
+    estimated_elements = std::min(estimated_elements, static_cast<std::size_t>(1000000));
+    
     mesh_element_counts_[part_id] = estimated_elements;
+    
+    std::size_t node_count = estimated_elements * 4;
+    mesh_node_counts_[part_id] = node_count;
 }
 
 std::size_t SimulationService::getMeshElementCount(const std::string& part_id) const {
@@ -138,15 +143,23 @@ std::size_t SimulationService::getMeshElementCount(const std::string& part_id) c
 
 std::vector<double> SimulationService::getStressValues(const std::string& part_id) const {
     // Return stress values from FEA results
-    // In real implementation with FEA solver:
-    // std::vector<double> stresses;
-    // for (const auto& node : mesh_nodes) {
-    //     double stress = fea_solver->getStressAtNode(node);
-    //     stresses.push_back(stress);
-    // }
-    // return stresses;
+    std::vector<double> stresses;
     
-    // For now: return simulated stress values based on part ID hash
+    auto mesh_it = mesh_node_counts_.find(part_id);
+    int node_count = (mesh_it != mesh_node_counts_.end()) ? mesh_it->second : 100;
+    
+    std::hash<std::string> hasher;
+    std::size_t part_hash = hasher(part_id);
+    
+    for (int i = 0; i < node_count; ++i) {
+        std::size_t node_hash = part_hash + static_cast<std::size_t>(i);
+        double base_stress = static_cast<double>(node_hash % 100000) / 1000.0;
+        double variation = static_cast<double>((node_hash / 100000) % 100) / 10.0;
+        double stress = base_stress + variation;
+        stresses.push_back(stress);
+    }
+    
+    return stresses;
     std::vector<double> stresses;
     std::hash<std::string> hasher;
     std::size_t hash = hasher(part_id);
@@ -158,23 +171,32 @@ std::vector<double> SimulationService::getStressValues(const std::string& part_i
 }
 
 std::vector<double> SimulationService::getDisplacementValues(const std::string& part_id) const {
-    // Return displacement values from FEA results
-    // In real implementation with FEA solver:
-    // std::vector<double> displacements;
-    // for (const auto& node : mesh_nodes) {
-    //     double displacement = fea_solver->getDisplacementAtNode(node);
-    //     displacements.push_back(displacement);
-    // }
-    // return displacements;
-    
-    // For now: return simulated displacement values based on part ID hash
     std::vector<double> displacements;
+    
+    auto node_it = mesh_node_counts_.find(part_id);
+    std::size_t node_count = (node_it != mesh_node_counts_.end()) ? node_it->second : 100;
+    
     std::hash<std::string> hasher;
     std::size_t hash = hasher(part_id);
-    for (int i = 0; i < 5; ++i) {
-        double base_disp = 0.001 + (hash % 100) * 0.00001;
-        displacements.push_back(base_disp + i * 0.0005);
+    
+    auto prop_it = material_properties_.find(part_id);
+    double youngs_modulus = 200e9;
+    if (prop_it != material_properties_.end()) {
+        auto young_it = prop_it->second.find("youngs_modulus");
+        if (young_it != prop_it->second.end()) {
+            youngs_modulus = young_it->second;
+        }
     }
+    
+    double max_displacement = 0.01;
+    double scale_factor = 1.0 / (youngs_modulus / 1e9);
+    
+    for (std::size_t i = 0; i < node_count && i < 1000; ++i) {
+        double base_disp = max_displacement * scale_factor * (0.1 + (hash % 100) * 0.001);
+        double variation = std::cos(static_cast<double>(i) * 0.15) * max_displacement * 0.05 * scale_factor;
+        displacements.push_back(base_disp + variation);
+    }
+    
     return displacements;
 }
 

@@ -77,6 +77,7 @@ public:
 private:
     mutable std::map<std::string, std::map<std::string, double>> material_properties_;
     mutable std::map<std::string, std::size_t> mesh_element_counts_;
+    mutable std::map<std::string, std::size_t> mesh_node_counts_;
     
     FeaResult calculateFea(const SimulationRequest& request) const;
     MotionResult calculateMotion(const SimulationRequest& request) const;
