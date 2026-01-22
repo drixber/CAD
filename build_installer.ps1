@@ -61,9 +61,46 @@ if (-not $nsisPath) {
     $buildOnly = $false
 }
 
-# Schritt 1: CMake konfigurieren
-Write-Host "Schritt 1: CMake konfigurieren..." -ForegroundColor Green
-$cmakeConfig = cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCAD_USE_QT=ON
+# Schritt 1: Visual Studio Generator finden
+Write-Host "Schritt 1: Suche nach Visual Studio..." -ForegroundColor Green
+$generators = @(
+    "Visual Studio 17 2022",
+    "Visual Studio 16 2019",
+    "Visual Studio 15 2017",
+    "Visual Studio 14 2015"
+)
+
+$foundGenerator = $null
+foreach ($gen in $generators) {
+    Write-Host "  Prüfe: $gen..." -ForegroundColor Gray
+    $test = cmake -G $gen -S . -B build_test 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $foundGenerator = $gen
+        Remove-Item -Path "build_test" -Recurse -Force -ErrorAction SilentlyContinue
+        break
+    }
+    Remove-Item -Path "build_test" -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+if (-not $foundGenerator) {
+    Write-Host "FEHLER: Keine Visual Studio Installation gefunden!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Bitte installieren Sie Visual Studio:" -ForegroundColor Yellow
+    Write-Host "  - Visual Studio 2022: https://visualstudio.microsoft.com/downloads/" -ForegroundColor Yellow
+    Write-Host "  - Oder Visual Studio 2019/2017" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "WICHTIG: Installieren Sie die 'Desktop development with C++' Workload!" -ForegroundColor Yellow
+    Write-Host ""
+    Read-Host "Drücken Sie Enter zum Beenden"
+    exit 1
+}
+
+Write-Host "Visual Studio gefunden: $foundGenerator" -ForegroundColor Green
+Write-Host ""
+
+# Schritt 2: CMake konfigurieren
+Write-Host "Schritt 2: CMake konfigurieren..." -ForegroundColor Green
+$cmakeConfig = cmake -S . -B build -G $foundGenerator -A x64 -DCAD_USE_QT=ON
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FEHLER: CMake Konfiguration fehlgeschlagen!" -ForegroundColor Red
     Read-Host "Drücken Sie Enter zum Beenden"
@@ -72,8 +109,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 
-# Schritt 2: Projekt kompilieren
-Write-Host "Schritt 2: Projekt kompilieren..." -ForegroundColor Green
+# Schritt 3: Projekt kompilieren
+Write-Host "Schritt 3: Projekt kompilieren..." -ForegroundColor Green
 cmake --build build --config Release
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FEHLER: Kompilierung fehlgeschlagen!" -ForegroundColor Red
@@ -83,8 +120,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 
-# Schritt 3: Prüfe ob .exe erstellt wurde
-Write-Host "Schritt 3: Prüfe ob cad_desktop.exe erstellt wurde..." -ForegroundColor Green
+# Schritt 4: Prüfe ob .exe erstellt wurde
+Write-Host "Schritt 4: Prüfe ob cad_desktop.exe erstellt wurde..." -ForegroundColor Green
 if (-not (Test-Path "build\Release\cad_desktop.exe")) {
     Write-Host "FEHLER: cad_desktop.exe wurde nicht erstellt!" -ForegroundColor Red
     Write-Host "Bitte prüfen Sie die Build-Ausgabe auf Fehler." -ForegroundColor Yellow
@@ -102,8 +139,8 @@ if ($buildOnly) {
     exit 0
 }
 
-# Schritt 4: Installer erstellen
-Write-Host "Schritt 4: Installer erstellen..." -ForegroundColor Green
+# Schritt 5: Installer erstellen
+Write-Host "Schritt 5: Installer erstellen..." -ForegroundColor Green
 Push-Location installer
 & $nsisPath cadursor.nsi
 $installerSuccess = $LASTEXITCODE -eq 0
