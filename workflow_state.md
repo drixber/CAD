@@ -125,6 +125,11 @@ completed_items:
 - Added assembly mate commands (Flush, Angle, Pattern).
 - Added view commands (Visibility, Appearance, Environment).
 - All commands now provide status feedback via integration and viewport status.
+- Added annotation positioning UI integration to Drawing context panel.
+- Implemented QTableWidget for annotation items display (Text, Type, X, Y, Leader).
+- Added setAnnotationItems method to QtPropertyPanel for updating annotation table.
+- Annotation table shows leader status and attachment entity information.
+- Dimension command now updates property panel with annotation items.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -133,7 +138,7 @@ pending_items:
 - Collision/interference checks refinement (geometry-based instead of bounding box).
 - Drawing styles UI editor enhancements (interactive style editing, preview).
 - BOM pipeline UI display widget enhancements (sorting, filtering, export).
-- Annotation positioning UI integration (interactive leader line editing).
+- Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring refinement (command parameter input, validation).
 
@@ -257,5 +262,10 @@ decisions_made:
 - Assembly mates (Flush, Angle, Pattern) provide command status.
 - View commands (Visibility, Appearance, Environment) provide command status.
 - Unknown commands provide generic feedback instead of being ignored.
+- Annotation table displays Text, Type, X, Y coordinates, and Leader status.
+- Annotation items show attachment entity information when attached to geometry.
+- Annotation types displayed: Text, Note, Callout, Balloon, Revision, Title, Leader.
+- Dimension command automatically updates property panel with annotation items.
+- Annotation table uses alternating row colors and read-only selection.
 
 estimated_remaining_time: 70-110 weeks

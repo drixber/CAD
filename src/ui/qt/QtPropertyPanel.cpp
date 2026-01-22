@@ -86,6 +86,19 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     bom_table_->setMaximumHeight(200);
     drawing_layout->addWidget(bom_table_);
     
+    QLabel* annotation_label = new QLabel(tr("Annotations:"), drawing_panel);
+    drawing_layout->addWidget(annotation_label);
+    
+    annotation_table_ = new QTableWidget(drawing_panel);
+    annotation_table_->setColumnCount(5);
+    annotation_table_->setHorizontalHeaderLabels({tr("Text"), tr("Type"), tr("X"), tr("Y"), tr("Leader")});
+    annotation_table_->horizontalHeader()->setStretchLastSection(true);
+    annotation_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    annotation_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    annotation_table_->setAlternatingRowColors(true);
+    annotation_table_->setMaximumHeight(200);
+    drawing_layout->addWidget(annotation_table_);
+    
     drawing_layout->addStretch();
     drawing_panel->setLayout(drawing_layout);
     context_stack_->addWidget(drawing_panel);
@@ -229,6 +242,32 @@ void QtPropertyPanel::updateStyleInfo(const QString& info) {
     if (style_info_label_) {
         style_info_label_->setText(info);
     }
+}
+
+void QtPropertyPanel::setAnnotationItems(const QList<AnnotationItem>& items) {
+    updateAnnotationTable(items);
+}
+
+void QtPropertyPanel::updateAnnotationTable(const QList<AnnotationItem>& items) {
+    if (!annotation_table_) {
+        return;
+    }
+    
+    annotation_table_->setRowCount(items.size());
+    for (int i = 0; i < items.size(); ++i) {
+        const AnnotationItem& item = items[i];
+        annotation_table_->setItem(i, 0, new QTableWidgetItem(item.text));
+        annotation_table_->setItem(i, 1, new QTableWidgetItem(item.type));
+        annotation_table_->setItem(i, 2, new QTableWidgetItem(QString::number(item.x, 'f', 2)));
+        annotation_table_->setItem(i, 3, new QTableWidgetItem(QString::number(item.y, 'f', 2)));
+        QString leader_text = item.has_leader ? tr("Yes") : tr("No");
+        if (item.has_attachment && !item.attachment_entity.isEmpty()) {
+            leader_text += " (" + item.attachment_entity + ")";
+        }
+        annotation_table_->setItem(i, 4, new QTableWidgetItem(leader_text));
+    }
+    
+    annotation_table_->resizeColumnsToContents();
 }
 
 }  // namespace ui

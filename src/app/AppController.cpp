@@ -284,10 +284,57 @@ void AppController::executeCommand(const std::string& command) {
             if (!document.sheets.empty()) {
                 document.dimensions = 
                     annotation_service_.buildDefaultDimensions(document.sheets.front().name);
+                document.annotations =
+                    annotation_service_.buildDefaultAnnotations(document.sheets.front().name);
                 techdraw_bridge_.applyDimensions(document);
                 main_window_.setIntegrationStatus("Dimensions added");
                 main_window_.setViewportStatus("Dimensions: " + 
                     std::to_string(document.dimensions.size()) + " items");
+                
+                // Update property panel with annotations
+                #ifdef CAD_USE_QT
+                cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+                if (qt_window) {
+                    cad::ui::QtPropertyPanel* panel = qt_window->propertyPanel();
+                    if (panel) {
+                        QList<cad::ui::AnnotationItem> annotation_items;
+                        for (const auto& ann : document.annotations) {
+                            cad::ui::AnnotationItem item;
+                            item.text = QString::fromStdString(ann.text);
+                            switch (ann.type) {
+                                case cad::drawings::AnnotationType::Text:
+                                    item.type = "Text";
+                                    break;
+                                case cad::drawings::AnnotationType::Note:
+                                    item.type = "Note";
+                                    break;
+                                case cad::drawings::AnnotationType::Callout:
+                                    item.type = "Callout";
+                                    break;
+                                case cad::drawings::AnnotationType::Balloon:
+                                    item.type = "Balloon";
+                                    break;
+                                case cad::drawings::AnnotationType::Revision:
+                                    item.type = "Revision";
+                                    break;
+                                case cad::drawings::AnnotationType::Title:
+                                    item.type = "Title";
+                                    break;
+                                default:
+                                    item.type = "Leader";
+                                    break;
+                            }
+                            item.x = ann.x;
+                            item.y = ann.y;
+                            item.has_leader = ann.has_leader;
+                            item.has_attachment = ann.has_attachment;
+                            item.attachment_entity = QString::fromStdString(ann.attachment_point.entity_id);
+                            annotation_items.append(item);
+                        }
+                        panel->setAnnotationItems(annotation_items);
+                    }
+                }
+                #endif
             }
         }
     } else if (command == "Section" || command == "SectionView") {

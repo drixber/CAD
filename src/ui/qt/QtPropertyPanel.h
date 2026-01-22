@@ -15,6 +15,16 @@ struct BomItem {
     QString part_number;
 };
 
+struct AnnotationItem {
+    QString text;
+    QString type;
+    double x{0.0};
+    double y{0.0};
+    bool has_leader{false};
+    bool has_attachment{false};
+    QString attachment_entity;
+};
+
 class QtPropertyPanel : public QWidget {
     Q_OBJECT
 
@@ -31,6 +41,7 @@ public:
     void setStylePresets(const QStringList& presets);
     void setCurrentStylePreset(const QString& preset);
     void setStyleInfo(const QString& info);
+    void setAnnotationItems(const QList<AnnotationItem>& items);
 
 private:
     QLabel* constraints_label_{nullptr};
@@ -41,11 +52,13 @@ private:
     QLabel* context_label_{nullptr};
     QStackedWidget* context_stack_{nullptr};
     QTableWidget* bom_table_{nullptr};
+    QTableWidget* annotation_table_{nullptr};
     QLabel* style_preset_label_{nullptr};
     QLabel* style_info_label_{nullptr};
     
     void updateBomTable(const QList<BomItem>& items);
     void updateStyleInfo(const QString& info);
+    void updateAnnotationTable(const QList<AnnotationItem>& items);
 };
 
 }  // namespace ui
