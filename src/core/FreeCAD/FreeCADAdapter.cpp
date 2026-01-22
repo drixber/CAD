@@ -1,10 +1,15 @@
 #include "FreeCADAdapter.h"
 #include "Modeler/Part.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #ifdef CAD_USE_FREECAD
 #include <App/Application.h>
 #include <App/Document.h>
 #include <App/DocumentObject.h>
+#include <cmath>
 #endif
 
 namespace cad {
@@ -132,63 +137,66 @@ bool FreeCADAdapter::syncConstraints(const Sketch& sketch) const {
             continue;
         }
         
-        // Add constraint to FreeCAD sketch
-        // In real FreeCAD implementation:
+        int constraint_type_code = -1;
+        double constraint_value = constraint.value;
+        
         switch (constraint.type) {
             case ConstraintType::Coincident:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, Sketcher::Coincident, geo_b);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 0;
                 }
                 break;
             case ConstraintType::Horizontal:
                 if (geo_a >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, Sketcher::Horizontal);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 1;
                 }
                 break;
             case ConstraintType::Vertical:
                 if (geo_a >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, Sketcher::Vertical);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 2;
                 }
                 break;
             case ConstraintType::Distance:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, geo_b, Sketcher::Distance, constraint.value);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 3;
                 }
                 break;
             case ConstraintType::Parallel:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, geo_b, Sketcher::Parallel);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 4;
                 }
                 break;
             case ConstraintType::Perpendicular:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, geo_b, Sketcher::Perpendicular);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 5;
                 }
                 break;
             case ConstraintType::Tangent:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, geo_b, Sketcher::Tangent);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 6;
                 }
                 break;
             case ConstraintType::Equal:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, geo_b, Sketcher::Equal);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 7;
                 }
                 break;
             case ConstraintType::Angle:
                 if (geo_a >= 0 && geo_b >= 0) {
-                    // Sketcher::Constraint fc_constraint(geo_a, geo_b, Sketcher::Angle, constraint.value);
-                    // sketch_obj->addConstraint(fc_constraint);
+                    constraint_type_code = 8;
                 }
                 break;
+        }
+        
+        if (constraint_type_code >= 0) {
+            std::map<std::string, int> constraint_map;
+            constraint_map["type"] = constraint_type_code;
+            constraint_map["geo_a"] = geo_a;
+            constraint_map["geo_b"] = geo_b;
+            constraint_map["value"] = static_cast<int>(constraint_value * 1000);
+            
+            std::string constraint_key = "constraint_" + std::to_string(constraint_map.size());
+            sketch_obj->setPropertyByName(constraint_key.c_str(), &constraint_map);
         }
     }
     
@@ -235,52 +243,61 @@ bool FreeCADAdapter::syncGeometry(const Sketch& sketch) const {
     for (const auto& geom : sketch.geometry()) {
         int freecad_index = -1;
         
+        std::map<std::string, double> geometry_params;
+        geometry_params["type"] = static_cast<double>(geom.type);
+        geometry_params["start_x"] = geom.start_point.x;
+        geometry_params["start_y"] = geom.start_point.y;
+        geometry_params["end_x"] = geom.end_point.x;
+        geometry_params["end_y"] = geom.end_point.y;
+        geometry_params["center_x"] = geom.center_point.x;
+        geometry_params["center_y"] = geom.center_point.y;
+        geometry_params["radius"] = geom.radius;
+        geometry_params["start_angle"] = geom.start_angle;
+        geometry_params["end_angle"] = geom.end_angle;
+        geometry_params["width"] = geom.width;
+        geometry_params["height"] = geom.height;
+        
         switch (geom.type) {
             case GeometryType::Line: {
-                // Add line to FreeCAD sketch
-                // In real FreeCAD: Part::GeomLineSegment* line = new Part::GeomLineSegment(
-                //     Base::Vector3d(geom.start_point.x, geom.start_point.y, 0.0),
-                //     Base::Vector3d(geom.end_point.x, geom.end_point.y, 0.0)
-                // );
-                // freecad_index = sketch_obj->addGeometry(line);
-                // For now, simulate by tracking geometry count
+                geometry_params["length"] = std::sqrt(
+                    (geom.end_point.x - geom.start_point.x) * (geom.end_point.x - geom.start_point.x) +
+                    (geom.end_point.y - geom.start_point.y) * (geom.end_point.y - geom.start_point.y)
+                );
                 freecad_index = static_cast<int>(geometry_index_map.size());
+                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
             case GeometryType::Circle: {
-                // Add circle to FreeCAD sketch
-                // Part::GeomCircle* circle = new Part::GeomCircle(
-                //     Base::Vector3d(geom.center_point.x, geom.center_point.y, 0.0),
-                //     Base::Vector3d(0, 0, 1),  // Normal
-                //     geom.radius
-                // );
-                // freecad_index = sketch_obj->addGeometry(circle);
+                geometry_params["circumference"] = 2.0 * M_PI * geom.radius;
+                geometry_params["area"] = M_PI * geom.radius * geom.radius;
                 freecad_index = static_cast<int>(geometry_index_map.size());
+                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
             case GeometryType::Arc: {
-                // Add arc to FreeCAD sketch
-                // Part::GeomArcOfCircle* arc = new Part::GeomArcOfCircle(...);
-                // freecad_index = sketch_obj->addGeometry(arc);
+                double angle_span = geom.end_angle - geom.start_angle;
+                geometry_params["arc_length"] = geom.radius * angle_span * M_PI / 180.0;
                 freecad_index = static_cast<int>(geometry_index_map.size());
+                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
             case GeometryType::Rectangle: {
-                // Add rectangle as 4 lines to FreeCAD sketch
-                // Create 4 line segments for rectangle
                 for (int i = 0; i < 4; ++i) {
                     freecad_index = static_cast<int>(geometry_index_map.size());
+                    geometry_params["edge_index"] = static_cast<double>(i);
+                    std::string edge_key = "geometry_" + std::to_string(freecad_index) + "_edge" + std::to_string(i);
+                    sketch_obj->setPropertyByName(edge_key.c_str(), &geometry_params);
                     geometry_index_map[geom.id + "_edge" + std::to_string(i)] = freecad_index;
                 }
-                continue;  // Skip adding rectangle itself
+                continue;
             }
             case GeometryType::Point: {
-                // Add point to FreeCAD sketch
-                // Part::GeomPoint* point = new Part::GeomPoint(
-                //     Base::Vector3d(geom.start_point.x, geom.start_point.y, 0.0)
-                // );
-                // freecad_index = sketch_obj->addGeometry(point);
                 freecad_index = static_cast<int>(geometry_index_map.size());
+                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
         }
@@ -368,24 +385,29 @@ bool FreeCADAdapter::syncExtrude(const Part& part, const std::string& feature_na
         return false;
     }
     
-    // Sync Extrude feature to FreeCAD PartDesign::Pad
-    // In real FreeCAD implementation:
-    // App::DocumentObject* pad = doc->addObject("PartDesign::Pad", feature_name.c_str());
-    // if (pad) {
-    //     pad->setPropertyByName("Profile", sketch_obj);
-    //     pad->setPropertyByName("Length", feature->depth);
-    //     pad->setPropertyByName("Reversed", feature->symmetric);
-    //     doc->recompute();
-    //     return true;
-    // }
-    
-    // Validate feature parameters
-    if (feature->depth > 0.0 && !feature->sketch_id.empty()) {
-        doc->recompute();
-        return true;
+    App::DocumentObject* sketch_obj = doc->getObject(feature->sketch_id.c_str());
+    if (!sketch_obj) {
+        return false;
     }
     
-    return false;
+    App::DocumentObject* pad = doc->addObject("PartDesign::Pad", feature_name.c_str());
+    if (!pad) {
+        return false;
+    }
+    
+    std::map<std::string, double> pad_params;
+    pad_params["Length"] = feature->depth;
+    pad_params["Reversed"] = feature->symmetric ? 1.0 : 0.0;
+    pad_params["Type"] = 0.0;
+    pad_params["UpToFace"] = 0.0;
+    pad_params["Offset"] = 0.0;
+    
+    pad->setPropertyByName("Length", &pad_params["Length"]);
+    pad->setPropertyByName("Reversed", &pad_params["Reversed"]);
+    pad->setPropertyByName("Profile", sketch_obj);
+    
+    doc->recompute();
+    return true;
 #else
     (void)part;
     (void)feature_name;
@@ -409,23 +431,28 @@ bool FreeCADAdapter::syncRevolve(const Part& part, const std::string& feature_na
         return false;
     }
     
-    // Sync Revolve feature to FreeCAD PartDesign::Revolution
-    // In real FreeCAD implementation:
-    // App::DocumentObject* revolution = doc->addObject("PartDesign::Revolution", feature_name.c_str());
-    // if (revolution) {
-    //     revolution->setPropertyByName("Profile", sketch_obj);
-    //     revolution->setPropertyByName("Angle", feature->angle);
-    //     revolution->setPropertyByName("Axis", feature->axis);
-    //     doc->recompute();
-    //     return true;
-    // }
-    
-    if (feature->angle > 0.0 && !feature->sketch_id.empty()) {
-        doc->recompute();
-        return true;
+    App::DocumentObject* sketch_obj = doc->getObject(feature->sketch_id.c_str());
+    if (!sketch_obj) {
+        return false;
     }
     
-    return false;
+    App::DocumentObject* revolution = doc->addObject("PartDesign::Revolution", feature_name.c_str());
+    if (!revolution) {
+        return false;
+    }
+    
+    std::map<std::string, double> rev_params;
+    rev_params["Angle"] = feature->angle;
+    rev_params["AxisX"] = (feature->axis == "X") ? 1.0 : 0.0;
+    rev_params["AxisY"] = (feature->axis == "Y") ? 1.0 : 0.0;
+    rev_params["AxisZ"] = (feature->axis == "Z") ? 1.0 : 0.0;
+    
+    revolution->setPropertyByName("Angle", &rev_params["Angle"]);
+    revolution->setPropertyByName("Axis", &rev_params);
+    revolution->setPropertyByName("Profile", sketch_obj);
+    
+    doc->recompute();
+    return true;
 #else
     (void)part;
     (void)feature_name;
@@ -449,23 +476,34 @@ bool FreeCADAdapter::syncHole(const Part& part, const std::string& feature_name)
         return false;
     }
     
-    // Sync Hole feature to FreeCAD PartDesign::Hole
-    // In real FreeCAD implementation:
-    // App::DocumentObject* hole = doc->addObject("PartDesign::Hole", feature_name.c_str());
-    // if (hole) {
-    //     hole->setPropertyByName("Diameter", feature->diameter);
-    //     hole->setPropertyByName("Depth", feature->hole_depth);
-    //     hole->setPropertyByName("ThroughAll", feature->through_all);
-    //     doc->recompute();
-    //     return true;
-    // }
-    
-    if (feature->diameter > 0.0) {
-        doc->recompute();
-        return true;
+    App::DocumentObject* hole = doc->addObject("PartDesign::Hole", feature_name.c_str());
+    if (!hole) {
+        return false;
     }
     
-    return false;
+    std::map<std::string, double> hole_params;
+    hole_params["Diameter"] = feature->diameter;
+    hole_params["Depth"] = feature->through_all ? -1.0 : feature->hole_depth;
+    hole_params["ThroughAll"] = feature->through_all ? 1.0 : 0.0;
+    hole_params["Threaded"] = 0.0;
+    hole_params["ThreadType"] = 0.0;
+    hole_params["ThreadSize"] = 0.0;
+    hole_params["ThreadClass"] = 0.0;
+    hole_params["ThreadFit"] = 0.0;
+    hole_params["ThreadDirection"] = 0.0;
+    hole_params["HoleCutType"] = 0.0;
+    hole_params["HoleCutDiameter"] = 0.0;
+    hole_params["HoleCutDepth"] = 0.0;
+    hole_params["HoleCutCountersinkAngle"] = 0.0;
+    hole_params["Tapered"] = 0.0;
+    hole_params["TaperedAngle"] = 0.0;
+    
+    hole->setPropertyByName("Diameter", &hole_params["Diameter"]);
+    hole->setPropertyByName("Depth", &hole_params["Depth"]);
+    hole->setPropertyByName("ThroughAll", &hole_params["ThroughAll"]);
+    
+    doc->recompute();
+    return true;
 #else
     (void)part;
     (void)feature_name;
@@ -489,23 +527,22 @@ bool FreeCADAdapter::syncFillet(const Part& part, const std::string& feature_nam
         return false;
     }
     
-    // Sync Fillet feature to FreeCAD PartDesign::Fillet
-    // In real FreeCAD implementation:
-    // App::DocumentObject* fillet = doc->addObject("PartDesign::Fillet", feature_name.c_str());
-    // if (fillet) {
-    //     fillet->setPropertyByName("Radius", feature->radius);
-    //     // Set edge references
-    //     // fillet->setPropertyByName("Edges", edge_list);
-    //     doc->recompute();
-    //     return true;
-    // }
-    
-    if (feature->radius > 0.0 && !feature->edge_ids.empty()) {
-        doc->recompute();
-        return true;
+    App::DocumentObject* fillet = doc->addObject("PartDesign::Fillet", feature_name.c_str());
+    if (!fillet) {
+        return false;
     }
     
-    return false;
+    std::map<std::string, double> fillet_params;
+    fillet_params["Radius"] = feature->radius;
+    fillet_params["EdgeCount"] = static_cast<double>(feature->edge_ids.size());
+    
+    fillet->setPropertyByName("Radius", &fillet_params["Radius"]);
+    
+    std::vector<std::string> edge_refs = feature->edge_ids;
+    fillet->setPropertyByName("Edges", &edge_refs);
+    
+    doc->recompute();
+    return true;
 #else
     (void)part;
     (void)feature_name;
@@ -529,18 +566,55 @@ bool FreeCADAdapter::syncLoft(const Part& part, const std::string& feature_name)
         return false;
     }
     
-    // Sync Loft feature to FreeCAD PartDesign::Loft
-    // In real FreeCAD implementation:
-    // App::DocumentObject* loft = doc->addObject("PartDesign::Loft", feature_name.c_str());
-    // if (loft) {
-    //     // Set sketch profiles
-    //     // loft->setPropertyByName("Sections", sketch_list);
-    //     doc->recompute();
-    //     return true;
-    // }
+    std::vector<App::DocumentObject*> sketch_objects;
+    std::vector<std::string> sketch_ids;
     
-    // Validate that loft has multiple sketch references (stored in parameters or sketch_id)
-    // For now, just check that feature exists
+    if (!feature->sketch_id.empty()) {
+        sketch_ids.push_back(feature->sketch_id);
+    }
+    
+    auto it = feature->parameters.find("sketch_ids");
+    if (it != feature->parameters.end()) {
+        int count = static_cast<int>(it->second);
+        for (int i = 0; i < count; ++i) {
+            std::string param_key = "sketch_" + std::to_string(i);
+            auto sketch_it = feature->parameters.find(param_key);
+            if (sketch_it != feature->parameters.end()) {
+                int sketch_index = static_cast<int>(sketch_it->second);
+                std::string sketch_name = "Sketch" + std::to_string(sketch_index);
+                App::DocumentObject* sketch_obj = doc->getObject(sketch_name.c_str());
+                if (sketch_obj) {
+                    sketch_objects.push_back(sketch_obj);
+                }
+            }
+        }
+    }
+    
+    if (sketch_objects.empty()) {
+        App::DocumentObject* sketch_obj = doc->getObject(feature->sketch_id.c_str());
+        if (sketch_obj) {
+            sketch_objects.push_back(sketch_obj);
+        }
+    }
+    
+    if (sketch_objects.empty()) {
+        return false;
+    }
+    
+    App::DocumentObject* loft = doc->addObject("PartDesign::Loft", feature_name.c_str());
+    if (!loft) {
+        return false;
+    }
+    
+    std::map<std::string, double> loft_params;
+    loft_params["Ruled"] = 0.0;
+    loft_params["Closed"] = 0.0;
+    loft_params["SectionCount"] = static_cast<double>(sketch_objects.size());
+    
+    loft->setPropertyByName("Sections", &sketch_objects);
+    loft->setPropertyByName("Ruled", &loft_params["Ruled"]);
+    loft->setPropertyByName("Closed", &loft_params["Closed"]);
+    
     doc->recompute();
     return true;
 #else

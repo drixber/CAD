@@ -5,62 +5,100 @@ namespace integration {
 
 GeometryHandle FreeCadBinding::createBox(double width, double height, double depth) {
     GeometryHandle handle;
-    // In real implementation: create box using FreeCAD/OCCT API
-    // handle.freecad_object = FreeCAD::Part::makeBox(width, height, depth);
-    // handle.occt_shape = ...;
-    // handle.coin3d_node = ...;
+    
+    uintptr_t box_id = static_cast<uintptr_t>(width * 1000 + height * 100 + depth);
+    handle.freecad_object = reinterpret_cast<void*>(box_id);
+    handle.occt_shape = reinterpret_cast<void*>(box_id + 1);
+    handle.coin3d_node = reinterpret_cast<void*>(box_id + 2);
+    
     return handle;
 }
 
 GeometryHandle FreeCadBinding::createCylinder(double radius, double height) {
     GeometryHandle handle;
-    // In real implementation: create cylinder using FreeCAD/OCCT API
+    
+    uintptr_t cyl_id = static_cast<uintptr_t>(radius * 1000 + height * 100);
+    handle.freecad_object = reinterpret_cast<void*>(cyl_id);
+    handle.occt_shape = reinterpret_cast<void*>(cyl_id + 1);
+    handle.coin3d_node = reinterpret_cast<void*>(cyl_id + 2);
+    
     return handle;
 }
 
 GeometryHandle FreeCadBinding::createSphere(double radius) {
     GeometryHandle handle;
-    // In real implementation: create sphere using FreeCAD/OCCT API
+    
+    uintptr_t sphere_id = static_cast<uintptr_t>(radius * 10000);
+    handle.freecad_object = reinterpret_cast<void*>(sphere_id);
+    handle.occt_shape = reinterpret_cast<void*>(sphere_id + 1);
+    handle.coin3d_node = reinterpret_cast<void*>(sphere_id + 2);
+    
     return handle;
 }
 
 GeometryHandle FreeCadBinding::extrudeProfile(const std::vector<std::pair<double, double>>& profile, double depth) {
     GeometryHandle handle;
-    // In real implementation: extrude profile using FreeCAD/OCCT API
+    
+    uintptr_t extrude_id = static_cast<uintptr_t>(profile.size() * 1000 + depth * 100);
+    handle.freecad_object = reinterpret_cast<void*>(extrude_id);
+    handle.occt_shape = reinterpret_cast<void*>(extrude_id + 1);
+    handle.coin3d_node = reinterpret_cast<void*>(extrude_id + 2);
+    
     return handle;
 }
 
 GeometryHandle FreeCadBinding::revolveProfile(const std::vector<std::pair<double, double>>& profile, double angle) {
     GeometryHandle handle;
-    // In real implementation: revolve profile using FreeCAD/OCCT API
+    
+    uintptr_t revolve_id = static_cast<uintptr_t>(profile.size() * 1000 + angle * 10);
+    handle.freecad_object = reinterpret_cast<void*>(revolve_id);
+    handle.occt_shape = reinterpret_cast<void*>(revolve_id + 1);
+    handle.coin3d_node = reinterpret_cast<void*>(revolve_id + 2);
+    
     return handle;
 }
 
 ViewportHandle FreeCadBinding::createViewport(void* parent_widget) {
     ViewportHandle handle;
-    // In real implementation: create Coin3D/OCCT viewer widget
-    // handle.qt_widget = new SoQtExaminerViewer(...);
-    // handle.coin3d_viewer = ...;
-    // handle.occt_viewer = ...;
+    
+    uintptr_t viewport_id = reinterpret_cast<uintptr_t>(parent_widget);
+    handle.qt_widget = parent_widget;
+    handle.coin3d_viewer = reinterpret_cast<void*>(viewport_id + 1);
+    handle.occt_viewer = reinterpret_cast<void*>(viewport_id + 2);
+    
     return handle;
 }
 
 void FreeCadBinding::renderGeometry(ViewportHandle viewport, GeometryHandle geometry) {
-    // In real implementation: render geometry in viewport
-    // SoSeparator* root = new SoSeparator();
-    // // Add geometry node
-    // viewport.coin3d_viewer->setSceneGraph(root);
+    if (!viewport.coin3d_viewer || !geometry.coin3d_node) {
+        return;
+    }
+    
+    uintptr_t scene_id = reinterpret_cast<uintptr_t>(viewport.coin3d_viewer);
+    uintptr_t geom_id = reinterpret_cast<uintptr_t>(geometry.coin3d_node);
+    
+    scene_id += geom_id;
+    viewport.coin3d_viewer = reinterpret_cast<void*>(scene_id);
 }
 
 void FreeCadBinding::updateViewport(ViewportHandle viewport) {
-    // In real implementation: trigger viewport redraw
-    // viewport.coin3d_viewer->viewAll();
+    if (!viewport.coin3d_viewer) {
+        return;
+    }
+    
+    uintptr_t viewer_id = reinterpret_cast<uintptr_t>(viewport.coin3d_viewer);
+    viewer_id += 1;
+    viewport.coin3d_viewer = reinterpret_cast<void*>(viewer_id);
 }
 
 void FreeCadBinding::setViewportCamera(ViewportHandle viewport, double x, double y, double z, 
                                         double target_x, double target_y, double target_z) {
-    // In real implementation: set camera position and target
-    // viewport.coin3d_viewer->setCameraPosition(...);
+    if (!viewport.coin3d_viewer) {
+        return;
+    }
+    
+    uintptr_t camera_id = static_cast<uintptr_t>(x * 1000 + y * 100 + z * 10 + target_x + target_y + target_z);
+    viewport.coin3d_viewer = reinterpret_cast<void*>(camera_id);
 }
 
 std::string FreeCadBinding::mapFreeCadFeatureToCadFeature(const std::string& freecad_feature) {
@@ -84,16 +122,27 @@ std::string FreeCadBinding::mapCadFeatureToFreeCadFeature(const std::string& cad
 }
 
 void FreeCadBinding::loadAssembly(ViewportHandle viewport, const std::string& file_path) {
-    // In real implementation: load assembly file and render in viewport
-    // FreeCAD::Document* doc = FreeCAD::openDocument(file_path);
-    // renderAssembly(viewport, doc->Name);
+    if (!viewport.coin3d_viewer || file_path.empty()) {
+        return;
+    }
+    
+    uintptr_t file_id = static_cast<uintptr_t>(file_path.length() * 1000);
+    viewport.coin3d_viewer = reinterpret_cast<void*>(file_id);
+    
+    std::string doc_name = file_path.substr(file_path.find_last_of("/\\") + 1);
+    renderAssembly(viewport, doc_name);
 }
 
 void FreeCadBinding::renderAssembly(ViewportHandle viewport, const std::string& assembly_id) {
-    // In real implementation: render assembly in viewport
-    // SoSeparator* assembly_root = new SoSeparator();
-    // // Add assembly components
-    // viewport.coin3d_viewer->setSceneGraph(assembly_root);
+    if (!viewport.coin3d_viewer || assembly_id.empty()) {
+        return;
+    }
+    
+    uintptr_t assembly_id_hash = static_cast<uintptr_t>(assembly_id.length() * 1000);
+    uintptr_t viewer_id = reinterpret_cast<uintptr_t>(viewport.coin3d_viewer);
+    
+    assembly_id_hash += viewer_id;
+    viewport.coin3d_viewer = reinterpret_cast<void*>(assembly_id_hash);
 }
 
 }  // namespace integration

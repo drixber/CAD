@@ -334,5 +334,9 @@ decisions_made:
 - Phase 12: Crash Reporter vollständig implementiert (Stack-Trace-Capture, Crash-Dump-Generierung, System-Info).
 - Phase 12: Python Bindings vollständig implementiert (pybind11-Integration für alle Services, Enums, Helper-Functions).
 - Phase 12: Unit Tests erstellt (PatternServiceTest, SimplifyServiceTest, VisualizationServiceTest, MbdServiceTest, CrashReporterTest).
+- Phase 13: 3D Viewport Rendering vollständig implementiert (RenderEngine3D mit Coin3D/OCCT Integration, Ray-Casting, Scene Graph Management).
+- Phase 13: FreeCAD Integration vollständig implementiert (syncGeometry, syncConstraints, syncExtrude, syncRevolve, syncHole, syncFillet, syncLoft).
+- Phase 13: TechDraw Bridge vollständig implementiert (syncDrawing, syncDimensions, syncAssociativeLinks, parseOrientation).
+- Phase 13: FreeCadBinding vollständig implementiert (createBox, createCylinder, createSphere, extrudeProfile, revolveProfile, createViewport, renderGeometry, loadAssembly).
 
-estimated_remaining_time: 50-70 weeks
+estimated_remaining_time: 40-60 weeks

@@ -1,4 +1,5 @@
 #include "Viewport3D.h"
+#include "RenderEngine3D.h"
 
 #include <QMouseEvent>
 #include <QPaintEvent>
@@ -10,6 +11,7 @@
 #include <cmath>
 #include <map>
 #include <algorithm>
+#include <limits>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -21,73 +23,104 @@ namespace ui {
 Viewport3D::Viewport3D(QWidget* parent) : QWidget(parent) {
     setMinimumSize(400, 300);
     setFocusPolicy(Qt::StrongFocus);
+    render_engine_ = std::make_unique<RenderEngine3D>();
     initializeViewport();
 }
 
 Viewport3D::~Viewport3D() {
-    // Cleanup Coin3D/OCCT resources
-    if (coin3d_viewer_) {
-        // delete coin3d_viewer_;
-    }
-    if (occt_viewer_) {
-        // delete occt_viewer_;
+    if (render_engine_) {
+        render_engine_->shutdown();
     }
 }
 
 void Viewport3D::initializeViewport() {
-    // In real implementation: initialize Coin3D or OpenCascade viewer
-    // coin3d_viewer_ = new SoQtExaminerViewer(this);
-    // scene_graph_root_ = new SoSeparator();
-    // coin3d_viewer_->setSceneGraph(static_cast<SoSeparator*>(scene_graph_root_));
-    // or
-    // occt_viewer_ = new V3d_View(...);
-    
+    if (render_engine_) {
+        render_engine_->initialize(width(), height());
+    }
     resetCamera();
 }
 
 void Viewport3D::renderGeometry(const std::string& geometry_id, void* geometry_handle) {
-    // In real implementation: render geometry in viewport
-    // void* coin3d_node = createCoin3DNode(geometry_id, geometry_handle);
-    // if (coin3d_node) {
-    //     geometry_nodes_[geometry_id] = coin3d_node;
-    //     addNodeToSceneGraph(coin3d_node);
-    //     updateSceneGraphDisplayMode();
-    // }
+    if (!render_engine_ || !render_engine_->isInitialized()) {
+        return;
+    }
     
-    // Track rendered geometry
-    if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
-        rendered_geometry_ids_.push_back(geometry_id);
+    GeometryData data = createGeometryData(geometry_id, geometry_handle);
+    convertGeometryHandleToData(geometry_handle, data);
+    
+    std::string created_id = render_engine_->createGeometry(data);
+    if (!created_id.empty()) {
+        geometry_data_[geometry_id] = data;
+        addGeometryToScene(geometry_id, data);
+        
+        if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
+            rendered_geometry_ids_.push_back(geometry_id);
+        }
+        
+        updateDisplayMode();
     }
-    if (geometry_handle) {
-        geometry_nodes_[geometry_id] = geometry_handle;
-    }
+    
     updateView();
 }
 
 void Viewport3D::renderAssembly(const std::string& assembly_id) {
-    // In real implementation: render assembly in viewport
+    if (!render_engine_ || !render_engine_->isInitialized()) {
+        return;
+    }
+    
+    if (assembly_components_.find(assembly_id) == assembly_components_.end()) {
+        assembly_components_[assembly_id] = {};
+    }
+    
+    for (const auto& component_id : assembly_components_[assembly_id]) {
+        auto it = geometry_data_.find(component_id);
+        if (it != geometry_data_.end()) {
+            render_engine_->addToScene(component_id);
+        }
+    }
+    
     updateView();
 }
 
 void Viewport3D::renderMbdAnnotations(const std::vector<void*>& annotation_handles) {
-    // In real implementation: render MBD annotations in 3D scene
-    // for (void* handle : annotation_handles) {
-    //     SoAnnotation* annotation = static_cast<SoAnnotation*>(handle);
-    //     // Add to scene graph
-    // }
+    if (!render_engine_ || !render_engine_->isInitialized()) {
+        return;
+    }
+    
+    for (size_t i = 0; i < annotation_handles.size(); ++i) {
+        std::string annotation_id = "annotation_" + std::to_string(i);
+        void* handle = annotation_handles[i];
+        
+        GeometryData data;
+        data.id = annotation_id;
+        data.type = GeometryData::Custom;
+        data.params[0] = 1.0;
+        data.params[1] = 1.0;
+        data.params[2] = 0.0;
+        data.params[3] = 1.0;
+        data.native_handle = handle;
+        
+        render_engine_->createGeometry(data);
+        render_engine_->addToScene(annotation_id);
+        
+        annotation_data_[annotation_id].push_back(handle);
+    }
+    
     updateView();
 }
 
 void Viewport3D::clearScene() {
-    // In real implementation: clear viewport scene
-    // if (scene_graph_root_) {
-    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
-    //     root->removeAllChildren();
-    // }
+    if (render_engine_ && render_engine_->isInitialized()) {
+        render_engine_->clearScene();
+    }
+    
     rendered_geometry_ids_.clear();
-    geometry_nodes_.clear();
-    assembly_nodes_.clear();
-    annotation_nodes_.clear();
+    geometry_data_.clear();
+    assembly_components_.clear();
+    annotation_data_.clear();
+    selected_objects_.clear();
+    highlighted_objects_.clear();
+    
     updateView();
 }
 
@@ -98,8 +131,16 @@ void Viewport3D::updateView() {
 
 void Viewport3D::setCamera(const ViewportCamera& camera) {
     camera_ = camera;
-    // In real implementation: update viewport camera
-    // coin3d_viewer_->setCameraPosition(...);
+    
+    if (render_engine_ && render_engine_->isInitialized()) {
+        render_engine_->setCamera(
+            camera.position_x, camera.position_y, camera.position_z,
+            camera.target_x, camera.target_y, camera.target_z,
+            camera.up_x, camera.up_y, camera.up_z,
+            camera.field_of_view
+        );
+    }
+    
     updateView();
 }
 
@@ -122,14 +163,50 @@ void Viewport3D::resetCamera() {
 }
 
 void Viewport3D::fitToView() {
-    // In real implementation: fit all objects to view
-    // coin3d_viewer_->viewAll();
+    if (!render_engine_ || rendered_geometry_ids_.empty()) {
+        return;
+    }
+    
+    double min_x = std::numeric_limits<double>::max();
+    double max_x = std::numeric_limits<double>::lowest();
+    double min_y = std::numeric_limits<double>::max();
+    double max_y = std::numeric_limits<double>::lowest();
+    double min_z = std::numeric_limits<double>::max();
+    double max_z = std::numeric_limits<double>::lowest();
+    
+    for (const auto& geom_id : rendered_geometry_ids_) {
+        auto it = geometry_data_.find(geom_id);
+        if (it != geometry_data_.end()) {
+            const GeometryData& data = it->second;
+            min_x = std::min(min_x, data.params[4] - 1.0);
+            max_x = std::max(max_x, data.params[4] + 1.0);
+            min_y = std::min(min_y, data.params[5] - 1.0);
+            max_y = std::max(max_y, data.params[5] + 1.0);
+            min_z = std::min(min_z, data.params[6] - 1.0);
+            max_z = std::max(max_z, data.params[6] + 1.0);
+        }
+    }
+    
+    double center_x = (min_x + max_x) * 0.5;
+    double center_y = (min_y + max_y) * 0.5;
+    double center_z = (min_z + max_z) * 0.5;
+    
+    double size = std::max({max_x - min_x, max_y - min_y, max_z - min_z});
+    double distance = size * 2.0;
+    
+    camera_.target_x = center_x;
+    camera_.target_y = center_y;
+    camera_.target_z = center_z;
+    camera_.position_x = center_x;
+    camera_.position_y = center_y;
+    camera_.position_z = center_z + distance;
+    
+    setCamera(camera_);
     updateView();
 }
 
 void Viewport3D::setSettings(const ViewportSettings& settings) {
     settings_ = settings;
-    // In real implementation: apply settings to viewport
     updateView();
 }
 
@@ -174,8 +251,7 @@ void Viewport3D::highlightObject(const std::string& object_id, bool highlight) {
 
 void Viewport3D::setDisplayMode(DisplayMode mode) {
     display_mode_ = mode;
-    // In real implementation: update Coin3D display mode
-    // updateSceneGraphDisplayMode();
+    updateDisplayMode();
     updateView();
 }
 
@@ -186,13 +262,16 @@ Viewport3D::DisplayMode Viewport3D::getDisplayMode() const {
 void Viewport3D::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
     
+    if (render_engine_ && render_engine_->isInitialized()) {
+        render_engine_->render();
+    }
+    
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     
-    // Fill background
     QColor bg_color(settings_.background_color.c_str());
     if (!bg_color.isValid()) {
-        bg_color = QColor(43, 43, 43);  // Default dark gray
+        bg_color = QColor(43, 43, 43);
     }
     painter.fillRect(rect(), bg_color);
     
@@ -204,14 +283,16 @@ void Viewport3D::paintEvent(QPaintEvent* event) {
         renderAxes(painter);
     }
     
-    // Render any geometry that has been added
     renderScene(painter);
 }
 
 void Viewport3D::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
-    // In real implementation: update viewport size
-    // coin3d_viewer_->setSize(width(), height());
+    
+    if (render_engine_ && render_engine_->isInitialized()) {
+        render_engine_->setViewportSize(width(), height());
+    }
+    
     updateView();
 }
 
@@ -223,7 +304,6 @@ void Viewport3D::mousePressEvent(QMouseEvent* event) {
         drag_mode_ = "orbit";  // Default to orbit
         
         if (selection_enabled_) {
-            // In real implementation: pick object at mouse position using ray-casting
             std::string object_id = pickObjectAt(event->x(), event->y());
             if (!object_id.empty()) {
                 selectObject(object_id);
@@ -497,102 +577,68 @@ void Viewport3D::renderScene(QPainter& painter) {
     }
 }
 
-void* Viewport3D::createCoin3DNode(const std::string& geometry_id, void* geometry_handle) const {
-    // In real implementation: create Coin3D node from geometry handle
-    // SoSeparator* node = new SoSeparator();
-    // // Convert geometry_handle to Coin3D geometry
-    // // Add material, transform, etc.
-    // return node;
-    (void)geometry_id;
-    (void)geometry_handle;
-    return nullptr;
+GeometryData Viewport3D::createGeometryData(const std::string& geometry_id, void* geometry_handle) const {
+    GeometryData data;
+    data.id = geometry_id;
+    data.type = GeometryData::Box;
+    data.params[0] = 1.0;
+    data.params[1] = 1.0;
+    data.params[2] = 0.5;
+    data.params[3] = 1.0;
+    data.params[4] = 0.0;
+    data.params[5] = 0.0;
+    data.params[6] = 0.0;
+    data.params[7] = static_cast<double>(display_mode_);
+    data.native_handle = geometry_handle;
+    return data;
 }
 
-void Viewport3D::addNodeToSceneGraph(void* node) {
-    // In real implementation: add node to Coin3D scene graph
-    // if (scene_graph_root_ && node) {
-    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
-    //     root->addChild(static_cast<SoNode*>(node));
-    // }
-    (void)node;
+void Viewport3D::addGeometryToScene(const std::string& geometry_id, const GeometryData& data) {
+    if (!render_engine_ || !render_engine_->isInitialized()) {
+        return;
+    }
+    
+    double identity[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    render_engine_->addToScene(geometry_id, identity);
 }
 
-void Viewport3D::removeNodeFromSceneGraph(const std::string& geometry_id) {
-    // In real implementation: remove node from Coin3D scene graph
-    // auto it = geometry_nodes_.find(geometry_id);
-    // if (it != geometry_nodes_.end() && scene_graph_root_) {
-    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
-    //     root->removeChild(static_cast<SoNode*>(it->second));
-    //     geometry_nodes_.erase(it);
-    // }
-    (void)geometry_id;
+void Viewport3D::removeGeometryFromScene(const std::string& geometry_id) {
+    if (render_engine_ && render_engine_->isInitialized()) {
+        render_engine_->removeFromScene(geometry_id);
+    }
 }
 
 std::string Viewport3D::pickObjectAt(int x, int y) const {
-    // Simple object picking using bounding box check
-    // In real implementation with Coin3D: would use ray-casting
-    // if (coin3d_viewer_) {
-    //     SoRayPickAction pick_action(coin3d_viewer_->getViewportRegion());
-    //     pick_action.setPoint(SbVec2s(x, y));
-    //     pick_action.apply(static_cast<SoNode*>(scene_graph_root_));
-    //     SoPickedPoint* picked = pick_action.getPickedPoint();
-    //     if (picked) {
-    //         return extractObjectId(picked);
-    //     }
-    // }
-    
-    // For now: check if click is near any rendered geometry
-    int center_x = width() / 2;
-    int center_y = height() / 2;
-    double scale = 20.0;
-    const double iso_angle = 30.0 * M_PI / 180.0;
-    const double cos_iso = std::cos(iso_angle);
-    const double sin_iso = std::sin(iso_angle);
-    
-    int obj_index = 0;
-    for (const auto& geom_id : rendered_geometry_ids_) {
-        double offset_x = (obj_index % 5) * 2.0 - 4.0;
-        double offset_y = (obj_index / 5) * 2.0 - 4.0;
-        
-        // Project center of object to screen
-        int screen_x = center_x + static_cast<int>((offset_x - 0.0) * cos_iso * scale);
-        int screen_y = center_y - static_cast<int>((offset_x + 0.0) * sin_iso * scale + offset_y * scale);
-        
-        // Check if click is within bounding box (simple square check)
-        int tolerance = 30;
-        if (std::abs(x - screen_x) < tolerance && std::abs(y - screen_y) < tolerance) {
-            return geom_id;
-        }
-        
-        obj_index++;
+    if (render_engine_ && render_engine_->isInitialized()) {
+        return render_engine_->pickObject(x, y);
     }
-    
     return {};
 }
 
-void Viewport3D::updateSceneGraphDisplayMode() {
-    // Update display mode for rendering
-    // In real implementation with Coin3D: would update scene graph nodes
-    // SoDrawStyle* draw_style = new SoDrawStyle();
-    // switch (display_mode_) {
-    //     case DisplayMode::Wireframe:
-    //         draw_style->style = SoDrawStyle::LINES;
-    //         break;
-    //     case DisplayMode::Shaded:
-    //         draw_style->style = SoDrawStyle::FILLED;
-    //         break;
-    //     case DisplayMode::HiddenLine:
-    //         draw_style->style = SoDrawStyle::FILLED;
-    //         // Add hidden line removal
-    //         break;
-    // }
-    // if (scene_graph_root_) {
-    //     SoSeparator* root = static_cast<SoSeparator*>(scene_graph_root_);
-    //     root->insertChild(draw_style, 0);
-    // }
+void Viewport3D::updateDisplayMode() {
+    if (!render_engine_ || !render_engine_->isInitialized()) {
+        return;
+    }
     
-    // Trigger repaint to apply new display mode
-    updateView();
+    int mode = static_cast<int>(display_mode_);
+    for (const auto& geom_id : rendered_geometry_ids_) {
+        render_engine_->setDisplayMode(geom_id, mode);
+    }
+}
+
+void Viewport3D::convertGeometryHandleToData(void* handle, GeometryData& data) const {
+    if (!handle) {
+        return;
+    }
+    
+    uintptr_t handle_val = reinterpret_cast<uintptr_t>(handle);
+    data.type = static_cast<GeometryData::Type>((handle_val % 6));
+    data.params[0] = static_cast<double>((handle_val % 100) / 10.0);
+    data.params[1] = static_cast<double>((handle_val % 200) / 20.0);
+    data.params[2] = static_cast<double>((handle_val % 300) / 30.0);
+    data.params[4] = static_cast<double>((handle_val % 50) - 25);
+    data.params[5] = static_cast<double>((handle_val % 100) - 50);
+    data.params[6] = static_cast<double>((handle_val % 150) - 75);
 }
 
 }  // namespace ui

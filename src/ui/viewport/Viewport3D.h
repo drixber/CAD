@@ -3,12 +3,11 @@
 #include <QWidget>
 #include <string>
 #include <vector>
+#include <memory>
+#include "RenderEngine3D.h"
 
 namespace cad {
 namespace ui {
-
-// 3D viewport integration scaffold
-// This provides the interface for 3D viewport rendering with Coin3D or OpenCascade
 
 struct ViewportCamera {
     double position_x{0.0};
@@ -85,9 +84,7 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
-    void* coin3d_viewer_{nullptr};  // SoQtExaminerViewer or similar
-    void* occt_viewer_{nullptr};    // OpenCascade viewer
-    void* scene_graph_root_{nullptr};  // Coin3D scene graph root node
+    std::unique_ptr<RenderEngine3D> render_engine_;
     ViewportCamera camera_;
     ViewportSettings settings_;
     bool selection_enabled_{true};
@@ -96,28 +93,26 @@ private:
     std::vector<std::string> highlighted_objects_;
     DisplayMode display_mode_{DisplayMode::Shaded};
     
-    // Mouse interaction
     bool is_dragging_{false};
     int last_mouse_x_{0};
     int last_mouse_y_{0};
     std::string drag_mode_{"orbit"};
     
-    // Scene graph management
-    std::map<std::string, void*> geometry_nodes_;  // geometry_id -> Coin3D node
-    std::map<std::string, void*> assembly_nodes_;   // assembly_id -> Coin3D node
-    std::map<std::string, void*> annotation_nodes_; // annotation_id -> Coin3D node
+    std::map<std::string, GeometryData> geometry_data_;
+    std::map<std::string, std::vector<std::string>> assembly_components_;
+    std::map<std::string, std::vector<void*>> annotation_data_;
     
     void initializeViewport();
     void renderGrid(QPainter& painter);
     void renderAxes(QPainter& painter);
     void renderScene(QPainter& painter);
     
-    // Coin3D integration helpers
-    void* createCoin3DNode(const std::string& geometry_id, void* geometry_handle) const;
-    void addNodeToSceneGraph(void* node);
-    void removeNodeFromSceneGraph(const std::string& geometry_id);
-    std::string pickObjectAt(int x, int y) const;  // Ray-casting for object picking
-    void updateSceneGraphDisplayMode();
+    GeometryData createGeometryData(const std::string& geometry_id, void* geometry_handle) const;
+    void addGeometryToScene(const std::string& geometry_id, const GeometryData& data);
+    void removeGeometryFromScene(const std::string& geometry_id);
+    std::string pickObjectAt(int x, int y) const;
+    void updateDisplayMode();
+    void convertGeometryHandleToData(void* handle, GeometryData& data) const;
 };
 
 }  // namespace ui
