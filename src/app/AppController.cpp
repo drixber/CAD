@@ -308,7 +308,7 @@ void AppController::executeCommand(const std::string& command) {
                     annotation_service_.buildDefaultDimensions(document.sheets.front().name);
                 document.annotations =
                     annotation_service_.buildDefaultAnnotations(document.sheets.front().name);
-                techdraw_bridge_.applyDimensions(document);
+                techdraw_bridge_.syncDimensions(document);
                 main_window_.setIntegrationStatus("Dimensions added");
                 main_window_.setViewportStatus("Dimensions: " + 
                     std::to_string(document.dimensions.size()) + " items");
