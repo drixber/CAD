@@ -1,4 +1,5 @@
 @echo off
+REM Einfache Version ohne komplexe PATH-Manipulation
 echo ============================================================
 echo CADursor - Automatischer Build und Installer-Erstellung
 echo ============================================================
@@ -7,33 +8,21 @@ echo.
 REM Prüfe ob CMake vorhanden ist
 where cmake >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    REM Versuche typische Installationspfade
-    set "CMAKE_PATH1=C:\Program Files\CMake\bin\cmake.exe"
-    set "CMAKE_PATH2=C:\Program Files (x86)\CMake\bin\cmake.exe"
-    
-    if exist "%CMAKE_PATH1%" (
-        set "PATH=%PATH%;C:\Program Files\CMake\bin"
-        echo CMake gefunden in: C:\Program Files\CMake\bin
-    ) else (
-        if exist "%CMAKE_PATH2%" (
-            set "PATH=%PATH%;C:\Program Files (x86)\CMake\bin"
-            echo CMake gefunden in: C:\Program Files (x86)\CMake\bin
-        ) else (
-            echo FEHLER: CMake nicht gefunden!
-            echo.
-            echo Bitte installieren Sie CMake von: https://cmake.org/download/
-            echo Oder fügen Sie CMake zum PATH hinzu.
-            echo.
-            pause
-            exit /b 1
-        )
-    )
+    echo FEHLER: CMake nicht gefunden!
+    echo.
+    echo Bitte installieren Sie CMake von: https://cmake.org/download/
+    echo WICHTIG: Aktivieren Sie "Add CMake to system PATH" bei der Installation!
+    echo.
+    echo Oder starten Sie cmd.exe (nicht PowerShell) und versuchen Sie es erneut.
+    echo.
+    pause
+    exit /b 1
 )
 
 REM Prüfe ob NSIS vorhanden ist
-set NSIS_PATH=C:\Program Files (x86)\NSIS\makensis.exe
+set "NSIS_PATH=C:\Program Files (x86)\NSIS\makensis.exe"
 if not exist "%NSIS_PATH%" (
-    set NSIS_PATH=C:\Program Files\NSIS\makensis.exe
+    set "NSIS_PATH=C:\Program Files\NSIS\makensis.exe"
 )
 if not exist "%NSIS_PATH%" (
     echo WARNUNG: NSIS nicht gefunden!
