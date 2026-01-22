@@ -1,6 +1,6 @@
 # Workflow State
 
-current_phase: Phase 3 drawings & MBD
+current_phase: Phase 4 Advanced Features & Services
 
 completed_items:
 - Added CAD_BUILD_PYTHON option and python bindings scaffold.
@@ -158,6 +158,7 @@ completed_items:
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings full implementation (currently scaffold only).
 - 3D viewport integration full implementation (currently scaffold only).
+- Production deployment and testing.
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.

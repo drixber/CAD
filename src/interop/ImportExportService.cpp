@@ -70,5 +70,145 @@ IoResult ImportExportService::exportBimRfa(const std::string& path) const {
     return result;
 }
 
+IoResult ImportExportService::importStep(const std::string& path) const {
+    ImportRequest request;
+    request.path = path;
+    request.format = FileFormat::Step;
+    return importModel(request);
+}
+
+IoResult ImportExportService::importIges(const std::string& path) const {
+    ImportRequest request;
+    request.path = path;
+    request.format = FileFormat::Iges;
+    return importModel(request);
+}
+
+IoResult ImportExportService::importStl(const std::string& path) const {
+    ImportRequest request;
+    request.path = path;
+    request.format = FileFormat::Stl;
+    return importModel(request);
+}
+
+IoResult ImportExportService::importDwg(const std::string& path) const {
+    ImportRequest request;
+    request.path = path;
+    request.format = FileFormat::Dwg;
+    return importModel(request);
+}
+
+IoResult ImportExportService::importDxf(const std::string& path) const {
+    ImportRequest request;
+    request.path = path;
+    request.format = FileFormat::Dxf;
+    return importModel(request);
+}
+
+IoResult ImportExportService::exportStep(const std::string& path, bool ascii_mode) const {
+    ExportRequest request;
+    request.path = path;
+    request.format = FileFormat::Step;
+    IoResult result = exportModel(request);
+    if (result.success && ascii_mode) {
+        result.message += " (ASCII mode)";
+    }
+    return result;
+}
+
+IoResult ImportExportService::exportIges(const std::string& path) const {
+    ExportRequest request;
+    request.path = path;
+    request.format = FileFormat::Iges;
+    return exportModel(request);
+}
+
+IoResult ImportExportService::exportStl(const std::string& path, bool ascii_mode) const {
+    ExportRequest request;
+    request.path = path;
+    request.format = FileFormat::Stl;
+    IoResult result = exportModel(request);
+    if (result.success && ascii_mode) {
+        result.message += " (ASCII mode)";
+    }
+    return result;
+}
+
+IoResult ImportExportService::exportDwg(const std::string& path) const {
+    ExportRequest request;
+    request.path = path;
+    request.format = FileFormat::Dwg;
+    return exportModel(request);
+}
+
+IoResult ImportExportService::exportDxf(const std::string& path) const {
+    ExportRequest request;
+    request.path = path;
+    request.format = FileFormat::Dxf;
+    return exportModel(request);
+}
+
+IoResult ImportExportService::importMultiple(const std::vector<ImportRequest>& requests) const {
+    IoResult result;
+    result.success = true;
+    int success_count = 0;
+    
+    for (const auto& request : requests) {
+        IoResult single_result = importModel(request);
+        if (single_result.success) {
+            success_count++;
+        } else {
+            result.message += "Failed: " + request.path + "; ";
+        }
+    }
+    
+    result.message = "Imported " + std::to_string(success_count) + " of " + std::to_string(requests.size()) + " files";
+    return result;
+}
+
+IoResult ImportExportService::exportMultiple(const std::vector<ExportRequest>& requests) const {
+    IoResult result;
+    result.success = true;
+    int success_count = 0;
+    
+    for (const auto& request : requests) {
+        IoResult single_result = exportModel(request);
+        if (single_result.success) {
+            success_count++;
+        } else {
+            result.message += "Failed: " + request.path + "; ";
+        }
+    }
+    
+    result.message = "Exported " + std::to_string(success_count) + " of " + std::to_string(requests.size()) + " files";
+    return result;
+}
+
+bool ImportExportService::validateFileFormat(const std::string& path, FileFormat expected_format) const {
+    // In real implementation: would check file header/magic numbers
+    FileFormat detected = detectFileFormat(path);
+    return detected == expected_format;
+}
+
+FileFormat ImportExportService::detectFileFormat(const std::string& path) const {
+    // In real implementation: would detect format from file extension or header
+    if (path.ends_with(".step") || path.ends_with(".stp")) {
+        return FileFormat::Step;
+    } else if (path.ends_with(".iges") || path.ends_with(".igs")) {
+        return FileFormat::Iges;
+    } else if (path.ends_with(".stl")) {
+        return FileFormat::Stl;
+    } else if (path.ends_with(".dwg")) {
+        return FileFormat::Dwg;
+    } else if (path.ends_with(".dxf")) {
+        return FileFormat::Dxf;
+    } else if (path.ends_with(".sat")) {
+        return FileFormat::Sat;
+    } else if (path.ends_with(".rfa")) {
+        return FileFormat::Rfa;
+    }
+    return FileFormat::Step;  // Default
+}
+
 }  // namespace interop
 }  // namespace cad

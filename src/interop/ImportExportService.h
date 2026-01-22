@@ -40,6 +40,26 @@ public:
     std::string formatLabel(FileFormat format) const;
     bool supportsImport(FileFormat format) const;
     bool supportsExport(FileFormat format) const;
+    
+    // Enhanced import/export
+    IoResult importStep(const std::string& path) const;
+    IoResult importIges(const std::string& path) const;
+    IoResult importStl(const std::string& path) const;
+    IoResult importDwg(const std::string& path) const;
+    IoResult importDxf(const std::string& path) const;
+    IoResult exportStep(const std::string& path, bool ascii_mode) const;
+    IoResult exportIges(const std::string& path) const;
+    IoResult exportStl(const std::string& path, bool ascii_mode) const;
+    IoResult exportDwg(const std::string& path) const;
+    IoResult exportDxf(const std::string& path) const;
+    
+    // Batch operations
+    IoResult importMultiple(const std::vector<ImportRequest>& requests) const;
+    IoResult exportMultiple(const std::vector<ExportRequest>& requests) const;
+    
+    // Format validation
+    bool validateFileFormat(const std::string& path, FileFormat expected_format) const;
+    FileFormat detectFileFormat(const std::string& path) const;
 };
 
 }  // namespace interop
