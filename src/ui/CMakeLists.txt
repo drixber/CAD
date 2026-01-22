@@ -24,6 +24,14 @@ endif()
 
 add_library(cad_ui ${CAD_UI_SOURCES})
 
+if(CAD_USE_QT)
+    set_target_properties(cad_ui PROPERTIES
+        AUTOMOC ON
+        AUTORCC ON
+        AUTOUIC ON
+    )
+endif()
+
 target_include_directories(cad_ui
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -35,11 +43,15 @@ if(CAD_USE_QT)
     find_package(Qt6 QUIET COMPONENTS Widgets Core)
     if(Qt6_FOUND)
         set(CMAKE_AUTOMOC ON)
+        set(CMAKE_AUTORCC ON)
+        set(CMAKE_AUTOUIC ON)
         target_link_libraries(cad_ui PUBLIC Qt6::Widgets Qt6::Core)
         target_compile_definitions(cad_ui PUBLIC CAD_USE_QT=1)
     else()
         find_package(Qt5 REQUIRED COMPONENTS Widgets Core)
         set(CMAKE_AUTOMOC ON)
+        set(CMAKE_AUTORCC ON)
+        set(CMAKE_AUTOUIC ON)
         target_link_libraries(cad_ui PUBLIC Qt5::Widgets Qt5::Core)
         target_compile_definitions(cad_ui PUBLIC CAD_USE_QT=1)
     endif()
