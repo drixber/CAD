@@ -17,4 +17,5 @@ add_library(cad_modules
 target_include_directories(cad_modules
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
 )
