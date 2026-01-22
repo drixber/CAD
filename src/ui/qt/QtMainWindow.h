@@ -13,6 +13,7 @@
 #include "QtViewport.h"
 #include "QtLogPanel.h"
 #include "QtPerformancePanel.h"
+#include "viewport/Viewport3D.h"
 #include "core/Modeler/Sketch.h"
 
 namespace cad {
@@ -49,6 +50,7 @@ public:
     
     QtPropertyPanel* propertyPanel();
     QtCommandLine* commandLine();
+    Viewport3D* viewport3D();
 
 private:
     QtRibbon* ribbon_{nullptr};

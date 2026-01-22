@@ -31,7 +31,10 @@ void AppController::initialize() {
     if (freecad_.isAvailable()) {
         freecad_.syncSketch(active_sketch_);
         freecad_.syncConstraints(active_sketch_);
+        freecad_.syncGeometry(active_sketch_);
     }
+    // Solve constraints after geometry is added
+    modeler_.solveConstraints(active_sketch_);
     initializeAssembly();
     bindCommands();
 }
@@ -491,9 +494,69 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "SectionAnalysis") {
         main_window_.setIntegrationStatus("Section analysis ready");
         main_window_.setViewportStatus("Section analysis: select plane");
-    } else if (command == "Line" || command == "Rectangle" || command == "Circle" || command == "Arc") {
-        main_window_.setIntegrationStatus("Sketch tool: " + command);
-        main_window_.setViewportStatus("Sketch " + command + " command active");
+    } else if (command == "Line") {
+        // Add a line to the active sketch
+        cad::core::Point2D start{0.0, 0.0};
+        cad::core::Point2D end{50.0, 50.0};
+        std::string geom_id = active_sketch_.addLine(start, end);
+        main_window_.setIntegrationStatus("Line added: " + geom_id);
+        main_window_.setViewportStatus("Line created");
+        
+        // Render in viewport
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
+        }
+        #endif
+    } else if (command == "Rectangle") {
+        // Add a rectangle to the active sketch
+        cad::core::Point2D corner{0.0, 0.0};
+        double width = 100.0;
+        double height = 50.0;
+        std::string geom_id = active_sketch_.addRectangle(corner, width, height);
+        main_window_.setIntegrationStatus("Rectangle added: " + geom_id);
+        main_window_.setViewportStatus("Rectangle created");
+        
+        // Render in viewport
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
+        }
+        #endif
+    } else if (command == "Circle") {
+        // Add a circle to the active sketch
+        cad::core::Point2D center{25.0, 25.0};
+        double radius = 20.0;
+        std::string geom_id = active_sketch_.addCircle(center, radius);
+        main_window_.setIntegrationStatus("Circle added: " + geom_id);
+        main_window_.setViewportStatus("Circle created");
+        
+        // Render in viewport
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
+        }
+        #endif
+    } else if (command == "Arc") {
+        // Add an arc to the active sketch
+        cad::core::Point2D center{25.0, 25.0};
+        double radius = 20.0;
+        double start_angle = 0.0;
+        double end_angle = 90.0;
+        std::string geom_id = active_sketch_.addArc(center, radius, start_angle, end_angle);
+        main_window_.setIntegrationStatus("Arc added: " + geom_id);
+        main_window_.setViewportStatus("Arc created");
+        
+        // Render in viewport
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
+        }
+        #endif
     } else if (command == "Constraint") {
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
         main_window_.setViewportStatus("Constraints: " + std::to_string(active_sketch_.constraints().size()) + " items");

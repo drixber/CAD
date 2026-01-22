@@ -2,8 +2,11 @@
 
 #include <QMouseEvent>
 #include <QPaintEvent>
+#include <QPainter>
 #include <QResizeEvent>
 #include <QWheelEvent>
+#include <QColor>
+#include <cmath>
 
 namespace cad {
 namespace ui {
@@ -37,6 +40,12 @@ void Viewport3D::renderGeometry(const std::string& geometry_id, void* geometry_h
     // In real implementation: render geometry in viewport
     // SoSeparator* root = static_cast<SoSeparator*>(geometry_handle);
     // coin3d_viewer_->setSceneGraph(root);
+    
+    // Track rendered geometry
+    if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
+        rendered_geometry_ids_.push_back(geometry_id);
+    }
+    (void)geometry_handle;  // Unused for now
     updateView();
 }
 
@@ -57,6 +66,7 @@ void Viewport3D::renderMbdAnnotations(const std::vector<void*>& annotation_handl
 void Viewport3D::clearScene() {
     // In real implementation: clear viewport scene
     // coin3d_viewer_->setSceneGraph(new SoSeparator());
+    rendered_geometry_ids_.clear();
     updateView();
 }
 
@@ -117,18 +127,26 @@ std::vector<std::string> Viewport3D::getSelectedObjects() const {
 void Viewport3D::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
     
-    // In real implementation: render 3D scene using Coin3D/OCCT
-    // For now, just draw a placeholder
-    // QPainter painter(this);
-    // painter.fillRect(rect(), QColor(settings_.background_color.c_str()));
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    
+    // Fill background
+    QColor bg_color(settings_.background_color.c_str());
+    if (!bg_color.isValid()) {
+        bg_color = QColor(43, 43, 43);  // Default dark gray
+    }
+    painter.fillRect(rect(), bg_color);
     
     if (settings_.show_grid) {
-        renderGrid();
+        renderGrid(painter);
     }
     
     if (settings_.show_axes) {
-        renderAxes();
+        renderAxes(painter);
     }
+    
+    // Render any geometry that has been added
+    renderScene(painter);
 }
 
 void Viewport3D::resizeEvent(QResizeEvent* event) {
@@ -139,40 +157,162 @@ void Viewport3D::resizeEvent(QResizeEvent* event) {
 }
 
 void Viewport3D::mousePressEvent(QMouseEvent* event) {
-    if (selection_enabled_ && event->button() == Qt::LeftButton) {
-        // In real implementation: pick object at mouse position
-        // std::string object_id = pickObject(event->x(), event->y());
-        // if (!object_id.empty()) {
-        //     selected_objects_.push_back(object_id);
-        //     emit objectSelected(object_id);
-        // }
+    if (event->button() == Qt::LeftButton) {
+        is_dragging_ = true;
+        last_mouse_x_ = event->x();
+        last_mouse_y_ = event->y();
+        drag_mode_ = "orbit";  // Default to orbit
+        
+        if (selection_enabled_) {
+            // In real implementation: pick object at mouse position
+            // std::string object_id = pickObject(event->x(), event->y());
+            // if (!object_id.empty()) {
+            //     selected_objects_.push_back(object_id);
+            //     emit objectSelected(object_id);
+            // }
+        }
+    } else if (event->button() == Qt::MiddleButton) {
+        is_dragging_ = true;
+        last_mouse_x_ = event->x();
+        last_mouse_y_ = event->y();
+        drag_mode_ = "pan";
     }
     QWidget::mousePressEvent(event);
 }
 
 void Viewport3D::mouseMoveEvent(QMouseEvent* event) {
-    // In real implementation: handle camera rotation/pan
+    if (is_dragging_) {
+        int dx = event->x() - last_mouse_x_;
+        int dy = event->y() - last_mouse_y_;
+        
+        if (drag_mode_ == "orbit") {
+            // Rotate camera around target
+            double angle_x = dx * 0.01;
+            double angle_y = dy * 0.01;
+            
+            // Simple rotation around Y axis (horizontal)
+            double radius = std::sqrt(
+                (camera_.position_x - camera_.target_x) * (camera_.position_x - camera_.target_x) +
+                (camera_.position_y - camera_.target_y) * (camera_.position_y - camera_.target_y) +
+                (camera_.position_z - camera_.target_z) * (camera_.position_z - camera_.target_z)
+            );
+            
+            static double current_angle = 0.0;
+            current_angle += angle_x;
+            
+            camera_.position_x = camera_.target_x + radius * std::sin(current_angle);
+            camera_.position_z = camera_.target_z + radius * std::cos(current_angle);
+            camera_.position_y = camera_.target_y + angle_y * radius;
+            
+            setCamera(camera_);
+        } else if (drag_mode_ == "pan") {
+            // Pan camera
+            double pan_speed = 0.01;
+            camera_.target_x -= dx * pan_speed;
+            camera_.target_y += dy * pan_speed;
+            camera_.position_x -= dx * pan_speed;
+            camera_.position_y += dy * pan_speed;
+            setCamera(camera_);
+        }
+        
+        last_mouse_x_ = event->x();
+        last_mouse_y_ = event->y();
+    }
     QWidget::mouseMoveEvent(event);
 }
 
 void Viewport3D::mouseReleaseEvent(QMouseEvent* event) {
+    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton) {
+        is_dragging_ = false;
+    }
     QWidget::mouseReleaseEvent(event);
 }
 
 void Viewport3D::wheelEvent(QWheelEvent* event) {
-    // In real implementation: handle zoom
-    // double zoom_factor = 1.0 + (event->angleDelta().y() / 1200.0);
-    // camera_.field_of_view /= zoom_factor;
-    // setCamera(camera_);
+    // Handle zoom
+    double zoom_factor = 1.0 + (event->angleDelta().y() / 1200.0);
+    double current_distance = std::sqrt(
+        (camera_.position_x - camera_.target_x) * (camera_.position_x - camera_.target_x) +
+        (camera_.position_y - camera_.target_y) * (camera_.position_y - camera_.target_y) +
+        (camera_.position_z - camera_.target_z) * (camera_.position_z - camera_.target_z)
+    );
+    
+    double new_distance = current_distance / zoom_factor;
+    double dx = camera_.position_x - camera_.target_x;
+    double dy = camera_.position_y - camera_.target_y;
+    double dz = camera_.position_z - camera_.target_z;
+    double length = std::sqrt(dx*dx + dy*dy + dz*dz);
+    
+    if (length > 0.001) {
+        camera_.position_x = camera_.target_x + (dx / length) * new_distance;
+        camera_.position_y = camera_.target_y + (dy / length) * new_distance;
+        camera_.position_z = camera_.target_z + (dz / length) * new_distance;
+        setCamera(camera_);
+    }
+    
     QWidget::wheelEvent(event);
 }
 
-void Viewport3D::renderGrid() {
-    // In real implementation: render grid using Coin3D/OCCT
+void Viewport3D::renderGrid(QPainter& painter) {
+    painter.setPen(QPen(QColor(100, 100, 100, 100), 1));
+    
+    int center_x = width() / 2;
+    int center_y = height() / 2;
+    double grid_size = settings_.grid_size * 10;  // Scale for display
+    
+    // Draw grid lines
+    for (int i = -20; i <= 20; ++i) {
+        int x = center_x + static_cast<int>(i * grid_size);
+        int y = center_y + static_cast<int>(i * grid_size);
+        
+        // Vertical lines
+        if (x >= 0 && x < width()) {
+            painter.drawLine(x, 0, x, height());
+        }
+        
+        // Horizontal lines
+        if (y >= 0 && y < height()) {
+            painter.drawLine(0, y, width(), y);
+        }
+    }
+    
+    // Draw center lines
+    painter.setPen(QPen(QColor(150, 150, 150, 150), 2));
+    painter.drawLine(center_x, 0, center_x, height());
+    painter.drawLine(0, center_y, width(), center_y);
 }
 
-void Viewport3D::renderAxes() {
-    // In real implementation: render coordinate axes using Coin3D/OCCT
+void Viewport3D::renderAxes(QPainter& painter) {
+    int center_x = width() / 2;
+    int center_y = height() / 2;
+    int axis_length = 50;
+    
+    // X axis (red)
+    painter.setPen(QPen(QColor(255, 0, 0), 2));
+    painter.drawLine(center_x, center_y, center_x + axis_length, center_y);
+    painter.drawText(center_x + axis_length + 5, center_y - 5, "X");
+    
+    // Y axis (green)
+    painter.setPen(QPen(QColor(0, 255, 0), 2));
+    painter.drawLine(center_x, center_y, center_x, center_y - axis_length);
+    painter.drawText(center_x + 5, center_y - axis_length - 5, "Y");
+    
+    // Z axis (blue) - represented as diagonal
+    painter.setPen(QPen(QColor(0, 0, 255), 2));
+    int z_x = center_x + static_cast<int>(axis_length * 0.707);
+    int z_y = center_y - static_cast<int>(axis_length * 0.707);
+    painter.drawLine(center_x, center_y, z_x, z_y);
+    painter.drawText(z_x + 5, z_y - 5, "Z");
+}
+
+void Viewport3D::renderScene(QPainter& painter) {
+    // Render any stored geometry
+    // In real implementation: would render 3D geometry using proper projection
+    // For now, just show that rendering is active
+    if (!rendered_geometry_ids_.empty()) {
+        painter.setPen(QPen(QColor(200, 200, 200), 2));
+        painter.drawText(10, 20, QString("Rendering %1 object(s)").arg(rendered_geometry_ids_.size()));
+    }
 }
 
 }  // namespace ui

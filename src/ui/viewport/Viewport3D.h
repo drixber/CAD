@@ -79,10 +79,18 @@ private:
     ViewportSettings settings_;
     bool selection_enabled_{true};
     std::vector<std::string> selected_objects_;
+    std::vector<std::string> rendered_geometry_ids_;
+    
+    // Mouse interaction
+    bool is_dragging_{false};
+    int last_mouse_x_{0};
+    int last_mouse_y_{0};
+    std::string drag_mode_{"orbit"};
     
     void initializeViewport();
-    void renderGrid();
-    void renderAxes();
+    void renderGrid(QPainter& painter);
+    void renderAxes(QPainter& painter);
+    void renderScene(QPainter& painter);
 };
 
 }  // namespace ui

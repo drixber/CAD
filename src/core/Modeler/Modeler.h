@@ -14,6 +14,7 @@ public:
 
     bool validateSketch(const Sketch& sketch) const;
     bool evaluateParameters(Sketch& sketch) const;
+    bool solveConstraints(Sketch& sketch) const;
 };
 
 }  // namespace core

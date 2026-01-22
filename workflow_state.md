@@ -1,6 +1,6 @@
 # Workflow State
 
-current_phase: Phase 4 Advanced Features & Services
+current_phase: Phase 5 3D Viewport & Core Integration
 
 completed_items:
 - Added CAD_BUILD_PYTHON option and python bindings scaffold.

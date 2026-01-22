@@ -368,5 +368,12 @@ QtCommandLine* QtMainWindow::commandLine() {
     return command_line_;
 }
 
+Viewport3D* QtMainWindow::viewport3D() {
+    if (viewport_) {
+        return viewport_->viewport3D();
+    }
+    return nullptr;
+}
+
 }  // namespace ui
 }  // namespace cad

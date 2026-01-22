@@ -4,6 +4,8 @@
 #include <cctype>
 #include <cstdlib>
 #include <unordered_map>
+#include <algorithm>
+#include <cmath>
 
 namespace cad {
 namespace core {
@@ -32,6 +34,94 @@ const std::vector<Parameter>& Sketch::parameters() const {
 
 std::vector<Parameter>& Sketch::parameters() {
     return parameters_;
+}
+
+std::string Sketch::generateGeometryId() {
+    return "geom_" + std::to_string(next_geometry_id_++);
+}
+
+std::string Sketch::addLine(const Point2D& start, const Point2D& end) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Line;
+    entity.start_point = start;
+    entity.end_point = end;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addCircle(const Point2D& center, double radius) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Circle;
+    entity.center_point = center;
+    entity.radius = radius;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addArc(const Point2D& center, double radius, double start_angle, double end_angle) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Arc;
+    entity.center_point = center;
+    entity.radius = radius;
+    entity.start_angle = start_angle;
+    entity.end_angle = end_angle;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addRectangle(const Point2D& corner, double width, double height) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Rectangle;
+    entity.start_point = corner;  // Use start_point as corner
+    entity.width = width;
+    entity.height = height;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addPoint(const Point2D& point) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Point;
+    entity.start_point = point;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+const std::vector<GeometryEntity>& Sketch::geometry() const {
+    return geometry_;
+}
+
+GeometryEntity* Sketch::findGeometry(const std::string& id) {
+    for (auto& entity : geometry_) {
+        if (entity.id == id) {
+            return &entity;
+        }
+    }
+    return nullptr;
+}
+
+const GeometryEntity* Sketch::findGeometry(const std::string& id) const {
+    for (const auto& entity : geometry_) {
+        if (entity.id == id) {
+            return &entity;
+        }
+    }
+    return nullptr;
+}
+
+bool Sketch::removeGeometry(const std::string& id) {
+    auto it = std::remove_if(geometry_.begin(), geometry_.end(),
+        [&id](const GeometryEntity& entity) { return entity.id == id; });
+    if (it != geometry_.end()) {
+        geometry_.erase(it, geometry_.end());
+        return true;
+    }
+    return false;
 }
 
 Part::Part(std::string name) : name_(std::move(name)) {}
@@ -195,6 +285,64 @@ bool Modeler::evaluateParameters(Sketch& sketch) const {
         }
     }
     return all_ok;
+}
+
+bool Modeler::solveConstraints(Sketch& sketch) const {
+    // Simple constraint solver - applies constraints to geometry
+    // In real implementation: would use a proper constraint solver (e.g., PlanarGCS)
+    
+    for (const auto& constraint : sketch.constraints()) {
+        GeometryEntity* geom_a = sketch.findGeometry(constraint.a);
+        GeometryEntity* geom_b = sketch.findGeometry(constraint.b);
+        
+        if (!geom_a && !geom_b) {
+            // Constraint might reference parameters or other entities
+            continue;
+        }
+        
+        switch (constraint.type) {
+            case ConstraintType::Distance:
+                if (geom_a && geom_b) {
+                    // Apply distance constraint
+                    double dx = geom_b->start_point.x - geom_a->start_point.x;
+                    double dy = geom_b->start_point.y - geom_a->start_point.y;
+                    double current_dist = std::sqrt(dx*dx + dy*dy);
+                    if (current_dist > 0.001) {
+                        double scale = constraint.value / current_dist;
+                        geom_b->start_point.x = geom_a->start_point.x + dx * scale;
+                        geom_b->start_point.y = geom_a->start_point.y + dy * scale;
+                    }
+                }
+                break;
+            case ConstraintType::Horizontal:
+                if (geom_a && geom_b) {
+                    // Make line horizontal
+                    geom_b->start_point.y = geom_a->start_point.y;
+                }
+                break;
+            case ConstraintType::Vertical:
+                if (geom_a && geom_b) {
+                    // Make line vertical
+                    geom_b->start_point.x = geom_a->start_point.x;
+                }
+                break;
+            case ConstraintType::Coincident:
+                if (geom_a && geom_b) {
+                    // Make points coincident
+                    geom_b->start_point = geom_a->start_point;
+                }
+                break;
+            case ConstraintType::Parallel:
+            case ConstraintType::Perpendicular:
+            case ConstraintType::Tangent:
+            case ConstraintType::Equal:
+            case ConstraintType::Angle:
+                // More complex constraints - placeholder
+                break;
+        }
+    }
+    
+    return true;
 }
 
 }  // namespace core

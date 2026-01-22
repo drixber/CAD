@@ -18,6 +18,7 @@ if(CAD_USE_QT)
         qt/QtViewport.cpp
         qt/QtLogPanel.cpp
         qt/QtPerformancePanel.cpp
+        viewport/Viewport3D.cpp
         styles/Styles.qrc
     )
 endif()
