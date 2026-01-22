@@ -49,6 +49,40 @@ std::vector<BillOfMaterialsItem> BomService::buildBomFromAssembly(const cad::cor
     return items;
 }
 
+void BomService::registerAssembly(const std::string& assembly_id, const cad::core::Assembly& assembly) {
+    assembly_registry_[assembly_id] = assembly;
+}
+
+bool BomService::hasAssembly(const std::string& assembly_id) const {
+    return assembly_registry_.find(assembly_id) != assembly_registry_.end();
+}
+
+std::vector<BillOfMaterialsItem> BomService::getBomForAssembly(const std::string& assembly_id) const {
+    auto it = assembly_registry_.find(assembly_id);
+    if (it != assembly_registry_.end()) {
+        return buildBomFromAssembly(it->second);
+    }
+    // Fallback to legacy method if not in registry
+    return buildBom(assembly_id);
+}
+
+std::vector<std::string> BomService::getRegisteredAssemblyIds() const {
+    std::vector<std::string> ids;
+    ids.reserve(assembly_registry_.size());
+    for (const auto& [id, assembly] : assembly_registry_) {
+        ids.push_back(id);
+    }
+    return ids;
+}
+
+void BomService::unregisterAssembly(const std::string& assembly_id) {
+    assembly_registry_.erase(assembly_id);
+}
+
+void BomService::clearRegistry() {
+    assembly_registry_.clear();
+}
+
 std::string BomService::generatePartNumber(const std::string& part_name, int index) const {
     if (part_name.empty()) {
         std::ostringstream oss;

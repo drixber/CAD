@@ -92,6 +92,9 @@ completed_items:
 - Added LeaderPoint and AttachmentPoint structures to Annotation.
 - Implemented createLeaderAnnotation and createAttachedAnnotation methods.
 - Added helper methods for creating polyline leaders and attaching to geometry.
+- Added BOM registry for assembly lookup and UI integration.
+- Implemented registerAssembly, getBomForAssembly, and registry management methods.
+- Integrated BOM registry into AppController for assembly tracking.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -99,7 +102,7 @@ pending_items:
 - Large assembly LOD/caching implementation.
 - Collision/interference checks (full).
 - Drawing styles UI integration and style editor.
-- BOM pipeline UI integration and assembly registry lookup.
+- BOM pipeline UI display widget (table view for BOM items).
 - Annotation positioning UI integration (interactive leader line editing).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
 - Ribbon command wiring to actual CAD operations.
@@ -187,5 +190,9 @@ decisions_made:
 - Leader annotations can have multiple waypoints for complex routing.
 - Attached annotations automatically create leader lines from attachment point to text.
 - Helper methods provided for creating leader points, attachment points, and polyline leaders.
+- BOM registry stores assemblies by ID for efficient lookup.
+- getBomForAssembly retrieves BOM from registry or falls back to legacy method.
+- Registry supports registration, unregistration, and clearing of assemblies.
+- AppController automatically registers MainAssembly in BOM registry on initialization.
 
 estimated_remaining_time: 70-110 weeks

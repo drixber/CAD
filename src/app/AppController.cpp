@@ -78,6 +78,9 @@ void AppController::initializeAssembly() {
     main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
     main_window_.setAssemblySummary("2 components, 1 mate");
     main_window_.setMatesSummary("1 mate");
+    
+    // Register assembly in BOM registry for UI integration
+    bom_service_.registerAssembly("MainAssembly", active_assembly_);
 
     assembly_manager_.setCacheLimit(300);
     assembly_manager_.enableBackgroundLoading(true);
@@ -215,7 +218,7 @@ void AppController::executeCommand(const std::string& command) {
             }
             cad::drawings::DrawingDocument document =
                 drawing_service_.buildDocumentSkeleton(result.drawingId);
-            document.bom = bom_service_.buildBom("MainAssembly");
+            document.bom = bom_service_.getBomForAssembly("MainAssembly");
             if (!document.sheets.empty()) {
                 document.annotations =
                     annotation_service_.buildDefaultAnnotations(document.sheets.front().name);
