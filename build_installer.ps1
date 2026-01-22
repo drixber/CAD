@@ -61,48 +61,107 @@ if (-not $nsisPath) {
     $buildOnly = $false
 }
 
-# Schritt 1: Visual Studio Generator finden
-Write-Host "Schritt 1: Suche nach Visual Studio..." -ForegroundColor Green
-$generators = @(
-    "Visual Studio 17 2022",
-    "Visual Studio 16 2019",
-    "Visual Studio 15 2017",
-    "Visual Studio 14 2015"
-)
+# Schritt 1: Build-System finden
+Write-Host "Schritt 1: Suche nach Build-System..." -ForegroundColor Green
 
+# Prüfe zuerst nach MinGW/GCC
 $foundGenerator = $null
-foreach ($gen in $generators) {
-    Write-Host "  Prüfe: $gen..." -ForegroundColor Gray
-    $test = cmake -G $gen -S . -B build_test 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        $foundGenerator = $gen
-        Remove-Item -Path "build_test" -Recurse -Force -ErrorAction SilentlyContinue
-        break
+$useMinGW = $false
+
+# Prüfe ob gcc verfügbar ist
+if (Get-Command gcc -ErrorAction SilentlyContinue) {
+    Write-Host "  GCC/MinGW gefunden!" -ForegroundColor Green
+    $foundGenerator = "MinGW Makefiles"
+    $useMinGW = $true
+} else {
+    # Prüfe typische MinGW-Pfade
+    $mingwPaths = @(
+        "C:\msys64\mingw64\bin\gcc.exe",
+        "C:\mingw64\bin\gcc.exe",
+        "C:\Program Files\mingw-w64\*\mingw64\bin\gcc.exe"
+    )
+    
+    foreach ($path in $mingwPaths) {
+        $resolved = Resolve-Path $path -ErrorAction SilentlyContinue
+        if ($resolved) {
+            $gccDir = Split-Path (Split-Path $resolved -Parent) -Parent
+            $env:PATH = "$gccDir\bin;$env:PATH"
+            Write-Host "  MinGW gefunden in: $gccDir" -ForegroundColor Green
+            $foundGenerator = "MinGW Makefiles"
+            $useMinGW = $true
+            break
+        }
     }
-    Remove-Item -Path "build_test" -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Falls kein MinGW, suche nach Visual Studio
+if (-not $foundGenerator) {
+    Write-Host "  Suche nach Visual Studio..." -ForegroundColor Gray
+    $generators = @(
+        "Visual Studio 17 2022",
+        "Visual Studio 16 2019",
+        "Visual Studio 15 2017",
+        "Visual Studio 14 2015"
+    )
+
+    foreach ($gen in $generators) {
+        Write-Host "    Prüfe: $gen..." -ForegroundColor Gray
+        $test = cmake -G $gen -S . -B build_test 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $foundGenerator = $gen
+            Remove-Item -Path "build_test" -Recurse -Force -ErrorAction SilentlyContinue
+            break
+        }
+        Remove-Item -Path "build_test" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Falls immer noch nichts gefunden, versuche Ninja
+if (-not $foundGenerator) {
+    if (Get-Command ninja -ErrorAction SilentlyContinue) {
+        Write-Host "  Ninja gefunden!" -ForegroundColor Green
+        $foundGenerator = "Ninja"
+    }
 }
 
 if (-not $foundGenerator) {
-    Write-Host "FEHLER: Keine Visual Studio Installation gefunden!" -ForegroundColor Red
+    Write-Host "FEHLER: Kein Build-System gefunden!" -ForegroundColor Red
     Write-Host ""
-    Write-Host "Bitte installieren Sie Visual Studio:" -ForegroundColor Yellow
+    Write-Host "Bitte installieren Sie eines der folgenden:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Option 1: MinGW-w64 (Empfohlen, ohne Visual Studio):" -ForegroundColor Cyan
+    Write-Host "  - MSYS2: https://www.msys2.org/" -ForegroundColor Yellow
+    Write-Host "  - Dann: pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Option 2: Visual Studio:" -ForegroundColor Cyan
     Write-Host "  - Visual Studio 2022: https://visualstudio.microsoft.com/downloads/" -ForegroundColor Yellow
-    Write-Host "  - Oder Visual Studio 2019/2017" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "WICHTIG: Installieren Sie die 'Desktop development with C++' Workload!" -ForegroundColor Yellow
+    Write-Host "  - Workload: 'Desktop development with C++'" -ForegroundColor Yellow
     Write-Host ""
     Read-Host "Drücken Sie Enter zum Beenden"
     exit 1
 }
 
-Write-Host "Visual Studio gefunden: $foundGenerator" -ForegroundColor Green
+Write-Host "Build-System gefunden: $foundGenerator" -ForegroundColor Green
 Write-Host ""
 
 # Schritt 2: CMake konfigurieren
 Write-Host "Schritt 2: CMake konfigurieren..." -ForegroundColor Green
-$cmakeConfig = cmake -S . -B build -G $foundGenerator -A x64 -DCAD_USE_QT=ON
+
+if ($useMinGW) {
+    # MinGW Makefiles verwenden
+    $cmakeConfig = cmake -S . -B build -G "MinGW Makefiles" -DCAD_USE_QT=ON
+} elseif ($foundGenerator -eq "Ninja") {
+    # Ninja verwenden
+    $cmakeConfig = cmake -S . -B build -G "Ninja" -DCAD_USE_QT=ON
+} else {
+    # Visual Studio verwenden
+    $cmakeConfig = cmake -S . -B build -G $foundGenerator -A x64 -DCAD_USE_QT=ON
+}
+
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FEHLER: CMake Konfiguration fehlgeschlagen!" -ForegroundColor Red
+    Write-Host "Fehlerdetails:" -ForegroundColor Yellow
+    Write-Host $cmakeConfig -ForegroundColor Gray
     Read-Host "Drücken Sie Enter zum Beenden"
     exit 1
 }
@@ -111,7 +170,15 @@ Write-Host ""
 
 # Schritt 3: Projekt kompilieren
 Write-Host "Schritt 3: Projekt kompilieren..." -ForegroundColor Green
-cmake --build build --config Release
+
+if ($useMinGW -or $foundGenerator -eq "Ninja") {
+    # MinGW/Ninja: Kein --config Parameter
+    cmake --build build
+} else {
+    # Visual Studio: --config Release
+    cmake --build build --config Release
+}
+
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FEHLER: Kompilierung fehlgeschlagen!" -ForegroundColor Red
     Read-Host "Drücken Sie Enter zum Beenden"
@@ -122,18 +189,31 @@ Write-Host ""
 
 # Schritt 4: Prüfe ob .exe erstellt wurde
 Write-Host "Schritt 4: Prüfe ob cad_desktop.exe erstellt wurde..." -ForegroundColor Green
-if (-not (Test-Path "build\Release\cad_desktop.exe")) {
+
+# Prüfe verschiedene mögliche Pfade
+$exePath = $null
+if ($useMinGW -or $foundGenerator -eq "Ninja") {
+    # MinGW/Ninja: Direkt im build-Verzeichnis
+    $exePath = "build\cad_desktop.exe"
+} else {
+    # Visual Studio: In build\Release\
+    $exePath = "build\Release\cad_desktop.exe"
+}
+
+if (-not (Test-Path $exePath)) {
     Write-Host "FEHLER: cad_desktop.exe wurde nicht erstellt!" -ForegroundColor Red
+    Write-Host "Erwarteter Pfad: $exePath" -ForegroundColor Yellow
     Write-Host "Bitte prüfen Sie die Build-Ausgabe auf Fehler." -ForegroundColor Yellow
     Read-Host "Drücken Sie Enter zum Beenden"
     exit 1
 }
 
 Write-Host "OK: cad_desktop.exe wurde erfolgreich erstellt!" -ForegroundColor Green
+Write-Host "Pfad: $exePath" -ForegroundColor Gray
 Write-Host ""
 
 if ($buildOnly) {
-    Write-Host "Die .exe finden Sie hier: build\Release\cad_desktop.exe" -ForegroundColor Cyan
+    Write-Host "Die .exe finden Sie hier: $exePath" -ForegroundColor Cyan
     Write-Host "Sie können diese direkt ausführen." -ForegroundColor Cyan
     Read-Host "Drücken Sie Enter zum Beenden"
     exit 0
@@ -141,6 +221,17 @@ if ($buildOnly) {
 
 # Schritt 5: Installer erstellen
 Write-Host "Schritt 5: Installer erstellen..." -ForegroundColor Green
+
+# Kopiere .exe nach Release-Verzeichnis für NSIS (falls MinGW/Ninja)
+if ($useMinGW -or $foundGenerator -eq "Ninja") {
+    $releaseDir = "build\Release"
+    if (-not (Test-Path $releaseDir)) {
+        New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+    }
+    Copy-Item $exePath "$releaseDir\cad_desktop.exe" -Force
+    Write-Host "  .exe nach build\Release kopiert für Installer" -ForegroundColor Gray
+}
+
 Push-Location installer
 & $nsisPath cadursor.nsi
 $installerSuccess = $LASTEXITCODE -eq 0
