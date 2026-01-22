@@ -1,6 +1,8 @@
 add_library(cad_app
     CADApplication.cpp
     AppController.cpp
+    UpdateService.cpp
+    UpdateChecker.cpp
 )
 
 target_include_directories(cad_app

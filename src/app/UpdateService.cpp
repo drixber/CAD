@@ -140,7 +140,7 @@ bool UpdateService::performManualUpdate() {
     
     // Download update
     std::string download_path = "update_" + update_info.version + ".zip";
-    if (!downloadUpdate(update_info)) {
+    if (!downloadUpdate(update_info, nullptr)) {
         return false;
     }
     
