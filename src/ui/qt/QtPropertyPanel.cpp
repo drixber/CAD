@@ -1179,5 +1179,23 @@ void QtPropertyPanel::updateAnnotationPreview() {
     style_preview_widget_->setStyleSheet(style);
 }
 
+void QtPropertyPanel::exportBomToFormat(const QString& format, const QString& filename) {
+    // In real implementation: would export BOM to specified format
+    QMessageBox::information(this, tr("Export BOM"), 
+        tr("Exporting BOM to %1 format...").arg(format));
+}
+
+void QtPropertyPanel::loadFilterPreset(const QString& preset_name) {
+    // In real implementation: would load filter preset from settings
+    QMessageBox::information(this, tr("Load Preset"), 
+        tr("Loading filter preset: %1").arg(preset_name));
+}
+
+void QtPropertyPanel::saveFilterPreset(const QString& preset_name) {
+    // In real implementation: would save filter preset to settings
+    QMessageBox::information(this, tr("Save Preset"), 
+        tr("Saving filter preset: %1").arg(preset_name));
+}
+
 }  // namespace ui
 }  // namespace cad
