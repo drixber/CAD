@@ -32,15 +32,28 @@ struct InterferenceResult {
     std::vector<InterferencePair> interference_pairs;
 };
 
+enum class CollisionDetectionMode {
+    BoundingBox,
+    FeatureBased,
+    Precise
+};
+
 class InterferenceChecker {
 public:
     InterferenceResult check(const std::string& assembly_id) const;
     InterferenceResult checkAssembly(const Assembly& assembly) const;
+    void setDetectionMode(CollisionDetectionMode mode);
+    CollisionDetectionMode detectionMode() const;
     
 private:
     BoundingBox estimateBoundingBox(const Part& part, const Transform& transform) const;
+    BoundingBox estimateBoundingBoxFromFeatures(const Part& part, const Transform& transform) const;
     bool boxesOverlap(const BoundingBox& a, const BoundingBox& b) const;
     double calculateOverlapVolume(const BoundingBox& a, const BoundingBox& b) const;
+    bool checkFeatureCollision(const Part& part_a, const Transform& transform_a,
+                               const Part& part_b, const Transform& transform_b) const;
+    
+    CollisionDetectionMode detection_mode_{CollisionDetectionMode::FeatureBased};
 };
 
 }  // namespace core

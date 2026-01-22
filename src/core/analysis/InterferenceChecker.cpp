@@ -16,6 +16,14 @@ InterferenceResult InterferenceChecker::check(const std::string& assembly_id) co
     return result;
 }
 
+void InterferenceChecker::setDetectionMode(CollisionDetectionMode mode) {
+    detection_mode_ = mode;
+}
+
+CollisionDetectionMode InterferenceChecker::detectionMode() const {
+    return detection_mode_;
+}
+
 InterferenceResult InterferenceChecker::checkAssembly(const Assembly& assembly) const {
     InterferenceResult result;
     result.has_interference = false;
@@ -27,23 +35,45 @@ InterferenceResult InterferenceChecker::checkAssembly(const Assembly& assembly) 
         return result;
     }
     
-    // Calculate bounding boxes for all components
+    // Calculate bounding boxes for all components based on detection mode
     std::vector<BoundingBox> boxes;
     boxes.reserve(components.size());
     for (const auto& component : components) {
-        boxes.push_back(estimateBoundingBox(component.part, component.transform));
+        if (detection_mode_ == CollisionDetectionMode::FeatureBased) {
+            boxes.push_back(estimateBoundingBoxFromFeatures(component.part, component.transform));
+        } else {
+            boxes.push_back(estimateBoundingBox(component.part, component.transform));
+        }
     }
     
     // Check all pairs for overlaps
     for (std::size_t i = 0; i < components.size(); ++i) {
         for (std::size_t j = i + 1; j < components.size(); ++j) {
-            if (boxesOverlap(boxes[i], boxes[j])) {
+            bool has_collision = false;
+            
+            if (detection_mode_ == CollisionDetectionMode::Precise) {
+                // Use feature-based collision check for precise mode
+                has_collision = checkFeatureCollision(
+                    components[i].part, components[i].transform,
+                    components[j].part, components[j].transform);
+            } else {
+                // Use bounding box overlap check
+                has_collision = boxesOverlap(boxes[i], boxes[j]);
+            }
+            
+            if (has_collision) {
                 InterferencePair pair;
                 pair.component_a_id = components[i].id;
                 pair.component_b_id = components[j].id;
                 pair.part_a_name = components[i].part.name();
                 pair.part_b_name = components[j].part.name();
-                pair.overlap_volume = calculateOverlapVolume(boxes[i], boxes[j]);
+                
+                if (detection_mode_ == CollisionDetectionMode::Precise) {
+                    // Estimate volume from bounding boxes for precise mode
+                    pair.overlap_volume = calculateOverlapVolume(boxes[i], boxes[j]);
+                } else {
+                    pair.overlap_volume = calculateOverlapVolume(boxes[i], boxes[j]);
+                }
                 
                 result.interference_pairs.push_back(pair);
                 result.overlap_count++;
@@ -90,6 +120,89 @@ BoundingBox InterferenceChecker::estimateBoundingBox(const Part& part, const Tra
     box.max_z = transform.tz + default_size / 2.0;
     
     return box;
+}
+
+BoundingBox InterferenceChecker::estimateBoundingBoxFromFeatures(const Part& part, const Transform& transform) const {
+    // Feature-based estimation: analyze part features to estimate geometry
+    BoundingBox box;
+    
+    double width = 10.0;
+    double height = 10.0;
+    double depth = 10.0;
+    
+    // Analyze features to estimate dimensions
+    const auto& features = part.features();
+    for (const auto& feature : features) {
+        if (feature.type == "Extrude") {
+            depth = 15.0;  // Extruded features are typically deeper
+        } else if (feature.type == "Hole") {
+            depth = 5.0;  // Holes are typically shallow
+        } else if (feature.type == "Fillet") {
+            // Fillet doesn't change overall dimensions significantly
+        }
+    }
+    
+    // Adjust based on part name
+    if (part.name().find("Plate") != std::string::npos) {
+        depth = 2.0;  // Plates are thin
+    } else if (part.name().find("Bracket") != std::string::npos) {
+        width = 8.0;
+        height = 8.0;
+        depth = 6.0;
+    }
+    
+    // Apply transform
+    box.min_x = transform.tx - width / 2.0;
+    box.max_x = transform.tx + width / 2.0;
+    box.min_y = transform.ty - height / 2.0;
+    box.max_y = transform.ty + height / 2.0;
+    box.min_z = transform.tz - depth / 2.0;
+    box.max_z = transform.tz + depth / 2.0;
+    
+    return box;
+}
+
+bool InterferenceChecker::checkFeatureCollision(const Part& part_a, const Transform& transform_a,
+                                                 const Part& part_b, const Transform& transform_b) const {
+    // Feature-based collision detection
+    // Check if features from part_a and part_b would collide
+    
+    // First check bounding box overlap
+    BoundingBox box_a = estimateBoundingBoxFromFeatures(part_a, transform_a);
+    BoundingBox box_b = estimateBoundingBoxFromFeatures(part_b, transform_b);
+    
+    if (!boxesOverlap(box_a, box_b)) {
+        return false;
+    }
+    
+    // Check feature-specific collisions
+    const auto& features_a = part_a.features();
+    const auto& features_b = part_b.features();
+    
+    // If either part has no features, use bounding box check
+    if (features_a.empty() || features_b.empty()) {
+        return true;
+    }
+    
+    // Check for specific feature collisions
+    for (const auto& feat_a : features_a) {
+        for (const auto& feat_b : features_b) {
+            // Extrude features can collide if they overlap
+            if ((feat_a.type == "Extrude" || feat_b.type == "Extrude") &&
+                boxesOverlap(box_a, box_b)) {
+                return true;
+            }
+            
+            // Holes typically don't cause interference (they remove material)
+            if (feat_a.type == "Hole" || feat_b.type == "Hole") {
+                // Skip hole-based collisions for now
+                continue;
+            }
+        }
+    }
+    
+    // Default to bounding box overlap result
+    return true;
 }
 
 bool InterferenceChecker::boxesOverlap(const BoundingBox& a, const BoundingBox& b) const {

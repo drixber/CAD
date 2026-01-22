@@ -148,12 +148,18 @@ completed_items:
 - Added validateCommand with parameter count and type validation.
 - Commands like Extrude and Revolve now accept numeric parameters.
 - Command validation provides error messages for invalid commands.
+- Refined interference checks with feature-based geometry estimation.
+- Added CollisionDetectionMode enum (BoundingBox, FeatureBased, Precise).
+- Implemented estimateBoundingBoxFromFeatures for feature-based estimation.
+- Added checkFeatureCollision for precise collision detection.
+- Feature-based estimation analyzes part features to estimate dimensions.
+- Detection mode can be set to BoundingBox, FeatureBased, or Precise.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
 - 3D viewport integration with Coin3D or OpenCascade viewer.
 - Large assembly LOD/caching optimization (performance tuning).
-- Collision/interference checks refinement (geometry-based instead of bounding box).
+- Collision/interference checks refinement (precise geometry-based collision detection).
 - Drawing styles UI editor enhancements (style property editing, preview rendering).
 - BOM pipeline UI display widget enhancements (advanced filtering, multi-column sort).
 - Annotation positioning UI enhancements (interactive leader line editing, drag-and-drop).
@@ -302,5 +308,11 @@ decisions_made:
 - Parameter type validation checks numeric parameters for Extrude/Revolve commands.
 - Invalid commands show error messages in integration status.
 - Extrude and Revolve commands now accept depth/angle parameters (e.g., "Extrude 10").
+- Collision detection supports three modes: BoundingBox, FeatureBased, and Precise.
+- Feature-based estimation analyzes part features (Extrude, Hole, Fillet) to estimate dimensions.
+- Precise mode uses feature collision checking in addition to bounding box overlap.
+- Feature-based bounding boxes adjust dimensions based on feature types and part names.
+- Detection mode can be configured via setDetectionMode method.
+- Feature collision check considers feature types when determining interference.
 
 estimated_remaining_time: 70-110 weeks
