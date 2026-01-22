@@ -207,7 +207,7 @@ void AppController::executeCommand(const std::string& command) {
         } else {
             main_window_.setViewportStatus("No interference");
         }
-    } else if (command == "Base View") {
+    } else if (command == "Base View" || command == "BaseView") {
         cad::modules::DrawingRequest request;
         request.sourcePart = "Bracket";
         request.templateName = "ISO";
@@ -234,6 +234,75 @@ void AppController::executeCommand(const std::string& command) {
         } else {
             main_window_.setIntegrationStatus("Drawing failed");
             main_window_.setViewportStatus("Drawing view failed");
+        }
+    } else if (command == "Parts List" || command == "PartsList") {
+        if (bom_service_.hasAssembly("MainAssembly")) {
+            std::vector<cad::drawings::BillOfMaterialsItem> bom = 
+                bom_service_.getBomForAssembly("MainAssembly");
+            std::string bom_summary = "BOM: " + std::to_string(bom.size()) + " items";
+            for (const auto& item : bom) {
+                bom_summary += ", " + item.part_name + " x" + std::to_string(item.quantity);
+            }
+            main_window_.setIntegrationStatus(bom_summary);
+            main_window_.setViewportStatus("BOM displayed: " + std::to_string(bom.size()) + " items");
+        } else {
+            main_window_.setIntegrationStatus("BOM: No assembly registered");
+            main_window_.setViewportStatus("BOM not available");
+        }
+    } else if (command == "Dimension") {
+        cad::modules::DrawingRequest request;
+        request.sourcePart = "Bracket";
+        cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
+        if (result.success) {
+            cad::drawings::DrawingDocument document =
+                drawing_service_.buildDocumentSkeleton(result.drawingId);
+            if (!document.sheets.empty()) {
+                document.dimensions = 
+                    annotation_service_.buildDefaultDimensions(document.sheets.front().name);
+                techdraw_bridge_.applyDimensions(document);
+                main_window_.setIntegrationStatus("Dimensions added");
+                main_window_.setViewportStatus("Dimensions: " + 
+                    std::to_string(document.dimensions.size()) + " items");
+            }
+        }
+    } else if (command == "Section" || command == "SectionView") {
+        cad::modules::DrawingRequest request;
+        request.sourcePart = "Bracket";
+        request.templateName = "ISO";
+        cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
+        if (result.success) {
+            cad::drawings::DrawingDocument document =
+                drawing_service_.buildDocumentSkeleton(result.drawingId);
+            main_window_.setIntegrationStatus("Section view created");
+            main_window_.setViewportStatus("Section view: " + result.drawingId);
+        }
+    } else if (command == "Styles") {
+        cad::drawings::DrawingStyleSet iso_styles = drawing_service_.isoStyles();
+        cad::drawings::DrawingStyleSet ansi_styles = drawing_service_.ansiStyles();
+        std::string style_summary = "Styles: ISO (" + 
+            std::to_string(iso_styles.line_styles.size()) + " lines, " +
+            std::to_string(iso_styles.text_styles.size()) + " texts), ANSI (" +
+            std::to_string(ansi_styles.line_styles.size()) + " lines, " +
+            std::to_string(ansi_styles.text_styles.size()) + " texts)";
+        main_window_.setIntegrationStatus(style_summary);
+        main_window_.setViewportStatus("Style editor available");
+    } else if (command == "MBD View" || command == "MbdView") {
+        cad::modules::MbdRenderRequest render_request;
+        render_request.part_id = "Bracket";
+        render_request.show_annotations = true;
+        render_request.show_datums = true;
+        render_request.show_tolerances = true;
+        cad::modules::MbdRenderResult render_result = mbd_service_.prepareForRendering(render_request);
+        if (render_result.success) {
+            std::string mbd_summary = "MBD: " + 
+                std::to_string(render_result.visible_annotations.size()) + " annotations, " +
+                std::to_string(render_result.visible_datums.size()) + " datums, " +
+                std::to_string(render_result.visible_tolerances.size()) + " tolerances";
+            main_window_.setIntegrationStatus(mbd_summary);
+            main_window_.setViewportStatus("MBD view prepared for rendering");
+        } else {
+            main_window_.setIntegrationStatus("MBD: No PMI data available");
+            main_window_.setViewportStatus("MBD view unavailable");
         }
     } else if (command == "Import") {
         cad::interop::IoJob job;

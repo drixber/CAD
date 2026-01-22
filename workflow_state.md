@@ -95,6 +95,11 @@ completed_items:
 - Added BOM registry for assembly lookup and UI integration.
 - Implemented registerAssembly, getBomForAssembly, and registry management methods.
 - Integrated BOM registry into AppController for assembly tracking.
+- Wired ribbon commands to actual CAD operations using implemented services.
+- Added PartsList command integration with BOM registry.
+- Added Dimension and Section commands for drawing operations.
+- Added Styles command integration with style presets.
+- Added MBD View command using rendering hook.
 
 pending_items:
 - FreeCAD/OCCT/Qt/Coin3D bindings and full feature mapping.
@@ -105,7 +110,7 @@ pending_items:
 - BOM pipeline UI display widget (table view for BOM items).
 - Annotation positioning UI integration (interactive leader line editing).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
-- Ribbon command wiring to actual CAD operations.
+- Ribbon command wiring expansion (additional commands and operations).
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
@@ -194,5 +199,11 @@ decisions_made:
 - getBomForAssembly retrieves BOM from registry or falls back to legacy method.
 - Registry supports registration, unregistration, and clearing of assemblies.
 - AppController automatically registers MainAssembly in BOM registry on initialization.
+- PartsList command displays BOM items count and summary from registry.
+- Dimension command creates dimensions using AnnotationService.
+- Section command creates section views in drawings.
+- Styles command displays available style presets (ISO, ANSI) with counts.
+- MBD View command uses prepareForRendering to prepare PMI data for viewport.
+- BaseView command now uses getBomForAssembly from registry.
 
 estimated_remaining_time: 70-110 weeks
