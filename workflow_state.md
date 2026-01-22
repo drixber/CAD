@@ -164,7 +164,7 @@ pending_items:
 - BOM pipeline UI display widget enhancements (saved filter presets, export formats).
 - Annotation positioning UI enhancements (visual leader line preview in drawing view).
 - MBD 3D annotation viewport integration (actual rendering in 3D scene).
-- Ribbon command wiring refinement (advanced parameter validation, command completion).
+- Ribbon command wiring refinement (command help tooltips, parameter hints).
 
 decisions_made:
 - Keep FreeCAD on master branch for feature parity.
