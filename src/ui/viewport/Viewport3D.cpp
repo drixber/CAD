@@ -124,6 +124,42 @@ std::vector<std::string> Viewport3D::getSelectedObjects() const {
     return selected_objects_;
 }
 
+void Viewport3D::selectObject(const std::string& object_id) {
+    if (std::find(selected_objects_.begin(), selected_objects_.end(), object_id) == selected_objects_.end()) {
+        selected_objects_.push_back(object_id);
+        emit objectSelected(object_id);
+        updateView();
+    }
+}
+
+void Viewport3D::clearSelection() {
+    selected_objects_.clear();
+    updateView();
+}
+
+void Viewport3D::highlightObject(const std::string& object_id, bool highlight) {
+    if (highlight) {
+        if (std::find(highlighted_objects_.begin(), highlighted_objects_.end(), object_id) == highlighted_objects_.end()) {
+            highlighted_objects_.push_back(object_id);
+        }
+    } else {
+        highlighted_objects_.erase(
+            std::remove(highlighted_objects_.begin(), highlighted_objects_.end(), object_id),
+            highlighted_objects_.end()
+        );
+    }
+    updateView();
+}
+
+void Viewport3D::setDisplayMode(DisplayMode mode) {
+    display_mode_ = mode;
+    updateView();
+}
+
+Viewport3D::DisplayMode Viewport3D::getDisplayMode() const {
+    return display_mode_;
+}
+
 void Viewport3D::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
     
@@ -310,8 +346,33 @@ void Viewport3D::renderScene(QPainter& painter) {
     // In real implementation: would render 3D geometry using proper projection
     // For now, just show that rendering is active
     if (!rendered_geometry_ids_.empty()) {
+        QString display_mode_str;
+        switch (display_mode_) {
+            case DisplayMode::Wireframe:
+                display_mode_str = "Wireframe";
+                break;
+            case DisplayMode::Shaded:
+                display_mode_str = "Shaded";
+                break;
+            case DisplayMode::HiddenLine:
+                display_mode_str = "HiddenLine";
+                break;
+        }
+        
         painter.setPen(QPen(QColor(200, 200, 200), 2));
-        painter.drawText(10, 20, QString("Rendering %1 object(s)").arg(rendered_geometry_ids_.size()));
+        painter.drawText(10, 20, QString("Rendering %1 object(s) - %2").arg(rendered_geometry_ids_.size()).arg(display_mode_str));
+        
+        // Show selection info
+        if (!selected_objects_.empty()) {
+            painter.setPen(QPen(QColor(255, 255, 0), 2));
+            painter.drawText(10, 40, QString("Selected: %1 object(s)").arg(selected_objects_.size()));
+        }
+        
+        // Show highlighted objects
+        if (!highlighted_objects_.empty()) {
+            painter.setPen(QPen(QColor(0, 255, 255), 2));
+            painter.drawText(10, 60, QString("Highlighted: %1 object(s)").arg(highlighted_objects_.size()));
+        }
     }
 }
 

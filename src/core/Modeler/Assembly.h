@@ -36,6 +36,18 @@ public:
     const std::vector<AssemblyComponent>& components() const;
     void addMate(const MateConstraint& mate);
     const std::vector<MateConstraint>& mates() const;
+    
+    // Mate creation helpers
+    std::string createMate(std::uint64_t component_a, std::uint64_t component_b, double offset = 0.0);
+    std::string createFlush(std::uint64_t component_a, std::uint64_t component_b, double offset = 0.0);
+    std::string createAngle(std::uint64_t component_a, std::uint64_t component_b, double angle);
+    std::string createInsert(std::uint64_t component_a, std::uint64_t component_b);
+    
+    // Mate solving (updates component transforms based on mates)
+    bool solveMates();
+    
+    AssemblyComponent* findComponent(std::uint64_t id);
+    const AssemblyComponent* findComponent(std::uint64_t id) const;
 
 private:
     std::uint64_t next_id_{1};

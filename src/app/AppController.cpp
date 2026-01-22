@@ -560,12 +560,119 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "Constraint") {
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
         main_window_.setViewportStatus("Constraints: " + std::to_string(active_sketch_.constraints().size()) + " items");
-    } else if (command == "Extrude" || command == "Revolve" || command == "Loft" || command == "Hole" || command == "Fillet") {
-        main_window_.setIntegrationStatus("Feature: " + command);
-        main_window_.setViewportStatus("Part feature " + command + " command active");
-    } else if (command == "Flush" || command == "Angle") {
-        main_window_.setIntegrationStatus("Mate type: " + command);
-        main_window_.setViewportStatus("Assembly mate " + command + " command active");
+    } else if (command == "Extrude") {
+        // Create extrude feature from active sketch
+        if (!active_sketch_.geometry().empty()) {
+            cad::core::Part part = modeler_.createPart(active_sketch_);
+            double depth = 10.0;  // Default depth
+            // Try to parse depth from command if available
+            modeler_.applyExtrude(part, active_sketch_.name(), depth);
+            main_window_.setIntegrationStatus("Extrude created: depth=" + std::to_string(depth));
+            main_window_.setViewportStatus("Extrude feature applied");
+            
+            // Render in viewport
+            #ifdef CAD_USE_QT
+            cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+            if (qt_window && qt_window->viewport3D()) {
+                qt_window->viewport3D()->renderGeometry("extrude_" + active_sketch_.name(), nullptr);
+            }
+            #endif
+        } else {
+            main_window_.setIntegrationStatus("Extrude: No sketch geometry available");
+            main_window_.setViewportStatus("Create sketch first");
+        }
+    } else if (command == "Revolve") {
+        // Create revolve feature from active sketch
+        if (!active_sketch_.geometry().empty()) {
+            cad::core::Part part = modeler_.createPart(active_sketch_);
+            double angle = 360.0;  // Default full revolution
+            modeler_.applyRevolve(part, active_sketch_.name(), angle);
+            main_window_.setIntegrationStatus("Revolve created: angle=" + std::to_string(angle));
+            main_window_.setViewportStatus("Revolve feature applied");
+            
+            #ifdef CAD_USE_QT
+            cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+            if (qt_window && qt_window->viewport3D()) {
+                qt_window->viewport3D()->renderGeometry("revolve_" + active_sketch_.name(), nullptr);
+            }
+            #endif
+        } else {
+            main_window_.setIntegrationStatus("Revolve: No sketch geometry available");
+            main_window_.setViewportStatus("Create sketch first");
+        }
+    } else if (command == "Loft") {
+        // Create loft feature (requires multiple sketches)
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        std::vector<std::string> sketch_ids = {active_sketch_.name()};
+        modeler_.applyLoft(part, sketch_ids);
+        main_window_.setIntegrationStatus("Loft created");
+        main_window_.setViewportStatus("Loft feature applied");
+        
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry("loft_" + active_sketch_.name(), nullptr);
+        }
+        #endif
+    } else if (command == "Hole") {
+        // Create hole feature
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        double diameter = 5.0;  // Default diameter
+        double depth = 10.0;   // Default depth
+        modeler_.applyHole(part, diameter, depth);
+        main_window_.setIntegrationStatus("Hole created: diameter=" + std::to_string(diameter));
+        main_window_.setViewportStatus("Hole feature applied");
+        
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry("hole_" + active_sketch_.name(), nullptr);
+        }
+        #endif
+    } else if (command == "Fillet") {
+        // Create fillet feature
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        double radius = 2.0;  // Default radius
+        std::vector<std::string> edge_ids;  // Empty for now
+        modeler_.applyFillet(part, radius, edge_ids);
+        main_window_.setIntegrationStatus("Fillet created: radius=" + std::to_string(radius));
+        main_window_.setViewportStatus("Fillet feature applied");
+        
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry("fillet_" + active_sketch_.name(), nullptr);
+        }
+        #endif
+    } else if (command == "Flush") {
+        // Create flush mate constraint
+        if (active_assembly_.components().size() >= 2) {
+            std::uint64_t id_a = active_assembly_.components()[0].id;
+            std::uint64_t id_b = active_assembly_.components()[1].id;
+            std::string mate_name = active_assembly_.createFlush(id_a, id_b, 0.0);
+            active_assembly_.solveMates();
+            main_window_.setIntegrationStatus("Flush mate created: " + mate_name);
+            main_window_.setViewportStatus("Flush constraint applied");
+            main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+        } else {
+            main_window_.setIntegrationStatus("Flush: Need at least 2 components");
+            main_window_.setViewportStatus("Add components first");
+        }
+    } else if (command == "Angle") {
+        // Create angle mate constraint
+        if (active_assembly_.components().size() >= 2) {
+            std::uint64_t id_a = active_assembly_.components()[0].id;
+            std::uint64_t id_b = active_assembly_.components()[1].id;
+            double angle = 45.0;  // Default angle
+            std::string mate_name = active_assembly_.createAngle(id_a, id_b, angle);
+            active_assembly_.solveMates();
+            main_window_.setIntegrationStatus("Angle mate created: " + mate_name + " angle=" + std::to_string(angle));
+            main_window_.setViewportStatus("Angle constraint applied");
+            main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+        } else {
+            main_window_.setIntegrationStatus("Angle: Need at least 2 components");
+            main_window_.setViewportStatus("Add components first");
+        }
     } else if (command == "Pattern") {
         main_window_.setIntegrationStatus("Pattern command ready");
         main_window_.setViewportStatus("Assembly pattern command active");

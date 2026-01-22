@@ -59,6 +59,18 @@ public:
     // Interaction
     void enableSelection(bool enabled);
     std::vector<std::string> getSelectedObjects() const;
+    void selectObject(const std::string& object_id);
+    void clearSelection();
+    void highlightObject(const std::string& object_id, bool highlight = true);
+    
+    // Viewport display modes
+    enum class DisplayMode {
+        Wireframe,
+        Shaded,
+        HiddenLine
+    };
+    void setDisplayMode(DisplayMode mode);
+    DisplayMode getDisplayMode() const;
     
 signals:
     void objectSelected(const std::string& object_id);
@@ -80,6 +92,8 @@ private:
     bool selection_enabled_{true};
     std::vector<std::string> selected_objects_;
     std::vector<std::string> rendered_geometry_ids_;
+    std::vector<std::string> highlighted_objects_;
+    DisplayMode display_mode_{DisplayMode::Shaded};
     
     // Mouse interaction
     bool is_dragging_{false};

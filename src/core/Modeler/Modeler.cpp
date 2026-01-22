@@ -138,6 +138,139 @@ const std::vector<Feature>& Part::features() const {
     return features_;
 }
 
+std::string Part::generateFeatureName(FeatureType type) {
+    std::string prefix;
+    switch (type) {
+        case FeatureType::Extrude:
+            prefix = "Extrude";
+            break;
+        case FeatureType::Revolve:
+            prefix = "Revolve";
+            break;
+        case FeatureType::Loft:
+            prefix = "Loft";
+            break;
+        case FeatureType::Hole:
+            prefix = "Hole";
+            break;
+        case FeatureType::Fillet:
+            prefix = "Fillet";
+            break;
+        case FeatureType::Chamfer:
+            prefix = "Chamfer";
+            break;
+        case FeatureType::Shell:
+            prefix = "Shell";
+            break;
+        case FeatureType::Pattern:
+            prefix = "Pattern";
+            break;
+    }
+    return prefix + std::to_string(next_feature_id_++);
+}
+
+std::string Part::createExtrude(const std::string& sketch_id, double depth, bool symmetric) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Extrude);
+    feature.type = FeatureType::Extrude;
+    feature.sketch_id = sketch_id;
+    feature.depth = depth;
+    feature.symmetric = symmetric;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createRevolve(const std::string& sketch_id, double angle, const std::string& axis) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Revolve);
+    feature.type = FeatureType::Revolve;
+    feature.sketch_id = sketch_id;
+    feature.angle = angle;
+    feature.axis = axis;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createLoft(const std::vector<std::string>& sketch_ids) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Loft);
+    feature.type = FeatureType::Loft;
+    if (!sketch_ids.empty()) {
+        feature.sketch_id = sketch_ids[0];  // Primary sketch
+        // Store additional sketches in parameters
+        for (size_t i = 1; i < sketch_ids.size(); ++i) {
+            feature.parameters["sketch_" + std::to_string(i)] = static_cast<double>(i);
+        }
+    }
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createHole(double diameter, double depth, bool through_all) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Hole);
+    feature.type = FeatureType::Hole;
+    feature.diameter = diameter;
+    feature.hole_depth = depth;
+    feature.through_all = through_all;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createFillet(double radius, const std::vector<std::string>& edge_ids) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Fillet);
+    feature.type = FeatureType::Fillet;
+    feature.radius = radius;
+    feature.edge_ids = edge_ids;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createPattern(const std::string& base_feature, int count_x, int count_y, int count_z,
+                                double spacing_x, double spacing_y, double spacing_z) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Pattern);
+    feature.type = FeatureType::Pattern;
+    feature.sketch_id = base_feature;  // Reuse sketch_id field for base feature
+    feature.count_x = count_x;
+    feature.count_y = count_y;
+    feature.count_z = count_z;
+    feature.spacing_x = spacing_x;
+    feature.spacing_y = spacing_y;
+    feature.spacing_z = spacing_z;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+Feature* Part::findFeature(const std::string& name) {
+    for (auto& feature : features_) {
+        if (feature.name == name) {
+            return &feature;
+        }
+    }
+    return nullptr;
+}
+
+const Feature* Part::findFeature(const std::string& name) const {
+    for (const auto& feature : features_) {
+        if (feature.name == name) {
+            return &feature;
+        }
+    }
+    return nullptr;
+}
+
+bool Part::removeFeature(const std::string& name) {
+    auto it = std::remove_if(features_.begin(), features_.end(),
+        [&name](const Feature& feature) { return feature.name == name; });
+    if (it != features_.end()) {
+        features_.erase(it, features_.end());
+        return true;
+    }
+    return false;
+}
+
 std::uint64_t Assembly::addComponent(const Part& part, const Transform& transform) {
     AssemblyComponent component;
     component.id = next_id_++;
@@ -157,6 +290,103 @@ void Assembly::addMate(const MateConstraint& mate) {
 
 const std::vector<MateConstraint>& Assembly::mates() const {
     return mates_;
+}
+
+std::string Assembly::createMate(std::uint64_t component_a, std::uint64_t component_b, double offset) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Mate;
+    mate.value = offset;
+    mates_.push_back(mate);
+    return "Mate_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createFlush(std::uint64_t component_a, std::uint64_t component_b, double offset) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Flush;
+    mate.value = offset;
+    mates_.push_back(mate);
+    return "Flush_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createAngle(std::uint64_t component_a, std::uint64_t component_b, double angle) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Angle;
+    mate.value = angle;
+    mates_.push_back(mate);
+    return "Angle_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createInsert(std::uint64_t component_a, std::uint64_t component_b) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Insert;
+    mate.value = 0.0;
+    mates_.push_back(mate);
+    return "Insert_" + std::to_string(mates_.size());
+}
+
+bool Assembly::solveMates() {
+    // Simple mate solver - updates component transforms based on mates
+    // In real implementation: would use a proper constraint solver
+    
+    for (const auto& mate : mates_) {
+        AssemblyComponent* comp_a = findComponent(mate.component_a);
+        AssemblyComponent* comp_b = findComponent(mate.component_b);
+        
+        if (!comp_a || !comp_b) {
+            continue;
+        }
+        
+        switch (mate.type) {
+            case MateType::Mate:
+                // Align components (simple: move component_b to component_a position + offset)
+                comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                comp_b->transform.ty = comp_a->transform.ty;
+                comp_b->transform.tz = comp_a->transform.tz;
+                break;
+            case MateType::Flush:
+                // Make faces flush
+                comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                break;
+            case MateType::Angle:
+                // Apply angle constraint (simple: rotate around Z axis)
+                comp_b->transform.rz = comp_a->transform.rz + mate.value;
+                break;
+            case MateType::Insert:
+                // Insert constraint (align centers)
+                comp_b->transform.tx = comp_a->transform.tx;
+                comp_b->transform.ty = comp_a->transform.ty;
+                comp_b->transform.tz = comp_a->transform.tz;
+                break;
+        }
+    }
+    
+    return true;
+}
+
+AssemblyComponent* Assembly::findComponent(std::uint64_t id) {
+    for (auto& component : components_) {
+        if (component.id == id) {
+            return &component;
+        }
+    }
+    return nullptr;
+}
+
+const AssemblyComponent* Assembly::findComponent(std::uint64_t id) const {
+    for (const auto& component : components_) {
+        if (component.id == id) {
+            return &component;
+        }
+    }
+    return nullptr;
 }
 
 Part Modeler::createPart(const Sketch& sketch) const {
@@ -343,6 +573,36 @@ bool Modeler::solveConstraints(Sketch& sketch) const {
     }
     
     return true;
+}
+
+Part Modeler::applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric) const {
+    std::string feature_name = part.createExtrude(sketch_id, depth, symmetric);
+    (void)feature_name;  // Feature created and added to part
+    return part;
+}
+
+Part Modeler::applyRevolve(Part& part, const std::string& sketch_id, double angle, const std::string& axis) const {
+    std::string feature_name = part.createRevolve(sketch_id, angle, axis);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyLoft(Part& part, const std::vector<std::string>& sketch_ids) const {
+    std::string feature_name = part.createLoft(sketch_ids);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyHole(Part& part, double diameter, double depth, bool through_all) const {
+    std::string feature_name = part.createHole(diameter, depth, through_all);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyFillet(Part& part, double radius, const std::vector<std::string>& edge_ids) const {
+    std::string feature_name = part.createFillet(radius, edge_ids);
+    (void)feature_name;
+    return part;
 }
 
 }  // namespace core
