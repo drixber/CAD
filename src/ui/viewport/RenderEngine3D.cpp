@@ -1,4 +1,5 @@
 #include "RenderEngine3D.h"
+#include "Coin3DIntegration.h"
 
 #include <cmath>
 #include <algorithm>
@@ -25,7 +26,14 @@ bool RenderEngine3D::initialize(int width, int height) {
     viewport_width_ = width;
     viewport_height_ = height;
     
+#ifdef CAD_USE_COIN3D
+    coin3d_integration_ = std::make_unique<Coin3DIntegration>();
+    if (!coin3d_integration_->initialize()) {
+        return false;
+    }
+#else
     initializeOpenGL();
+#endif
     
     initialized_ = true;
     return true;
@@ -33,6 +41,12 @@ bool RenderEngine3D::initialize(int width, int height) {
 
 void RenderEngine3D::shutdown() {
     clearScene();
+#ifdef CAD_USE_COIN3D
+    if (coin3d_integration_) {
+        coin3d_integration_->shutdown();
+        coin3d_integration_.reset();
+    }
+#endif
     initialized_ = false;
 }
 
@@ -48,7 +62,17 @@ std::string RenderEngine3D::createGeometry(const GeometryData& data) {
     SceneNode node;
     node.id = data.id;
     node.geometry = data;
+    
+#ifdef CAD_USE_COIN3D
+    if (coin3d_integration_) {
+        void* coin_node = coin3d_integration_->createGeometryNode(data.id, const_cast<GeometryData*>(&data));
+        node.render_handle = coin_node;
+    } else {
+        node.render_handle = reinterpret_cast<void*>(static_cast<uintptr_t>(scene_nodes_.size() + 1));
+    }
+#else
     node.render_handle = reinterpret_cast<void*>(static_cast<uintptr_t>(scene_nodes_.size() + 1));
+#endif
     
     scene_nodes_[data.id] = node;
     scene_order_.push_back(data.id);
@@ -139,6 +163,28 @@ void RenderEngine3D::render() {
         return;
     }
     
+#ifdef CAD_USE_COIN3D
+    if (coin3d_integration_ && coin3d_integration_->getSceneRoot()) {
+        for (const auto& geometry_id : scene_order_) {
+            auto it = scene_nodes_.find(geometry_id);
+            if (it != scene_nodes_.end() && it->second.visible) {
+                if (frustum_culling_enabled_ && !isInFrustum(it->second)) {
+                    continue;
+                }
+                
+                void* coin_node = it->second.render_handle;
+                if (coin_node) {
+                    coin3d_integration_->addToScene(
+                        static_cast<void*>(coin3d_integration_->getSceneRoot()),
+                        coin_node
+                    );
+                }
+            }
+        }
+        return;
+    }
+#endif
+    
     std::vector<SceneNode> visible_nodes;
     visible_nodes.reserve(scene_order_.size());
     
@@ -168,6 +214,17 @@ void RenderEngine3D::render() {
 }
 
 std::string RenderEngine3D::pickObject(int x, int y) const {
+#ifdef CAD_USE_COIN3D
+    if (coin3d_integration_ && coin3d_integration_->getSceneRoot()) {
+        return coin3d_integration_->pickObject(
+            coin3d_integration_->getSceneRoot(),
+            x, y,
+            viewport_width_, viewport_height_,
+            camera_pos_, camera_target_, camera_up_,
+            camera_fov_
+        );
+    }
+#endif
     return raycastPick(x, y);
 }
 
@@ -175,6 +232,11 @@ void RenderEngine3D::setDisplayMode(const std::string& geometry_id, int mode) {
     auto it = scene_nodes_.find(geometry_id);
     if (it != scene_nodes_.end()) {
         it->second.geometry.params[7] = static_cast<double>(mode);
+#ifdef CAD_USE_COIN3D
+        if (coin3d_integration_ && it->second.render_handle) {
+            coin3d_integration_->setDisplayMode(it->second.render_handle, mode);
+        }
+#endif
     }
 }
 
@@ -185,6 +247,11 @@ void RenderEngine3D::setMaterial(const std::string& geometry_id, float r, float 
         it->second.geometry.params[1] = g;
         it->second.geometry.params[2] = b;
         it->second.geometry.params[3] = a;
+#ifdef CAD_USE_COIN3D
+        if (coin3d_integration_ && it->second.render_handle) {
+            coin3d_integration_->setMaterial(it->second.render_handle, r, g, b, a);
+        }
+#endif
     }
 }
 

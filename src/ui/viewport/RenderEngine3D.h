@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include "Coin3DIntegration.h"
 
 namespace cad {
 namespace ui {
@@ -75,6 +76,8 @@ private:
     int viewport_height_{600};
     bool frustum_culling_enabled_{true};
     bool occlusion_culling_enabled_{false};
+    
+    std::unique_ptr<Coin3DIntegration> coin3d_integration_;
     
     bool isInFrustum(const SceneNode& node) const;
     bool isOccluded(const SceneNode& node, const std::vector<SceneNode>& other_nodes) const;

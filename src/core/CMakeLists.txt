@@ -9,6 +9,7 @@ add_library(cad_core
     perf/PerfSpan.cpp
     assembly/AssemblyManager.cpp
     analysis/InterferenceChecker.cpp
+    geometry/OCCTIntegration.cpp
 )
 
 target_include_directories(cad_core
@@ -24,5 +25,17 @@ if(CAD_USE_FREECAD)
             PUBLIC
                 ${CAD_FREECAD_ROOT}/src
         )
+    endif()
+endif()
+
+option(CAD_USE_OCCT "Enable OpenCASCADE Technology integration" OFF)
+if(CAD_USE_OCCT)
+    find_package(OpenCASCADE QUIET)
+    if(OpenCASCADE_FOUND)
+        target_link_libraries(cad_core PUBLIC ${OpenCASCADE_LIBRARIES})
+        target_include_directories(cad_core PUBLIC ${OpenCASCADE_INCLUDE_DIR})
+        target_compile_definitions(cad_core PUBLIC CAD_USE_OCCT=1)
+    else()
+        message(WARNING "OpenCASCADE not found. Install via vcpkg: vcpkg install opencascade")
     endif()
 endif()
