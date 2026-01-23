@@ -12,7 +12,7 @@ on:
         type: string
 
 jobs:
-  build-and-release:
+  build-windows:
     runs-on: windows-latest
     
     steps:
@@ -111,6 +111,255 @@ jobs:
           exit 1
         }
     
+    - name: Upload Windows Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: HydraCAD-Windows-Installer
+        path: installer/HydraCADSetup.exe
+        retention-days: 7
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake \
+          qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
+          libqt6core6 libqt6gui6 libqt6widgets6 libqt6opengl6-dev \
+          file patchelf wget
+    
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF \
+          -DCMAKE_INSTALL_PREFIX=/usr -DQt6_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt6
+    
+    - name: Build Application
+      run: |
+        cmake --build build --parallel
+    
+    - name: Extract Version
+      id: version
+      run: |
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          version="${{ github.ref_name }}"
+        else
+          version="${{ github.event.inputs.version }}"
+        fi
+        version=$(echo "$version" | sed 's/^v//')
+        if [ -z "$version" ]; then
+          version="2.0.0"
+        fi
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "Release version: $version"
+    
+    - name: Install to AppDir
+      run: |
+        mkdir -p AppDir/usr
+        cmake --install build --prefix AppDir/usr
+    
+    - name: Create AppImage
+      run: |
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+        chmod +x appimagetool
+        
+        # Ensure executable exists
+        if [ ! -f build/cad_desktop ]; then
+          echo "Error: cad_desktop not found!"
+          exit 1
+        fi
+        
+        # Create AppDir structure
+        mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications
+        
+        # Copy executable
+        cp build/cad_desktop AppDir/usr/bin/
+        chmod +x AppDir/usr/bin/cad_desktop
+        
+        # Deploy Qt libraries using Qt's deployment tool
+        export QTDIR=/usr
+        export PATH=$QTDIR/bin:$PATH
+        if command -v qt6-deploy &> /dev/null; then
+          qt6-deploy AppDir/usr/bin/cad_desktop
+        else
+          # Fallback: Manual Qt library copy
+          export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+          ldd build/cad_desktop | grep "libQt" | awk '{print $3}' | while read lib; do
+            if [ -f "$lib" ]; then
+              cp "$lib" AppDir/usr/lib/ 2>/dev/null || true
+            fi
+          done
+        fi
+        
+        # Create desktop file
+        cat > AppDir/usr/share/applications/hydracad.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=Hydra CAD
+        Comment=Professional CAD Application
+        Exec=cad_desktop
+        Icon=hydracad
+        Categories=Graphics;CAD;
+        Terminal=false
+        EOF
+        
+        # Create AppRun
+        cat > AppDir/AppRun << 'EOF'
+        #!/bin/sh
+        HERE="$(dirname "$(readlink -f "${0}")")"
+        export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+        export QT_PLUGIN_PATH="${HERE}/usr/lib/qt6/plugins"
+        exec "${HERE}/usr/bin/cad_desktop" "$@"
+        EOF
+        chmod +x AppDir/AppRun
+        
+        # Create AppImage
+        VERSION="${{ steps.version.outputs.version }}"
+        ./appimagetool AppDir HydraCAD-${VERSION}-x86_64.AppImage || true
+        if [ ! -f HydraCAD-${VERSION}-x86_64.AppImage ]; then
+          # Try without version in filename
+          ./appimagetool AppDir HydraCAD-x86_64.AppImage
+        fi
+    
+    - name: Upload Linux AppImage
+      uses: actions/upload-artifact@v4
+      with:
+        name: HydraCAD-Linux-Installer
+        path: HydraCAD-*.AppImage
+        retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Dependencies
+      run: |
+        brew install cmake qt@6 create-dmg
+    
+    - name: Extract Version
+      id: version
+      run: |
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          version="${{ github.ref_name }}"
+        else
+          version="${{ github.event.inputs.version }}"
+        fi
+        version=$(echo "$version" | sed 's/^v//')
+        if [ -z "$version" ]; then
+          version="2.0.0"
+        fi
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "Release version: $version"
+    
+    - name: Configure CMake
+      env:
+        Qt6_DIR: /opt/homebrew/opt/qt@6/lib/cmake/Qt6
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF \
+          -DQt6_DIR="$Qt6_DIR" -DCMAKE_PREFIX_PATH="$Qt6_DIR"
+    
+    - name: Build Application
+      run: |
+        cmake --build build --parallel
+    
+    - name: Create App Bundle
+      run: |
+        mkdir -p "Hydra CAD.app/Contents/MacOS"
+        mkdir -p "Hydra CAD.app/Contents/Resources"
+        cp build/cad_desktop "Hydra CAD.app/Contents/MacOS/Hydra CAD"
+        chmod +x "Hydra CAD.app/Contents/MacOS/Hydra CAD"
+        
+        # Create Info.plist
+        cat > "Hydra CAD.app/Contents/Info.plist" << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleExecutable</key>
+          <string>Hydra CAD</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.hydracad.app</string>
+          <key>CFBundleName</key>
+          <string>Hydra CAD</string>
+          <key>CFBundleVersion</key>
+          <string>${{ steps.version.outputs.version }}</string>
+          <key>CFBundleShortVersionString</key>
+          <string>${{ steps.version.outputs.version }}</string>
+          <key>CFBundlePackageType</key>
+          <string>APPL</string>
+          <key>LSMinimumSystemVersion</key>
+          <string>10.15</string>
+        </dict>
+        </plist>
+        EOF
+    
+    - name: Deploy Qt Frameworks
+      run: |
+        export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"
+        if command -v macdeployqt &> /dev/null; then
+          macdeployqt "Hydra CAD.app" -always-overwrite -verbose=2
+        elif [ -f "/opt/homebrew/opt/qt@6/bin/macdeployqt" ]; then
+          /opt/homebrew/opt/qt@6/bin/macdeployqt "Hydra CAD.app" -always-overwrite -verbose=2
+        else
+          echo "macdeployqt not found, trying to find Qt tools..."
+          find /opt/homebrew -name "macdeployqt" -type f 2>/dev/null | head -1 | xargs -I {} {} "Hydra CAD.app" -always-overwrite || echo "Qt deployment skipped"
+        fi
+    
+    - name: Create DMG
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        if command -v create-dmg &> /dev/null; then
+          create-dmg --volname "Hydra CAD" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "Hydra CAD.app" 200 190 \
+            --hide-extension "Hydra CAD.app" \
+            --app-drop-link 600 185 \
+            "HydraCAD-${VERSION}-macOS.dmg" \
+            "Hydra CAD.app"
+        else
+          # Fallback: Use hdiutil
+          hdiutil create -volname "Hydra CAD" -srcfolder "Hydra CAD.app" \
+            -ov -format UDZO "HydraCAD-${VERSION}-macOS.dmg"
+        fi
+    
+    - name: Upload macOS DMG
+      uses: actions/upload-artifact@v4
+      with:
+        name: HydraCAD-macOS-Installer
+        path: HydraCAD-*.dmg
+        retention-days: 7
+
+  create-release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Extract Version
+      id: version
+      run: |
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          version="${{ github.ref_name }}"
+        else
+          version="${{ github.event.inputs.version }}"
+        fi
+        version=$(echo "$version" | sed 's/^v//')
+        if [ -z "$version" ]; then
+          version="2.0.0"
+        fi
+        echo "version=$version" >> $GITHUB_OUTPUT
+    
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -120,9 +369,21 @@ jobs:
           ## 🚀 Hydra CAD ${{ steps.version.outputs.version }}
           
           ### 📥 Installation
-          1. **Download**: Klicken Sie auf `HydraCADSetup.exe` unten
-          2. **Installation**: Doppelklick auf die Datei
-          3. **Fertig**: Installationsassistenten folgen - fertig!
+          
+          **Windows:**
+          1. Download `HydraCADSetup.exe`
+          2. Doppelklick auf die Datei
+          3. Installationsassistenten folgen
+          
+          **Linux:**
+          1. Download `HydraCAD-*.AppImage`
+          2. Datei ausführbar machen: `chmod +x HydraCAD-*.AppImage`
+          3. Doppelklick oder `./HydraCAD-*.AppImage` ausführen
+          
+          **macOS:**
+          1. Download `HydraCAD-*-macOS.dmg`
+          2. DMG öffnen
+          3. App in Applications-Ordner ziehen
           
           ### ✨ Features
           - ✅ Vollständige CAD-Funktionalität
@@ -133,17 +394,21 @@ jobs:
           - ✅ User Authentication
           
           ### 💻 Systemanforderungen
-          - Windows 10/11 (64-bit)
-          - 4 GB RAM (8 GB empfohlen)
-          - 500 MB Festplattenspeicher
-          - OpenGL 3.3+ kompatible Grafikkarte
+          - **Windows**: Windows 10/11 (64-bit)
+          - **Linux**: Ubuntu 20.04+ / Debian 11+ / Fedora 34+
+          - **macOS**: macOS 10.15+ (Intel/Apple Silicon)
+          - **RAM**: 4 GB minimum, 8 GB empfohlen
+          - **Festplatte**: 500 MB
+          - **Grafik**: OpenGL 3.3+ kompatible Grafikkarte
           
           ### 📚 Weitere Informationen
           - [CHANGELOG.md](CHANGELOG.md) - Änderungsprotokoll
           - [docs/INSTALLATION.md](docs/INSTALLATION.md) - Installations-Anleitung
           - [docs/PROJECT_FINAL.md](docs/PROJECT_FINAL.md) - Vollständige Dokumentation
         files: |
-          installer/HydraCADSetup.exe
+          artifacts/HydraCAD-Windows-Installer/HydraCADSetup.exe
+          artifacts/HydraCAD-Linux-Installer/*.AppImage
+          artifacts/HydraCAD-macOS-Installer/*.dmg
         draft: false
         prerelease: false
       env:

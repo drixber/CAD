@@ -8,30 +8,47 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 
 ## 🚀 Schnellstart
 
-### Windows Installation (Empfohlen)
+### Installation (Empfohlen - Fertiger Installer)
 
-**Einfachste Methode - Fertiger Installer:**
+**Alle Plattformen - Einfachste Methode:**
 
 1. **Download**: Gehen Sie zu [GitHub Releases](https://github.com/drixber/CAD/releases)
-2. **Download**: Laden Sie `HydraCADSetup.exe` herunter
-3. **Installation**: Doppelklick auf `HydraCADSetup.exe`
-   - Installer führt Sie durch den Installationsprozess
-   - Desktop-Shortcut wird automatisch erstellt
-   - Startmenü-Eintrag wird erstellt
-   - File-Association für `.cad` Dateien wird erstellt
-4. **Erste Schritte**:
-   - Beim ersten Start: Account registrieren
-   - Nach Login: App ist bereit für die Verwendung
-   - Projekte speichern: File → Save Project (Strg+S)
-   - Projekte öffnen: File → Open Project (Strg+O)
+2. **Download**: Laden Sie den Installer für Ihre Plattform herunter:
+   - **Windows**: `HydraCADSetup.exe`
+   - **Linux**: `HydraCAD-*-x86_64.AppImage`
+   - **macOS**: `HydraCAD-*-macOS.dmg`
+
+**Windows:**
+- Doppelklick auf `HydraCADSetup.exe`
+- Installationsassistenten folgen
+- Desktop-Shortcut wird automatisch erstellt
+
+**Linux:**
+```bash
+chmod +x HydraCAD-*-x86_64.AppImage
+./HydraCAD-*-x86_64.AppImage
+```
+
+**macOS:**
+- DMG öffnen
+- App in Applications-Ordner ziehen
+- App aus Applications starten
+
+**Erste Schritte:**
+- Beim ersten Start: Account registrieren
+- Nach Login: App ist bereit für die Verwendung
+- Projekte speichern: File → Save Project (Strg+S / Cmd+S)
+- Projekte öffnen: File → Open Project (Strg+O / Cmd+O)
 
 ### Eigenen Build erstellen (Optional)
 
-Falls Sie den Installer selbst erstellen möchten:
+**Windows:**
 ```powershell
 .\build_installer.ps1
 ```
-Der Installer wird dann in `installer\HydraCADSetup.exe` erstellt.
+
+**Linux/macOS:**
+Siehe [docs/INSTALLATION.md](docs/INSTALLATION.md) für detaillierte Anleitung.
 
 ## Features
 
@@ -125,7 +142,9 @@ Siehe auch: [docs/README.md](docs/README.md) für eine vollständige Übersicht.
 
 ## System-Anforderungen
 
-- **OS**: Windows 10/11 (64-bit)
+- **Windows**: Windows 10/11 (64-bit)
+- **Linux**: Ubuntu 20.04+ / Debian 11+ / Fedora 34+ (64-bit)
+- **macOS**: macOS 10.15+ (Intel/Apple Silicon)
 - **RAM**: 4 GB minimum, 8 GB empfohlen
 - **Festplatte**: 500 MB für Installation, zusätzlich für Projekte
 - **Grafik**: OpenGL 3.3+ kompatible Grafikkarte

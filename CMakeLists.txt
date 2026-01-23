@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(InventorStyleCAD LANGUAGES CXX)
+project(InventorStyleCAD VERSION 2.0.0 LANGUAGES CXX)
+
+set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(PROJECT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,6 +40,28 @@ if(CAD_USE_QT)
         src/main.cpp
     )
     target_link_libraries(cad_desktop PRIVATE cad_app cad_ui)
+    
+    # macOS App Bundle
+    if(APPLE)
+        set_target_properties(cad_desktop PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_BUNDLE_NAME "Hydra CAD"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.hydracad.app"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+        )
+    endif()
+    
+    # Linux AppImage deployment
+    if(UNIX AND NOT APPLE)
+        find_package(Qt6 QUIET COMPONENTS Core)
+        if(Qt6_FOUND)
+            include(GNUInstallDirs)
+            install(TARGETS cad_desktop
+                RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            )
+        endif()
+    endif()
 endif()
 
 if(CAD_BUILD_PYTHON)
