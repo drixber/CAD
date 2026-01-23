@@ -1,0 +1,58 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <!-- Sketch Icons -->
+        <file alias="sketch/line.svg">sketch/line.svg</file>
+        <file alias="sketch/rectangle.svg">sketch/rectangle.svg</file>
+        <file alias="sketch/circle.svg">sketch/circle.svg</file>
+        <file alias="sketch/arc.svg">sketch/arc.svg</file>
+        <file alias="sketch/spline.svg">sketch/spline.svg</file>
+        <file alias="sketch/text.svg">sketch/text.svg</file>
+        
+        <!-- Part Icons -->
+        <file alias="part/extrude.svg">part/extrude.svg</file>
+        <file alias="part/revolve.svg">part/revolve.svg</file>
+        <file alias="part/loft.svg">part/loft.svg</file>
+        <file alias="part/sweep.svg">part/sweep.svg</file>
+        <file alias="part/hole.svg">part/hole.svg</file>
+        <file alias="part/fillet.svg">part/fillet.svg</file>
+        <file alias="part/chamfer.svg">part/chamfer.svg</file>
+        <file alias="part/shell.svg">part/shell.svg</file>
+        <file alias="part/mirror.svg">part/mirror.svg</file>
+        <file alias="part/pattern_rect.svg">part/pattern_rect.svg</file>
+        <file alias="part/pattern_circ.svg">part/pattern_circ.svg</file>
+        
+        <!-- Assembly Icons -->
+        <file alias="assembly/place.svg">assembly/place.svg</file>
+        <file alias="assembly/mate.svg">assembly/mate.svg</file>
+        <file alias="assembly/constraint.svg">assembly/constraint.svg</file>
+        <file alias="assembly/pattern.svg">assembly/pattern.svg</file>
+        
+        <!-- Drawing Icons -->
+        <file alias="drawing/base_view.svg">drawing/base_view.svg</file>
+        <file alias="drawing/section.svg">drawing/section.svg</file>
+        <file alias="drawing/dimension.svg">drawing/dimension.svg</file>
+        <file alias="drawing/bom.svg">drawing/bom.svg</file>
+        
+        <!-- View Icons -->
+        <file alias="view/shaded.svg">view/shaded.svg</file>
+        <file alias="view/wireframe.svg">view/wireframe.svg</file>
+        <file alias="view/hidden_line.svg">view/hidden_line.svg</file>
+        <file alias="view/section_plane.svg">view/section_plane.svg</file>
+        <file alias="view/measure.svg">view/measure.svg</file>
+        
+        <!-- File Icons -->
+        <file alias="file/new.svg">file/new.svg</file>
+        <file alias="file/open.svg">file/open.svg</file>
+        <file alias="file/save.svg">file/save.svg</file>
+        <file alias="file/export.svg">file/export.svg</file>
+        <file alias="file/import.svg">file/import.svg</file>
+        
+        <!-- General Icons -->
+        <file alias="general/undo.svg">general/undo.svg</file>
+        <file alias="general/redo.svg">general/redo.svg</file>
+        <file alias="general/zoom_fit.svg">general/zoom_fit.svg</file>
+        <file alias="general/zoom_in.svg">general/zoom_in.svg</file>
+        <file alias="general/zoom_out.svg">general/zoom_out.svg</file>
+    </qresource>
+</RCC>

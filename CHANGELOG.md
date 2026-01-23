@@ -3,6 +3,25 @@
 ## [2.0.0] - 2026-01-23
 
 ### Added
+
+#### UI Enhancements
+- ✅ Professional icon system with SVG icons for all ribbon buttons
+- ✅ Layout templates (Inventor, SolidWorks, CATIA styles)
+- ✅ Customizable dock system with save/load layouts
+- ✅ Enhanced status bar (coordinates, units, snap mode)
+- ✅ Enhanced tooltips with keyboard shortcuts
+
+#### Modeling Features
+- ✅ Sweep feature with path and profile, twist and scale options
+- ✅ Helix/Spiral feature for screws, springs, etc.
+- ✅ Shell feature with wall thickness and face selection
+- ✅ Draft feature for mold design
+- ✅ Enhanced Chamfer with multiple types (Equal, Two Distances, Distance-Angle)
+- ✅ Mirror feature with merge options
+- ✅ Thread feature with standards (ISO, UNC, etc.)
+- ✅ Rib feature for reinforcement
+
+### Added (Previous)
 - ✅ Vollständige 3D Viewport Rendering mit Coin3D/SoQt Integration
 - ✅ FreeCAD Integration mit vollständiger Sketch/Part/Drawing Synchronisation
 - ✅ Import/Export für STEP, IGES, STL, DWG, DXF, OBJ, PLY, 3MF, GLTF

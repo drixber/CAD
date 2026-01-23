@@ -5,6 +5,9 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QKeySequence>
+#include <QIcon>
+#include <QFile>
+#include <QDir>
 
 namespace cad {
 namespace ui {
@@ -145,6 +148,20 @@ QAction* QtRibbon::registerAction(const QString& id, const QString& label) {
     QAction* action = new QAction(label, this);
     action->setObjectName(id);
     action->setShortcutVisibleInContextMenu(true);
+    
+    // Set icon if available
+    QString iconPath = getIconPath(id);
+    if (!iconPath.isEmpty() && QFile::exists(iconPath)) {
+        action->setIcon(QIcon(iconPath));
+    }
+    
+    // Enhanced tooltip with shortcut
+    QString tooltip = label;
+    if (action->shortcut().isEmpty() == false) {
+        tooltip += QString(" (%1)").arg(action->shortcut().toString());
+    }
+    action->setToolTip(tooltip);
+    
     connect(action, &QAction::triggered, this, [this, id]() {
         if (command_handler_) {
             command_handler_(id);
@@ -152,6 +169,70 @@ QAction* QtRibbon::registerAction(const QString& id, const QString& label) {
     });
     actions_.insert({key, action});
     return action;
+}
+
+QString QtRibbon::getIconPath(const QString& commandId) {
+    // Map command IDs to icon paths
+    QMap<QString, QString> iconMap = {
+        // Sketch icons
+        {"Line", ":/icons/sketch/line.svg"},
+        {"Rectangle", ":/icons/sketch/rectangle.svg"},
+        {"Circle", ":/icons/sketch/circle.svg"},
+        {"Arc", ":/icons/sketch/arc.svg"},
+        {"Spline", ":/icons/sketch/spline.svg"},
+        {"Text", ":/icons/sketch/text.svg"},
+        
+        // Part icons
+        {"Extrude", ":/icons/part/extrude.svg"},
+        {"Revolve", ":/icons/part/revolve.svg"},
+        {"Loft", ":/icons/part/loft.svg"},
+        {"Sweep", ":/icons/part/sweep.svg"},
+        {"Hole", ":/icons/part/hole.svg"},
+        {"Fillet", ":/icons/part/fillet.svg"},
+        {"Chamfer", ":/icons/part/chamfer.svg"},
+        {"Shell", ":/icons/part/shell.svg"},
+        {"Mirror", ":/icons/part/mirror.svg"},
+        {"RectangularPattern", ":/icons/part/pattern_rect.svg"},
+        {"CircularPattern", ":/icons/part/pattern_circ.svg"},
+        
+        // Assembly icons
+        {"Place", ":/icons/assembly/place.svg"},
+        {"Mate", ":/icons/assembly/mate.svg"},
+        {"Constraint", ":/icons/assembly/constraint.svg"},
+        {"Pattern", ":/icons/assembly/pattern.svg"},
+        
+        // Drawing icons
+        {"BaseView", ":/icons/drawing/base_view.svg"},
+        {"Section", ":/icons/drawing/section.svg"},
+        {"Dimension", ":/icons/drawing/dimension.svg"},
+        {"PartsList", ":/icons/drawing/bom.svg"},
+        
+        // View icons
+        {"Shaded", ":/icons/view/shaded.svg"},
+        {"Wireframe", ":/icons/view/wireframe.svg"},
+        {"HiddenLine", ":/icons/view/hidden_line.svg"},
+        {"SectionPlane", ":/icons/view/section_plane.svg"},
+        {"Measure", ":/icons/view/measure.svg"},
+        
+        // File icons
+        {"New", ":/icons/file/new.svg"},
+        {"Open", ":/icons/file/open.svg"},
+        {"Save", ":/icons/file/save.svg"},
+        {"Export", ":/icons/file/export.svg"},
+        {"Import", ":/icons/file/import.svg"},
+        
+        // General icons
+        {"Undo", ":/icons/general/undo.svg"},
+        {"Redo", ":/icons/general/redo.svg"},
+        {"ZoomFit", ":/icons/general/zoom_fit.svg"},
+        {"ZoomIn", ":/icons/general/zoom_in.svg"},
+        {"ZoomOut", ":/icons/general/zoom_out.svg"}
+    };
+    
+    if (iconMap.contains(commandId)) {
+        return iconMap[commandId];
+    }
+    return QString();
 }
 
 QWidget* QtRibbon::buildCommandTab(const QString& title,

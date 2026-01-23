@@ -30,6 +30,7 @@ if(CAD_USE_QT)
         viewport/Coin3DIntegration.cpp
         viewport/SoQtViewerIntegration.cpp
         styles/Styles.qrc
+        resources/icons/icons.qrc
     )
 endif()
 

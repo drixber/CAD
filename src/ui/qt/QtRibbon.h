@@ -22,6 +22,7 @@ private:
     QWidget* buildCommandTab(const QString& title,
                              const QList<QPair<QString, QStringList>>& groups);
     QWidget* buildGroup(const QString& name, const QStringList& command_ids);
+    QString getIconPath(const QString& commandId);
 
     std::function<void(const QString&)> command_handler_;
     std::unordered_map<std::string, QAction*> actions_;

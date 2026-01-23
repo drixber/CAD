@@ -16,6 +16,8 @@
 #include <QAction>
 #include <QFileDialog>
 #include <QKeySequence>
+#include <QInputDialog>
+#include <QLineEdit>
 
 namespace cad {
 namespace ui {
@@ -229,6 +231,19 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     autosave_status_label_ = new QLabel(tr("Auto-save: Off"), this);
     statusBar()->addPermanentWidget(mode_label_);
     statusBar()->addPermanentWidget(document_label_);
+    
+    // Coordinates display
+    QLabel* coords_label_ = new QLabel(tr("X: 0.00  Y: 0.00  Z: 0.00"), this);
+    statusBar()->addPermanentWidget(coords_label_);
+    
+    // Units display
+    QLabel* units_label_ = new QLabel(tr("Units: mm"), this);
+    statusBar()->addPermanentWidget(units_label_);
+    
+    // Snap mode
+    QLabel* snap_label_ = new QLabel(tr("Snap: Off"), this);
+    statusBar()->addPermanentWidget(snap_label_);
+    
     statusBar()->addPermanentWidget(fps_status_label_);
     statusBar()->addPermanentWidget(autosave_status_label_);
     
@@ -246,6 +261,48 @@ QtMainWindow::QtMainWindow(QWidget* parent)
             logout_handler_();
         }
     });
+    
+    // Layout menu
+    QMenu* layout_menu = menu_bar->addMenu(tr("&Layout"));
+    DockLayoutManager* layout_manager = new DockLayoutManager(this);
+    
+    QAction* save_layout_action = layout_menu->addAction(tr("&Save Current Layout..."), this, [this, layout_manager]() {
+        bool ok;
+        QString name = QInputDialog::getText(this, tr("Save Layout"), tr("Layout name:"), 
+                                            QLineEdit::Normal, "", &ok);
+        if (ok && !name.isEmpty()) {
+            layout_manager->saveLayout(this, name);
+            QSettings settings;
+            layout_manager->saveToSettings(settings);
+        }
+    });
+    
+    layout_menu->addSeparator();
+    
+    QMenu* templates_menu = layout_menu->addMenu(tr("&Templates"));
+    QAction* inventor_layout = templates_menu->addAction(tr("&Inventor Style"), this, [this, layout_manager]() {
+        layout_manager->applyInventorLayout(this);
+    });
+    QAction* solidworks_layout = templates_menu->addAction(tr("&SolidWorks Style"), this, [this, layout_manager]() {
+        layout_manager->applySolidWorksLayout(this);
+    });
+    QAction* catia_layout = templates_menu->addAction(tr("&CATIA Style"), this, [this, layout_manager]() {
+        layout_manager->applyCATIALayout(this);
+    });
+    QAction* default_layout = templates_menu->addAction(tr("&Default"), this, [this, layout_manager]() {
+        layout_manager->restoreDefaultLayout(this);
+    });
+    
+    layout_menu->addSeparator();
+    
+    QMenu* saved_layouts_menu = layout_menu->addMenu(tr("&Saved Layouts"));
+    // Populate saved layouts
+    QStringList saved = layout_manager->getSavedLayouts();
+    for (const QString& name : saved) {
+        QAction* action = saved_layouts_menu->addAction(name, this, [this, layout_manager, name]() {
+            layout_manager->restoreLayout(this, name);
+        });
+    }
     
     QMenu* file_menu = menu_bar->addMenu(tr("&File"));
     

@@ -169,6 +169,24 @@ std::string Part::generateFeatureName(FeatureType type) {
         case FeatureType::Pattern:
             prefix = "Pattern";
             break;
+        case FeatureType::Sweep:
+            prefix = "Sweep";
+            break;
+        case FeatureType::Helix:
+            prefix = "Helix";
+            break;
+        case FeatureType::Draft:
+            prefix = "Draft";
+            break;
+        case FeatureType::Mirror:
+            prefix = "Mirror";
+            break;
+        case FeatureType::Thread:
+            prefix = "Thread";
+            break;
+        case FeatureType::Rib:
+            prefix = "Rib";
+            break;
     }
     return prefix + std::to_string(next_feature_id_++);
 }
@@ -243,6 +261,100 @@ std::string Part::createPattern(const std::string& base_feature, int count_x, in
     feature.spacing_x = spacing_x;
     feature.spacing_y = spacing_y;
     feature.spacing_z = spacing_z;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createSweep(const std::string& profile_sketch_id, const std::string& path_sketch_id,
+                             double twist_angle, double scale_factor) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Sweep);
+    feature.type = FeatureType::Sweep;
+    feature.sketch_id = profile_sketch_id;
+    feature.path_sketch_id = path_sketch_id;
+    feature.twist_angle = twist_angle;
+    feature.scale_factor = scale_factor;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createHelix(double radius, double pitch, double revolutions, bool clockwise) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Helix);
+    feature.type = FeatureType::Helix;
+    feature.parameters["radius"] = radius;
+    feature.pitch = pitch;
+    feature.revolutions = revolutions;
+    feature.clockwise = clockwise;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createChamfer(double distance1, double distance2, double angle,
+                               const std::vector<std::string>& edge_ids) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Chamfer);
+    feature.type = FeatureType::Chamfer;
+    feature.parameters["distance1"] = distance1;
+    feature.parameters["distance2"] = distance2;
+    feature.parameters["angle"] = angle;
+    feature.edge_ids = edge_ids;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createShell(double wall_thickness, const std::vector<std::string>& face_ids) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Shell);
+    feature.type = FeatureType::Shell;
+    feature.wall_thickness = wall_thickness;
+    feature.face_ids = face_ids;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createDraft(double angle, const std::string& draft_plane,
+                            const std::vector<std::string>& face_ids) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Draft);
+    feature.type = FeatureType::Draft;
+    feature.draft_angle = angle;
+    feature.draft_plane = draft_plane;
+    feature.face_ids = face_ids;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createMirror(const std::string& base_feature, const std::string& mirror_plane,
+                              bool merge_result) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Mirror);
+    feature.type = FeatureType::Mirror;
+    feature.sketch_id = base_feature;
+    feature.mirror_plane = mirror_plane;
+    feature.merge_result = merge_result;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createThread(const std::string& thread_standard, double pitch, bool internal) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Thread);
+    feature.type = FeatureType::Thread;
+    feature.thread_standard = thread_standard;
+    feature.thread_pitch = pitch;
+    feature.internal = internal;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createRib(double thickness, const std::string& rib_plane, const std::string& sketch_id) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Rib);
+    feature.type = FeatureType::Rib;
+    feature.rib_thickness = thickness;
+    feature.rib_plane = rib_plane;
+    feature.sketch_id = sketch_id;
     features_.push_back(feature);
     return feature.name;
 }
@@ -1047,6 +1159,58 @@ Part Modeler::applyHole(Part& part, double diameter, double depth, bool through_
 
 Part Modeler::applyFillet(Part& part, double radius, const std::vector<std::string>& edge_ids) const {
     std::string feature_name = part.createFillet(radius, edge_ids);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applySweep(Part& part, const std::string& profile_sketch_id, const std::string& path_sketch_id,
+                        double twist_angle, double scale_factor) const {
+    std::string feature_name = part.createSweep(profile_sketch_id, path_sketch_id, twist_angle, scale_factor);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyHelix(Part& part, double radius, double pitch, double revolutions, bool clockwise) const {
+    std::string feature_name = part.createHelix(radius, pitch, revolutions, clockwise);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyChamfer(Part& part, double distance1, double distance2, double angle,
+                          const std::vector<std::string>& edge_ids) const {
+    std::string feature_name = part.createChamfer(distance1, distance2, angle, edge_ids);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyShell(Part& part, double wall_thickness, const std::vector<std::string>& face_ids) const {
+    std::string feature_name = part.createShell(wall_thickness, face_ids);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyDraft(Part& part, double angle, const std::string& draft_plane,
+                        const std::vector<std::string>& face_ids) const {
+    std::string feature_name = part.createDraft(angle, draft_plane, face_ids);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyMirror(Part& part, const std::string& base_feature, const std::string& mirror_plane,
+                         bool merge_result) const {
+    std::string feature_name = part.createMirror(base_feature, mirror_plane, merge_result);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyThread(Part& part, const std::string& thread_standard, double pitch, bool internal) const {
+    std::string feature_name = part.createThread(thread_standard, pitch, internal);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyRib(Part& part, double thickness, const std::string& rib_plane, const std::string& sketch_id) const {
+    std::string feature_name = part.createRib(thickness, rib_plane, sketch_id);
     (void)feature_name;
     return part;
 }

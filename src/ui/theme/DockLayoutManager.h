@@ -30,6 +30,12 @@ public:
     void saveToSettings(QSettings& settings) const;
     void loadFromSettings(QSettings& settings);
     
+    // Layout templates (Inventor, SolidWorks, CATIA styles)
+    void applyInventorLayout(QMainWindow* window);
+    void applySolidWorksLayout(QMainWindow* window);
+    void applyCATIALayout(QMainWindow* window);
+    QStringList getAvailableTemplates() const;
+    
 private:
     QMap<QString, QByteArray> savedLayouts_;
     QByteArray defaultLayout_;
