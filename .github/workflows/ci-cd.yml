@@ -16,10 +16,19 @@ jobs:
         config: [Release, Debug]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup CMake
-      uses: microsoft/setup-cmake@v1
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.26'
+    
+    - name: Setup Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.5.0'
+        modules: 'qtbase qttools'
+        cached: 'true'
     
     - name: Configure CMake
       run: |
@@ -75,7 +84,7 @@ jobs:
     
     - name: Upload Artifacts
       if: matrix.config == 'Release'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: HydraCAD-Windows-${{ matrix.config }}
         path: |
@@ -86,12 +95,14 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake libqt6core6 libqt6gui6 libqt6widgets6
+        sudo apt-get install -y build-essential cmake \
+          qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
+          libqt6core6 libqt6gui6 libqt6widgets6 libqt6opengl6-dev
     
     - name: Configure CMake
       run: |
@@ -128,7 +139,7 @@ jobs:
         echo "Note: Full coverage analysis requires gcov/lcov setup"
     
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: HydraCAD-Linux
         path: build/cad_desktop
@@ -137,15 +148,18 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install Dependencies
       run: |
-        brew install cmake qt6
+        brew install cmake qt@6
     
     - name: Configure CMake
+      env:
+        Qt6_DIR: /opt/homebrew/opt/qt@6/lib/cmake/Qt6
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON \
+          -DQt6_DIR="$Qt6_DIR"
     
     - name: Build
       run: |
@@ -178,7 +192,7 @@ jobs:
         echo "Note: Full coverage analysis requires gcov/lcov setup"
     
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: HydraCAD-macOS
         path: build/cad_desktop
