@@ -82,6 +82,8 @@ DirectEditResult DirectEditService::moveFace(const DirectEditRequest& request) c
         }
     }
     
+    const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
+    
     return result;
 }
 
@@ -111,8 +113,9 @@ DirectEditResult DirectEditService::deleteFace(const DirectEditRequest& request)
     result.volume_change = calculateVolumeChange(request);
     result.surface_area_change = calculateSurfaceAreaChange(request);
     
-    // Faces are deleted, so no modified faces
     result.modified_faces.clear();
+    
+    const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
     
     return result;
 }
@@ -177,6 +180,8 @@ DirectEditResult DirectEditService::freeformEdit(const DirectEditRequest& reques
             }
         }
     }
+    
+    const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
     
     return result;
 }
@@ -275,7 +280,6 @@ double DirectEditService::calculateSurfaceAreaChange(const DirectEditRequest& re
 }
 
 bool DirectEditService::validateEdit(const DirectEditRequest& request) const {
-    // Validate edit request
     if (request.selected_faces.empty()) {
         return false;
     }
@@ -286,12 +290,29 @@ bool DirectEditService::validateEdit(const DirectEditRequest& request) const {
         case DirectEditOperation::OffsetFace:
             return request.offset_params.offset_distance != 0.0;
         case DirectEditOperation::DeleteFace:
-            return true;  // Always valid
+            return true;
         case DirectEditOperation::Freeform:
             return !request.freeform_params.control_points.empty();
         default:
             return false;
     }
+}
+
+void DirectEditService::updateFeatureHistory(const std::string& feature_id, const DirectEditResult& result) {
+    std::string history_entry = "Edit: " + result.modified_feature_id + " (" + result.message + ")";
+    feature_history_[feature_id].push_back(history_entry);
+    
+    if (feature_history_[feature_id].size() > 100) {
+        feature_history_[feature_id].erase(feature_history_[feature_id].begin());
+    }
+}
+
+std::vector<std::string> DirectEditService::getFeatureHistory(const std::string& feature_id) const {
+    auto it = feature_history_.find(feature_id);
+    if (it != feature_history_.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 }  // namespace modules

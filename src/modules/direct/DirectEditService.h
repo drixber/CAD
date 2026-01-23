@@ -73,10 +73,13 @@ public:
     void redoLastEdit();
     bool canUndo() const;
     bool canRedo() const;
+    void updateFeatureHistory(const std::string& feature_id, const DirectEditResult& result);
+    std::vector<std::string> getFeatureHistory(const std::string& feature_id) const;
     
 private:
     std::vector<DirectEditResult> edit_history_;
     int history_index_{-1};
+    std::map<std::string, std::vector<std::string>> feature_history_;
     
     double calculateVolumeChange(const DirectEditRequest& request) const;
     double calculateSurfaceAreaChange(const DirectEditRequest& request) const;
