@@ -13,6 +13,13 @@
 #include <regex>
 #include <tuple>
 
+namespace {
+    struct Triangle {
+        double normal[3];
+        double vertices[3][3];
+    };
+}
+
 namespace cad {
 namespace interop {
 
@@ -477,11 +484,6 @@ IoResult ImportExportService::exportStl(const std::string& path, bool ascii_mode
     if (ascii_mode) {
         // Write ASCII STL format
         file << "solid exported\n";
-        
-        struct Triangle {
-            double normal[3];
-            double vertices[3][3];
-        };
         
         auto generateCubeTriangles = [&]() -> std::vector<Triangle> {
             std::vector<Triangle> triangles;
@@ -1503,10 +1505,6 @@ IoResult ImportExportService::exportPartToStl(const std::string& path, const cad
         file << "solid " << part.name() << "\n";
         
         double half = size * 0.5;
-        struct Triangle {
-            double normal[3];
-            double vertices[3][3];
-        };
         
         std::vector<Triangle> triangles;
         Triangle tri;

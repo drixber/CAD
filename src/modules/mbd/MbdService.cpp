@@ -104,9 +104,9 @@ void MbdService::renderMbdInViewport(const MbdRenderResult& render_data, void* v
     }
     
     PmiRenderData render_info;
-    render_info.annotation_count = render_data.visible_annotations.size();
-    render_info.datum_count = render_data.visible_datums.size();
-    render_info.tolerance_count = render_data.visible_tolerances.size();
+    render_info.annotation_count = static_cast<int>(render_data.visible_annotations.size());
+    render_info.datum_count = static_cast<int>(render_data.visible_datums.size());
+    render_info.tolerance_count = static_cast<int>(render_data.visible_tolerances.size());
     
     for (const auto& annotation : render_data.visible_annotations) {
         PmiAnnotationRenderData ann_data;

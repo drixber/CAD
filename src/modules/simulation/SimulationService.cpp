@@ -3,8 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace cad {
-namespace modules {
+namespace cad::modules {
 
 SimulationResult SimulationService::runSimulation(const SimulationRequest& request) const {
     SimulationResult result;
@@ -417,7 +416,7 @@ MotionResult SimulationService::calculateMotion(const SimulationRequest& request
     return motion;
 }
 
-double cad::modules::SimulationService::calculateDeflection(const SimulationRequest& request) const {
+double SimulationService::calculateDeflection(const SimulationRequest& request) const {
     double total_force = 0.0;
     double beam_length = 1.0;
     double moment_of_inertia = 0.0001;
@@ -440,7 +439,7 @@ double cad::modules::SimulationService::calculateDeflection(const SimulationRequ
     return deflection;
 }
 
-SimulationRequest cad::modules::SimulationService::optimizeParameters(const SimulationRequest& request) const {
+SimulationRequest SimulationService::optimizeParameters(const SimulationRequest& request) const {
     SimulationRequest optimized = request;
     
     double best_safety_factor = 0.0;
@@ -472,5 +471,4 @@ SimulationRequest cad::modules::SimulationService::optimizeParameters(const Simu
     return best_request;
 }
 
-}  // namespace modules
-}  // namespace cad
+} // namespace cad::modules
