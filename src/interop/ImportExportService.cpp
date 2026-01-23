@@ -589,70 +589,96 @@ IoResult ImportExportService::exportStl(const std::string& path, bool ascii_mode
         uint32_t num_triangles = 12;
         file.write(reinterpret_cast<const char*>(&num_triangles), sizeof(uint32_t));
         
-        auto generateCubeTriangles = []() -> std::vector<std::tuple<float[3], float[3][3]>> {
-            std::vector<std::tuple<float[3], float[3][3]>> triangles;
+        struct BinaryTriangle {
+            float normal[3];
+            float vertices[3][3];
+        };
+        
+        auto generateCubeTriangles = []() -> std::vector<BinaryTriangle> {
+            std::vector<BinaryTriangle> triangles;
             float half = 0.5f;
             
-            float normal[3] = {0.0f, 0.0f, 1.0f};
-            float vertices[3][3] = {{-half, -half, -half}, {half, -half, -half}, {half, half, -half}};
-            triangles.push_back(std::make_tuple(normal, vertices));
+            BinaryTriangle tri;
             
-            float vertices2[3][3] = {{-half, -half, -half}, {half, half, -half}, {-half, half, -half}};
-            triangles.push_back(std::make_tuple(normal, vertices2));
+            tri.normal[0] = 0.0f; tri.normal[1] = 0.0f; tri.normal[2] = 1.0f;
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = -half; tri.vertices[1][2] = -half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = half; tri.vertices[2][2] = -half;
+            triangles.push_back(tri);
             
-            float normal2[3] = {0.0f, 0.0f, -1.0f};
-            float vertices3[3][3] = {{-half, -half, half}, {-half, half, half}, {half, half, half}};
-            triangles.push_back(std::make_tuple(normal2, vertices3));
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = half; tri.vertices[1][2] = -half;
+            tri.vertices[2][0] = -half; tri.vertices[2][1] = half; tri.vertices[2][2] = -half;
+            triangles.push_back(tri);
             
-            float vertices4[3][3] = {{-half, -half, half}, {half, half, half}, {half, -half, half}};
-            triangles.push_back(std::make_tuple(normal2, vertices4));
+            tri.normal[0] = 0.0f; tri.normal[1] = 0.0f; tri.normal[2] = -1.0f;
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = half;
+            tri.vertices[1][0] = -half; tri.vertices[1][1] = half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
             
-            float normal3[3] = {0.0f, 1.0f, 0.0f};
-            float vertices5[3][3] = {{-half, half, -half}, {half, half, half}, {half, half, -half}};
-            triangles.push_back(std::make_tuple(normal3, vertices5));
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = -half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
             
-            float vertices6[3][3] = {{-half, half, -half}, {-half, half, half}, {half, half, half}};
-            triangles.push_back(std::make_tuple(normal3, vertices6));
+            tri.normal[0] = 0.0f; tri.normal[1] = 1.0f; tri.normal[2] = 0.0f;
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = half; tri.vertices[2][2] = -half;
+            triangles.push_back(tri);
             
-            float normal4[3] = {0.0f, -1.0f, 0.0f};
-            float vertices7[3][3] = {{-half, -half, -half}, {half, -half, half}, {half, -half, -half}};
-            triangles.push_back(std::make_tuple(normal4, vertices7));
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = -half; tri.vertices[1][1] = half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
             
-            float vertices8[3][3] = {{-half, -half, -half}, {-half, -half, half}, {half, -half, half}};
-            triangles.push_back(std::make_tuple(normal4, vertices8));
+            tri.normal[0] = 0.0f; tri.normal[1] = -1.0f; tri.normal[2] = 0.0f;
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = -half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = -half; tri.vertices[2][2] = -half;
+            triangles.push_back(tri);
             
-            float normal5[3] = {1.0f, 0.0f, 0.0f};
-            float vertices9[3][3] = {{half, -half, -half}, {half, half, half}, {half, half, -half}};
-            triangles.push_back(std::make_tuple(normal5, vertices9));
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = -half; tri.vertices[1][1] = -half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = -half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
             
-            float vertices10[3][3] = {{half, -half, -half}, {half, -half, half}, {half, half, half}};
-            triangles.push_back(std::make_tuple(normal5, vertices10));
+            tri.normal[0] = 1.0f; tri.normal[1] = 0.0f; tri.normal[2] = 0.0f;
+            tri.vertices[0][0] = half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = half; tri.vertices[2][2] = -half;
+            triangles.push_back(tri);
             
-            float normal6[3] = {-1.0f, 0.0f, 0.0f};
-            float vertices11[3][3] = {{-half, -half, -half}, {-half, half, -half}, {-half, half, half}};
-            triangles.push_back(std::make_tuple(normal6, vertices11));
+            tri.vertices[0][0] = half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = half; tri.vertices[1][1] = -half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = half; tri.vertices[2][1] = half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
             
-            float vertices12[3][3] = {{-half, -half, -half}, {-half, half, half}, {-half, -half, half}};
-            triangles.push_back(std::make_tuple(normal6, vertices12));
+            tri.normal[0] = -1.0f; tri.normal[1] = 0.0f; tri.normal[2] = 0.0f;
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = -half; tri.vertices[1][1] = half; tri.vertices[1][2] = -half;
+            tri.vertices[2][0] = -half; tri.vertices[2][1] = half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
+            
+            tri.vertices[0][0] = -half; tri.vertices[0][1] = -half; tri.vertices[0][2] = -half;
+            tri.vertices[1][0] = -half; tri.vertices[1][1] = half; tri.vertices[1][2] = half;
+            tri.vertices[2][0] = -half; tri.vertices[2][1] = -half; tri.vertices[2][2] = half;
+            triangles.push_back(tri);
             
             return triangles;
         };
         
-        std::vector<std::tuple<float[3], float[3][3]>> cube_triangles = generateCubeTriangles();
+        std::vector<BinaryTriangle> cube_triangles = generateCubeTriangles();
         num_triangles = static_cast<uint32_t>(cube_triangles.size());
         file.seekp(80, std::ios::beg);
         file.write(reinterpret_cast<const char*>(&num_triangles), sizeof(uint32_t));
         
         for (const auto& tri : cube_triangles) {
-            float normal[3];
-            float vertices[3][3];
-            std::memcpy(normal, std::get<0>(tri), 12);
-            std::memcpy(vertices, std::get<1>(tri), 36);
-            uint16_t attribute = 0;
-            
-            file.write(reinterpret_cast<const char*>(normal), 12);
-            file.write(reinterpret_cast<const char*>(vertices), 36);
-            file.write(reinterpret_cast<const char*>(&attribute), 2);
+            file.write(reinterpret_cast<const char*>(tri.normal), sizeof(float) * 3);
+            file.write(reinterpret_cast<const char*>(tri.vertices), sizeof(float) * 9);
+            uint16_t attribute_byte_count = 0;
+            file.write(reinterpret_cast<const char*>(&attribute_byte_count), sizeof(uint16_t));
         }
     }
     
@@ -1001,359 +1027,6 @@ IoResult ImportExportService::exportGltf(const std::string& path, bool binary) c
     
     result.success = true;
     result.message = "GLTF file exported successfully (" + std::string(binary ? "binary" : "JSON") + ")";
-    return result;
-}
-
-IoResult ImportExportService::importObj(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not open file: " + path;
-        return result;
-    }
-    
-    std::string line;
-    int vertex_count = 0;
-    int face_count = 0;
-    
-    while (std::getline(file, line)) {
-        if (line.empty() || line[0] == '#') {
-            continue;
-        }
-        
-        if (line[0] == 'v' && line[1] == ' ') {
-            vertex_count++;
-        } else if (line[0] == 'f' && line[1] == ' ') {
-            face_count++;
-        }
-    }
-    
-    file.close();
-    result.success = true;
-    result.message = "OBJ file imported: " + std::to_string(vertex_count) + " vertices, " + std::to_string(face_count) + " faces";
-    return result;
-}
-
-IoResult ImportExportService::exportObj(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ofstream file(path);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not create file: " + path;
-        return result;
-    }
-    
-    file << "# OBJ file exported from Hydra CAD\n";
-    file << "v 0.0 0.0 0.0\n";
-    file << "v 1.0 0.0 0.0\n";
-    file << "v 1.0 1.0 0.0\n";
-    file << "v 0.0 1.0 0.0\n";
-    file << "f 1 2 3 4\n";
-    
-    file.close();
-    result.success = true;
-    result.message = "OBJ file exported successfully";
-    return result;
-}
-
-IoResult ImportExportService::importPly(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not open file: " + path;
-        return result;
-    }
-    
-    std::string line;
-    bool in_header = true;
-    int vertex_count = 0;
-    int face_count = 0;
-    
-    while (std::getline(file, line)) {
-        if (in_header) {
-            if (line.find("element vertex") != std::string::npos) {
-                std::istringstream iss(line);
-                std::string token;
-                iss >> token >> token >> vertex_count;
-            } else if (line.find("element face") != std::string::npos) {
-                std::istringstream iss(line);
-                std::string token;
-                iss >> token >> token >> face_count;
-            } else if (line == "end_header") {
-                in_header = false;
-            }
-        }
-    }
-    
-    file.close();
-    result.success = true;
-    result.message = "PLY file imported: " + std::to_string(vertex_count) + " vertices, " + std::to_string(face_count) + " faces";
-    return result;
-}
-
-IoResult ImportExportService::exportPly(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ofstream file(path);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not create file: " + path;
-        return result;
-    }
-    
-    file << "ply\n";
-    file << "format ascii 1.0\n";
-    file << "element vertex 4\n";
-    file << "property float x\n";
-    file << "property float y\n";
-    file << "property float z\n";
-    file << "element face 1\n";
-    file << "property list uchar int vertex_indices\n";
-    file << "end_header\n";
-    file << "0.0 0.0 0.0\n";
-    file << "1.0 0.0 0.0\n";
-    file << "1.0 1.0 0.0\n";
-    file << "0.0 1.0 0.0\n";
-    file << "3 0 1 2\n";
-    
-    file.close();
-    result.success = true;
-    result.message = "PLY file exported successfully";
-    return result;
-}
-
-IoResult ImportExportService::import3mf(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not open file: " + path;
-        return result;
-    }
-    
-    char header[8];
-    file.read(header, 8);
-    file.close();
-    
-    bool is_zip = (header[0] == 'P' && header[1] == 'K');
-    
-    result.success = true;
-    result.message = "3MF file imported (ZIP-based: " + std::string(is_zip ? "yes" : "no") + ")";
-    return result;
-}
-
-IoResult ImportExportService::export3mf(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ofstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not create file: " + path;
-        return result;
-    }
-    
-    file << "PK\x03\x04";
-    file.close();
-    
-    result.success = true;
-    result.message = "3MF file exported successfully";
-    return result;
-}
-
-IoResult ImportExportService::importGltf(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not open file: " + path;
-        return result;
-    }
-    
-    std::string line;
-    bool has_gltf = false;
-    bool has_scenes = false;
-    
-    while (std::getline(file, line)) {
-        if (line.find("\"glTF\"") != std::string::npos) {
-            has_gltf = true;
-        }
-        if (line.find("\"scenes\"") != std::string::npos) {
-            has_scenes = true;
-        }
-    }
-    
-    file.close();
-    result.success = has_gltf;
-    result.message = has_gltf ? "GLTF file imported successfully" : "Invalid GLTF file format";
-    return result;
-}
-
-IoResult ImportExportService::exportGltf(const std::string& path, bool binary) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    if (binary) {
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            result.success = false;
-            result.message = "Could not create file: " + path;
-            return result;
-        }
-        
-        file << "glTF";
-        file.close();
-    } else {
-        std::ofstream file(path);
-        if (!file.is_open()) {
-            result.success = false;
-            result.message = "Could not create file: " + path;
-            return result;
-        }
-        
-        file << "{\n";
-        file << "  \"asset\": {\n";
-        file << "    \"version\": \"2.0\",\n";
-        file << "    \"generator\": \"Hydra CAD\"\n";
-        file << "  },\n";
-        file << "  \"scenes\": [{\n";
-        file << "    \"nodes\": [0]\n";
-        file << "  }],\n";
-        file << "  \"nodes\": [{\n";
-        file << "    \"mesh\": 0\n";
-        file << "  }],\n";
-        file << "  \"meshes\": [{\n";
-        file << "    \"primitives\": [{\n";
-        file << "      \"attributes\": {\n";
-        file << "        \"POSITION\": 0\n";
-        file << "      }\n";
-        file << "    }]\n";
-        file << "  }]\n";
-        file << "}\n";
-        
-        file.close();
-    }
-    
-    result.success = true;
-    result.message = "GLTF file exported successfully (" + std::string(binary ? "binary" : "JSON") + ")";
-    return result;
-}
-
-IoResult ImportExportService::exportDxf(const std::string& path) const {
-    IoResult result;
-    
-    if (path.empty()) {
-        result.success = false;
-        result.message = "No file path specified";
-        return result;
-    }
-    
-    std::ofstream file(path);
-    if (!file.is_open()) {
-        result.success = false;
-        result.message = "Could not create file: " + path;
-        return result;
-    }
-    
-    file << "0\nSECTION\n";
-    file << "2\nHEADER\n";
-    file << "9\n$ACADVER\n";
-    file << "1\nAC1015\n";
-    file << "9\n$HANDSEED\n";
-    file << "5\nFFFF\n";
-    file << "0\nENDSEC\n";
-    
-    file << "0\nSECTION\n";
-    file << "2\nTABLES\n";
-    file << "0\nTABLE\n";
-    file << "2\nLAYER\n";
-    file << "5\n2\n";
-    file << "100\nAcDbSymbolTable\n";
-    file << "70\n1\n";
-    file << "0\nLAYER\n";
-    file << "5\n10\n";
-    file << "100\nAcDbSymbolTableRecord\n";
-    file << "100\nAcDbLayerTableRecord\n";
-    file << "2\n0\n";
-    file << "70\n0\n";
-    file << "62\n7\n";
-    file << "6\nCONTINUOUS\n";
-    file << "0\nENDTAB\n";
-    file << "0\nENDSEC\n";
-    
-    file << "0\nSECTION\n";
-    file << "2\nENTITIES\n";
-    file << "0\nLINE\n";
-    file << "5\n100\n";
-    file << "100\nAcDbEntity\n";
-    file << "8\n0\n";
-    file << "100\nAcDbLine\n";
-    file << "10\n0.0\n";
-    file << "20\n0.0\n";
-    file << "30\n0.0\n";
-    file << "11\n100.0\n";
-    file << "21\n100.0\n";
-    file << "31\n0.0\n";
-    file << "0\nENDSEC\n";
-    
-    file << "0\nEOF\n";
-    
-    file.close();
-    result.success = true;
-    result.message = "DXF file exported successfully";
     return result;
 }
 

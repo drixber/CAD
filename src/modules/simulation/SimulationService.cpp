@@ -415,18 +415,6 @@ MotionResult SimulationService::calculateMotion(const SimulationRequest& request
     motion.simulation_time = request.duration;
     
     return motion;
-    MotionResult motion;
-    
-    // Simplified motion calculation
-    int steps = static_cast<int>(request.duration / request.time_step);
-    motion.positions.reserve(steps);
-    motion.velocities.reserve(steps);
-    motion.accelerations.reserve(steps);
-    
-    double initial_velocity = 0.0;
-    double acceleration = 9.81;  // Gravity
-    
-    for (int i = 0; i < steps; ++i) {
         double t = i * request.time_step;
         double position = initial_velocity * t + 0.5 * acceleration * t * t;
         double velocity = initial_velocity + acceleration * t;
@@ -516,16 +504,6 @@ SimulationRequest SimulationService::optimizeParameters(const SimulationRequest&
     }
     
     return best_request;
-    // Simplified optimization: reduce force by 10%
-    SimulationRequest optimized = request;
-    
-    for (auto& constraint : optimized.constraints) {
-        if (constraint.type == "Force") {
-            constraint.value *= 0.9;  // Reduce force by 10%
-        }
-    }
-    
-    return optimized;
 }
 
 }  // namespace modules

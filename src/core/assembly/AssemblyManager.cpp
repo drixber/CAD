@@ -379,7 +379,7 @@ std::future<AssemblyLoadStats> AssemblyManager::loadAssemblyAsync(const std::str
         return loadAssembly(path);
     });
     
-    active_loads_.push_back(future);
+    active_loads_.push_back(std::move(future));
     
     if (active_loads_.size() > thread_pool_size_) {
         active_loads_.front().wait();

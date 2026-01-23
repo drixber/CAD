@@ -179,19 +179,6 @@ SimplifyResult SimplifyService::removeInternalFeatures(const std::string& assemb
     simplified_assemblies_[result.simplified_assembly_id] = result;
     
     return result;
-    SimplifyResult result;
-    result.success = true;
-    result.message = "Internal features removed";
-    result.simplified_assembly_id = assembly_id + "_no_internal";
-    result.original_component_count = 50;
-    
-    // Remove internal features
-    for (int i = 0; i < 8; ++i) {
-        SimplifiedComponent component = createSimplifiedComponent("part_" + std::to_string(i), ReplacementType::SimplifiedMesh);
-        result.simplified_components.push_back(component);
-    }
-    
-    result.simplified_component_count = result.simplified_components.size();
     result.file_size_reduction = 30.0;
     result.performance_improvement = 20.0;
     
@@ -399,18 +386,6 @@ double SimplifyService::calculateGeometryComplexityRatio(const std::string& orig
         return simp_complexity / orig_complexity;
     }
     return 0.5;
-    std::hash<std::string> hasher;
-    std::size_t orig_hash = hasher(original_id);
-    std::size_t simpl_hash = hasher(simplified_id);
-    
-    double orig_complexity = static_cast<double>(orig_hash % 10000) / 100.0;
-    double simpl_complexity = static_cast<double>(simpl_hash % 10000) / 100.0;
-    
-    if (orig_complexity < 0.001) {
-        return 1.0;
-    }
-    
-    return simpl_complexity / orig_complexity;
 }
 
 bool SimplifyService::shouldSimplify(const std::string& part_id, const SimplifyRule& rule) const {

@@ -1,4 +1,5 @@
 #include "InterferenceChecker.h"
+#include "Modeler/Part.h"
 
 #include <algorithm>
 #include <sstream>
@@ -113,12 +114,14 @@ BoundingBox InterferenceChecker::estimateBoundingBox(const Part& part, const Tra
     double min_dimension = 1.0;
     
     for (const auto& feature : features) {
-        if (feature.type == "Extrude") {
+        if (feature.type == FeatureType::Extrude) {
             auto depth_it = feature.parameters.find("depth");
             if (depth_it != feature.parameters.end()) {
                 max_dimension = std::max(max_dimension, depth_it->second);
+            } else {
+                max_dimension = std::max(max_dimension, feature.depth);
             }
-        } else if (feature.type == "Revolve") {
+        } else if (feature.type == FeatureType::Revolve) {
             auto radius_it = feature.parameters.find("radius");
             if (radius_it != feature.parameters.end()) {
                 max_dimension = std::max(max_dimension, radius_it->second * 2.0);
@@ -166,11 +169,11 @@ BoundingBox InterferenceChecker::estimateBoundingBoxFromFeatures(const Part& par
     // Analyze features to estimate dimensions
     const auto& features = part.features();
     for (const auto& feature : features) {
-        if (feature.type == "Extrude") {
+        if (feature.type == FeatureType::Extrude) {
             depth = 15.0;  // Extruded features are typically deeper
-        } else if (feature.type == "Hole") {
+        } else if (feature.type == FeatureType::Hole) {
             depth = 5.0;  // Holes are typically shallow
-        } else if (feature.type == "Fillet") {
+        } else if (feature.type == FeatureType::Fillet) {
             // Fillet doesn't change overall dimensions significantly
         }
     }
@@ -219,13 +222,13 @@ bool InterferenceChecker::checkFeatureCollision(const Part& part_a, const Transf
     for (const auto& feat_a : features_a) {
         for (const auto& feat_b : features_b) {
             // Extrude features can collide if they overlap
-            if ((feat_a.type == "Extrude" || feat_b.type == "Extrude") &&
+            if ((feat_a.type == FeatureType::Extrude || feat_b.type == FeatureType::Extrude) &&
                 boxesOverlap(box_a, box_b)) {
                 return true;
             }
             
             // Holes typically don't cause interference (they remove material)
-            if (feat_a.type == "Hole" || feat_b.type == "Hole") {
+            if (feat_a.type == FeatureType::Hole || feat_b.type == FeatureType::Hole) {
                 // Skip hole-based collisions for now
                 continue;
             }
@@ -255,7 +258,7 @@ bool InterferenceChecker::checkPreciseCollision(const Part& part_a, const Transf
     for (const auto& feat_a : features_a) {
         for (const auto& feat_b : features_b) {
             // Extrude features: check if extrusions intersect
-            if (feat_a.type == "Extrude" && feat_b.type == "Extrude") {
+            if (feat_a.type == FeatureType::Extrude && feat_b.type == FeatureType::Extrude) {
                 // Simplified: check if bounding boxes of extrusions overlap significantly
                 double overlap_vol = calculateOverlapVolume(box_a, box_b);
                 double volume_a = (box_a.max_x - box_a.min_x) * (box_a.max_y - box_a.min_y) * (box_a.max_z - box_a.min_z);
@@ -269,7 +272,7 @@ bool InterferenceChecker::checkPreciseCollision(const Part& part_a, const Transf
             }
             
             // Holes don't cause interference (they remove material)
-            if (feat_a.type == "Hole" || feat_b.type == "Hole") {
+            if (feat_a.type == FeatureType::Hole || feat_b.type == FeatureType::Hole) {
                 continue;
             }
         }

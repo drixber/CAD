@@ -250,42 +250,6 @@ DirectEditResult DirectEditService::freeformEdit(const DirectEditRequest& reques
     const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
     
     return result;
-            double u = cp.first;
-            double v = cp.second;
-            
-            double dist = std::sqrt(u*u + v*v);
-            if (dist < 0.001) {
-                continue;
-            }
-            
-            double weight = 1.0 / (dist * dist + 1.0);
-            double displacement = request.freeform_params.tension * weight;
-            
-            new_normal_x += u * displacement * 0.1;
-            new_normal_y += v * displacement * 0.1;
-            new_normal_z += (u + v) * displacement * 0.05;
-            total_weight += weight;
-        }
-        
-        if (total_weight > 0.001) {
-            face.normal[0] = new_normal_x / total_weight;
-            face.normal[1] = new_normal_y / total_weight;
-            face.normal[2] = new_normal_z / total_weight;
-            
-            double len = std::sqrt(face.normal[0]*face.normal[0] + 
-                                  face.normal[1]*face.normal[1] + 
-                                  face.normal[2]*face.normal[2]);
-            if (len > 0.001) {
-                face.normal[0] /= len;
-                face.normal[1] /= len;
-                face.normal[2] /= len;
-            }
-        }
-    }
-    
-    const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
-    
-    return result;
 }
 
 DirectEditResult DirectEditService::previewEdit(const DirectEditRequest& request) const {

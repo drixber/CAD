@@ -28,6 +28,7 @@ jobs:
       with:
         version: '6.5.0'
         arch: 'win64_msvc2022_64'
+        modules: 'qtbase qttools'
     
     - name: Install NSIS
       run: |
@@ -36,11 +37,14 @@ jobs:
     
     - name: Configure CMake
       run: |
+        $QtDir = if ($env:Qt6_DIR) { $env:Qt6_DIR } else { "$env:RUNNER_TEMP\Qt\6.5.0\msvc2022_64\lib\cmake\Qt6" }
+        Write-Host "Using Qt6_DIR: $QtDir"
         cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
           -DCAD_USE_QT=ON `
           -DCAD_BUILD_TESTS=OFF `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="$env:Qt6_DIR"
+          -DQt6_DIR="$QtDir" `
+          -DCMAKE_PREFIX_PATH="$QtDir"
     
     - name: Build Application
       run: |
@@ -62,15 +66,15 @@ jobs:
     
     - name: Copy DLLs
       run: |
-        $qtDir = "$env:Qt6_DIR"
-        if ([string]::IsNullOrEmpty($qtDir)) {
-          $qtDir = "$env:Qt6_DIR"
-        }
+        $qtDir = if ($env:Qt6_DIR) { $env:Qt6_DIR } else { "$env:RUNNER_TEMP\Qt\6.5.0\msvc2022_64\lib\cmake\Qt6" }
+        Write-Host "Qt6_DIR: $qtDir"
         if (Test-Path "$qtDir\..\..\bin") {
           $binPath = Resolve-Path "$qtDir\..\..\bin"
+          Write-Host "Copying DLLs from: $binPath"
           Copy-Item "$binPath\*.dll" -Destination "build\Release\" -Force -ErrorAction SilentlyContinue
+        } else {
+          Write-Host "Qt bin directory not found, skipping DLL copy"
         }
-        Write-Host "DLLs copied (if available)"
       continue-on-error: true
     
     - name: Create Installer
@@ -257,9 +261,17 @@ jobs:
         echo "Release version: $version"
     
     - name: Configure CMake
-      env:
-        Qt6_DIR: /opt/homebrew/opt/qt@6/lib/cmake/Qt6
       run: |
+        # Try Apple Silicon first, then Intel
+        if [ -d "/opt/homebrew/opt/qt@6/lib/cmake/Qt6" ]; then
+          Qt6_DIR="/opt/homebrew/opt/qt@6/lib/cmake/Qt6"
+        elif [ -d "/usr/local/opt/qt@6/lib/cmake/Qt6" ]; then
+          Qt6_DIR="/usr/local/opt/qt@6/lib/cmake/Qt6"
+        else
+          # Try to find Qt6 via brew
+          Qt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
+        fi
+        echo "Using Qt6_DIR: $Qt6_DIR"
         cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF \
           -DQt6_DIR="$Qt6_DIR" -DCMAKE_PREFIX_PATH="$Qt6_DIR"
     
@@ -300,14 +312,24 @@ jobs:
     
     - name: Deploy Qt Frameworks
       run: |
-        export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"
+        # Determine Qt path (Apple Silicon or Intel)
+        if [ -d "/opt/homebrew/opt/qt@6" ]; then
+          QtPrefix="/opt/homebrew/opt/qt@6"
+        elif [ -d "/usr/local/opt/qt@6" ]; then
+          QtPrefix="/usr/local/opt/qt@6"
+        else
+          QtPrefix=$(brew --prefix qt@6)
+        fi
+        export PATH="$QtPrefix/bin:$PATH"
+        echo "Using Qt prefix: $QtPrefix"
+        
         if command -v macdeployqt &> /dev/null; then
           macdeployqt "Hydra CAD.app" -always-overwrite -verbose=2
-        elif [ -f "/opt/homebrew/opt/qt@6/bin/macdeployqt" ]; then
-          /opt/homebrew/opt/qt@6/bin/macdeployqt "Hydra CAD.app" -always-overwrite -verbose=2
+        elif [ -f "$QtPrefix/bin/macdeployqt" ]; then
+          "$QtPrefix/bin/macdeployqt" "Hydra CAD.app" -always-overwrite -verbose=2
         else
           echo "macdeployqt not found, trying to find Qt tools..."
-          find /opt/homebrew -name "macdeployqt" -type f 2>/dev/null | head -1 | xargs -I {} {} "Hydra CAD.app" -always-overwrite || echo "Qt deployment skipped"
+          find "$QtPrefix" -name "macdeployqt" -type f 2>/dev/null | head -1 | xargs -I {} {} "Hydra CAD.app" -always-overwrite || echo "Qt deployment skipped"
         fi
     
     - name: Create DMG
@@ -339,6 +361,8 @@ jobs:
   create-release:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Extract Version

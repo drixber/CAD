@@ -242,7 +242,7 @@ void VisualizationService::applyMaterialOverrides(const std::string& part_id, co
     }
 }
 
-MaterialProperties VisualizationService::getMaterialProperties(const std::string& part_id, const std::string& material_name) const {
+VisualizationService::MaterialProperties VisualizationService::getMaterialProperties(const std::string& part_id, const std::string& material_name) const {
     std::string cache_key = part_id + "_" + material_name;
     auto it = material_cache_.find(cache_key);
     

@@ -28,14 +28,18 @@ jobs:
       with:
         version: '6.5.0'
         arch: 'win64_msvc2022_64'
+        modules: 'qtbase qttools'
     
     - name: Configure CMake
       run: |
+        $QtDir = if ($env:Qt6_DIR) { $env:Qt6_DIR } else { "$env:RUNNER_TEMP\Qt\6.5.0\msvc2022_64\lib\cmake\Qt6" }
+        Write-Host "Using Qt6_DIR: $QtDir"
         cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
           -DCAD_USE_QT=ON `
           -DCAD_BUILD_TESTS=ON `
           -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
-          -DCMAKE_PREFIX_PATH="$env:Qt6_DIR"
+          -DQt6_DIR="$QtDir" `
+          -DCMAKE_PREFIX_PATH="$QtDir"
     
     - name: Build
       run: |
@@ -171,9 +175,17 @@ jobs:
         brew install cmake qt@6
     
     - name: Configure CMake
-      env:
-        Qt6_DIR: /opt/homebrew/opt/qt@6/lib/cmake/Qt6
       run: |
+        # Try Apple Silicon first, then Intel
+        if [ -d "/opt/homebrew/opt/qt@6/lib/cmake/Qt6" ]; then
+          Qt6_DIR="/opt/homebrew/opt/qt@6/lib/cmake/Qt6"
+        elif [ -d "/usr/local/opt/qt@6/lib/cmake/Qt6" ]; then
+          Qt6_DIR="/usr/local/opt/qt@6/lib/cmake/Qt6"
+        else
+          # Try to find Qt6 via brew
+          Qt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
+        fi
+        echo "Using Qt6_DIR: $Qt6_DIR"
         cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON \
           -DQt6_DIR="$Qt6_DIR" \
           -DCMAKE_PREFIX_PATH="$Qt6_DIR"
