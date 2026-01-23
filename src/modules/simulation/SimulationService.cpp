@@ -60,7 +60,10 @@ SimulationResult SimulationService::runMotionAnalysis(const SimulationRequest& r
     
     result.motion_result = calculateMotion(request);
     
-    int step_count = request.motion_params.step_count > 0 ? request.motion_params.step_count : 100;
+    int step_count = static_cast<int>(request.duration / request.time_step);
+    if (step_count <= 0) {
+        step_count = 100;
+    }
     double computation_time = 0.003 * step_count;
     computation_time = std::max(0.1, std::min(computation_time, 5.0));
     result.computation_time = computation_time;
@@ -95,8 +98,11 @@ SimulationResult SimulationService::runOptimization(const SimulationRequest& req
     
     result.fea_result = calculateFea(optimized);
     
-    int iteration_count = request.optimization_params.max_iterations > 0 ? 
-                         request.optimization_params.max_iterations : 10;
+    int iteration_count = 10;
+    if (request.duration > 0.0) {
+        iteration_count = static_cast<int>(request.duration * 10.0);
+        iteration_count = std::max(5, std::min(iteration_count, 50));
+    }
     
     auto mesh_it = mesh_element_counts_.find(request.targetAssembly);
     int element_count = (mesh_it != mesh_element_counts_.end()) ? mesh_it->second : 1000;

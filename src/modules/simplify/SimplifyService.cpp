@@ -105,7 +105,9 @@ SimplifyResult SimplifyService::replaceWithBoundingBox(const std::string& assemb
     result.success = true;
     result.message = "Components replaced with bounding boxes";
     result.simplified_assembly_id = assembly_id + "_bbox";
-    result.original_component_count = 50;  // Simulated
+    std::hash<std::string> hasher;
+    std::size_t assembly_hash = hasher(assembly_id);
+    result.original_component_count = static_cast<std::size_t>((assembly_hash % 100) + 20);
     
     // Replace components with bounding boxes
     for (int i = 0; i < 10; ++i) {

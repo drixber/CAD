@@ -46,6 +46,12 @@ public:
     // Mate solving (updates component transforms based on mates)
     bool solveMates();
     
+    // Mate validation
+    bool validateMates() const;
+    int getDegreesOfFreedom() const;
+    bool isOverConstrained() const;
+    bool isUnderConstrained() const;
+    
     AssemblyComponent* findComponent(std::uint64_t id);
     const AssemblyComponent* findComponent(std::uint64_t id) const;
 

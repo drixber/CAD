@@ -53,51 +53,63 @@ AssemblyLoadStats AssemblyManager::loadAssembly(const std::string& path) {
     
     cache_misses_++;
     
-    // Load from file using ImportExportService
     cad::interop::ImportExportService io_service;
     cad::interop::FileFormat format = io_service.detectFileFormat(path);
-    cad::interop::ImportRequest request;
-    request.path = path;
-    request.format = format;
-    cad::interop::IoResult result = io_service.importModel(request);
     
-    if (result.success) {
-        assembly = Assembly();
-        
-        std::ifstream file(path, std::ios::binary);
-        if (file.is_open()) {
-            file.seekg(0, std::ios::end);
-            std::streampos file_size = file.tellg();
-            file.seekg(0, std::ios::beg);
-            
-            std::size_t estimated_components = static_cast<std::size_t>(file_size / 10240);
-            estimated_components = std::min(estimated_components, max_components_);
-            estimated_components = std::max(estimated_components, static_cast<std::size_t>(1));
-            
-            std::hash<std::string> hasher;
-            std::size_t path_hash = hasher(path);
-            
-            for (std::size_t i = 0; i < estimated_components; ++i) {
-                Part part("Part_" + std::to_string(i + 1));
-                
-                std::size_t part_hash = path_hash + i;
-                Transform transform;
-                transform.tx = static_cast<double>((part_hash % 1000) - 500) * 0.1;
-                transform.ty = static_cast<double>(((part_hash / 1000) % 1000) - 500) * 0.1;
-                transform.tz = static_cast<double>(((part_hash / 1000000) % 1000) - 500) * 0.1;
-                transform.rx = static_cast<double>((part_hash % 360)) * M_PI / 180.0;
-                transform.ry = static_cast<double>(((part_hash / 100) % 360)) * M_PI / 180.0;
-                transform.rz = static_cast<double>(((part_hash / 10000) % 360)) * M_PI / 180.0;
-                
-                assembly.addComponent(part, transform);
-            }
-            
-            file.close();
-        }
-        
-        cacheAssembly(path, assembly);
+    auto load_start = std::chrono::high_resolution_clock::now();
+    
+    if (format == cad::interop::FileFormat::Step) {
+        assembly = io_service.importStepToAssembly(path);
     } else {
-        assembly = Assembly();
+        cad::interop::ImportRequest request;
+        request.path = path;
+        request.format = format;
+        cad::interop::IoResult result = io_service.importModel(request);
+        
+        if (result.success) {
+            assembly = Assembly();
+            
+            std::ifstream file(path, std::ios::binary);
+            if (file.is_open()) {
+                file.seekg(0, std::ios::end);
+                std::streampos file_size = file.tellg();
+                file.seekg(0, std::ios::beg);
+                
+                std::size_t estimated_components = static_cast<std::size_t>(file_size / 10240);
+                estimated_components = std::min(estimated_components, max_components_);
+                estimated_components = std::max(estimated_components, static_cast<std::size_t>(1));
+                
+                std::hash<std::string> hasher;
+                std::size_t path_hash = hasher(path);
+                
+                for (std::size_t i = 0; i < estimated_components; ++i) {
+                    Part part("Part_" + std::to_string(i + 1));
+                    
+                    std::size_t part_hash = path_hash + i;
+                    Transform transform;
+                    transform.tx = static_cast<double>((part_hash % 1000) - 500) * 0.1;
+                    transform.ty = static_cast<double>(((part_hash / 1000) % 1000) - 500) * 0.1;
+                    transform.tz = static_cast<double>(((part_hash / 1000000) % 1000) - 500) * 0.1;
+                    transform.rx = static_cast<double>((part_hash % 360)) * M_PI / 180.0;
+                    transform.ry = static_cast<double>(((part_hash / 100) % 360)) * M_PI / 180.0;
+                    transform.rz = static_cast<double>(((part_hash / 10000) % 360)) * M_PI / 180.0;
+                    
+                    assembly.addComponent(part, transform);
+                }
+                
+                file.close();
+            }
+        } else {
+            assembly = Assembly();
+        }
+    }
+    
+    auto load_end = std::chrono::high_resolution_clock::now();
+    auto load_duration = std::chrono::duration_cast<std::chrono::milliseconds>(load_end - load_start);
+    stats.load_seconds = load_duration.count() / 1000.0;
+    
+    if (!assembly.components().empty()) {
+        cacheAssembly(path, assembly);
     }
     
     stats.component_count = assembly.components().size();

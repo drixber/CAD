@@ -15,6 +15,9 @@ struct Transform {
     double tx{0.0};
     double ty{0.0};
     double tz{0.0};
+    double rx{0.0};
+    double ry{0.0};
+    double rz{0.0};
 };
 
 inline Transform compose(const Transform& a, const Transform& b) {

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "../core/Modeler/Assembly.h"
 
 namespace cad {
 namespace interop {
@@ -60,6 +61,10 @@ public:
     // Format validation
     bool validateFileFormat(const std::string& path, FileFormat expected_format) const;
     FileFormat detectFileFormat(const std::string& path) const;
+    
+    // Assembly import/export
+    cad::core::Assembly importStepToAssembly(const std::string& path) const;
+    IoResult exportAssemblyToStep(const std::string& path, const cad::core::Assembly& assembly, bool ascii_mode = true) const;
 };
 
 }  // namespace interop

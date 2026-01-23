@@ -433,6 +433,58 @@ const AssemblyComponent* Assembly::findComponent(std::uint64_t id) const {
     return nullptr;
 }
 
+bool Assembly::validateMates() const {
+    for (const auto& mate : mates_) {
+        const AssemblyComponent* comp_a = findComponent(mate.component_a);
+        const AssemblyComponent* comp_b = findComponent(mate.component_b);
+        
+        if (!comp_a || !comp_b) {
+            return false;
+        }
+        
+        if (comp_a->id == comp_b->id) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int Assembly::getDegreesOfFreedom() const {
+    int component_count = static_cast<int>(components_.size());
+    int total_dof = component_count * 6;
+    
+    int constraint_dof = 0;
+    for (const auto& mate : mates_) {
+        switch (mate.type) {
+            case MateType::Mate:
+                constraint_dof += 3;
+                break;
+            case MateType::Flush:
+                constraint_dof += 1;
+                break;
+            case MateType::Angle:
+                constraint_dof += 1;
+                break;
+            case MateType::Insert:
+                constraint_dof += 5;
+                break;
+        }
+    }
+    
+    return total_dof - constraint_dof;
+}
+
+bool Assembly::isOverConstrained() const {
+    int dof = getDegreesOfFreedom();
+    return dof < 0;
+}
+
+bool Assembly::isUnderConstrained() const {
+    int dof = getDegreesOfFreedom();
+    int component_count = static_cast<int>(components_.size());
+    return dof > component_count * 3 && component_count > 1;
+}
+
 Part Modeler::createPart(const Sketch& sketch) const {
     return Part(sketch.name());
 }
@@ -786,11 +838,6 @@ bool Modeler::isOverConstrained(const Sketch& sketch) const {
     }
     
     return constraint_dof > total_dof;
-    
-    // Each geometry entity has 2 DOF (x, y position or similar)
-    // Some constraints remove DOF, some don't
-    // Very simplified: assume each constraint removes 1 DOF on average
-    return constraint_count > 2 * geometry_count;
 }
 
 bool Modeler::isUnderConstrained(const Sketch& sketch) const {
