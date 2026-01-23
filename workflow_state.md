@@ -1,6 +1,6 @@
 # Workflow State
 
-current_phase: Phase 8-11 Implementation Complete
+current_phase: Phase 14 Implementation Complete
 
 completed_items:
 - Added CAD_BUILD_PYTHON option and python bindings scaffold.
@@ -338,5 +338,10 @@ decisions_made:
 - Phase 13: FreeCAD Integration vollständig implementiert (syncGeometry, syncConstraints, syncExtrude, syncRevolve, syncHole, syncFillet, syncLoft).
 - Phase 13: TechDraw Bridge vollständig implementiert (syncDrawing, syncDimensions, syncAssociativeLinks, parseOrientation).
 - Phase 13: FreeCadBinding vollständig implementiert (createBox, createCylinder, createSphere, extrudeProfile, revolveProfile, createViewport, renderGeometry, loadAssembly).
+- Phase 14: Import/Export STEP vollständig implementiert (importStepToAssembly, exportAssemblyToStep, echte Assembly/Part-Konvertierung).
+- Phase 14: IGES-Export implementiert (Basis-IGES-Datei-Format).
+- Phase 14: AssemblyManager::loadAssembly() erweitert (verwendet jetzt importStepToAssembly() für STEP-Dateien, echte Datei-Ladung mit Progress-Tracking).
+- Phase 14: Transform.h erweitert (rx, ry, rz Felder für Euler-Winkel hinzugefügt).
+- Phase 14: Constraint Solver erweitert (doppelten Code entfernt, Assembly Mate Validierung: validateMates(), getDegreesOfFreedom(), isOverConstrained(), isUnderConstrained() implementiert).
 
 estimated_remaining_time: 40-60 weeks
