@@ -415,21 +415,9 @@ MotionResult SimulationService::calculateMotion(const SimulationRequest& request
     motion.simulation_time = request.duration;
     
     return motion;
-        double t = i * request.time_step;
-        double position = initial_velocity * t + 0.5 * acceleration * t * t;
-        double velocity = initial_velocity + acceleration * t;
-        
-        motion.positions.push_back(position);
-        motion.velocities.push_back(velocity);
-        motion.accelerations.push_back(acceleration);
-    }
-    
-    motion.simulation_time = request.duration;
-    
-    return motion;
 }
 
-double SimulationService::calculateDeflection(const SimulationRequest& request) const {
+double cad::modules::SimulationService::calculateDeflection(const SimulationRequest& request) const {
     double total_force = 0.0;
     double beam_length = 1.0;
     double moment_of_inertia = 0.0001;
@@ -450,31 +438,9 @@ double SimulationService::calculateDeflection(const SimulationRequest& request) 
     double deflection = (total_force * beam_length * beam_length * beam_length) / (3.0 * youngs_modulus * moment_of_inertia);
     
     return deflection;
-    // Simplified deflection calculation
-    double max_force = 0.0;
-    for (const auto& constraint : request.constraints) {
-        if (constraint.type == "Force") {
-            max_force = std::max(max_force, std::abs(constraint.value));
-        }
-    }
-    
-    double youngs_modulus = 200e9;
-    if (!request.material_properties.empty()) {
-        auto it = request.material_properties.find("youngs_modulus");
-        if (it != request.material_properties.end()) {
-            youngs_modulus = it->second;
-        }
-    }
-    
-    // Simplified beam deflection: δ = FL³ / (3EI)
-    double length = 1.0;  // Assume 1m length
-    double moment_of_inertia = 1e-6;  // Assume small I
-    double deflection = (max_force * length * length * length) / (3.0 * youngs_modulus * moment_of_inertia);
-    
-    return deflection;
 }
 
-SimulationRequest SimulationService::optimizeParameters(const SimulationRequest& request) const {
+SimulationRequest cad::modules::SimulationService::optimizeParameters(const SimulationRequest& request) const {
     SimulationRequest optimized = request;
     
     double best_safety_factor = 0.0;

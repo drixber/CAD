@@ -214,9 +214,9 @@ void MbdService::updateMbdVisibility(const std::string& part_id, bool show_annot
         show_annotations,
         show_datums,
         show_tolerances,
-        result.visible_annotations.size(),
-        result.visible_datums.size(),
-        result.visible_tolerances.size()
+        static_cast<int>(result.visible_annotations.size()),
+        static_cast<int>(result.visible_datums.size()),
+        static_cast<int>(result.visible_tolerances.size())
     };
 }
 

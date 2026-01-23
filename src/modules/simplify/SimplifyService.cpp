@@ -179,12 +179,6 @@ SimplifyResult SimplifyService::removeInternalFeatures(const std::string& assemb
     simplified_assemblies_[result.simplified_assembly_id] = result;
     
     return result;
-    result.file_size_reduction = 30.0;
-    result.performance_improvement = 20.0;
-    
-    simplified_assemblies_[result.simplified_assembly_id] = result;
-    
-    return result;
 }
 
 SimplifyResult SimplifyService::removeSmallFeatures(const std::string& assembly_id, double threshold) const {
@@ -217,25 +211,6 @@ SimplifyResult SimplifyService::removeSmallFeatures(const std::string& assembly_
     result.simplified_component_count = result.simplified_components.size();
     result.file_size_reduction = (removed_count * 100.0) / original_count;
     result.performance_improvement = result.file_size_reduction * 0.7;
-    
-    simplified_assemblies_[result.simplified_assembly_id] = result;
-    
-    return result;
-    SimplifyResult result;
-    result.success = true;
-    result.message = "Small features removed";
-    result.simplified_assembly_id = assembly_id + "_no_small";
-    result.original_component_count = 50;
-    
-    // Remove small features
-    for (int i = 0; i < 9; ++i) {
-        SimplifiedComponent component = createSimplifiedComponent("part_" + std::to_string(i), ReplacementType::SimplifiedMesh);
-        result.simplified_components.push_back(component);
-    }
-    
-    result.simplified_component_count = result.simplified_components.size();
-    result.file_size_reduction = 25.0;
-    result.performance_improvement = 15.0;
     
     simplified_assemblies_[result.simplified_assembly_id] = result;
     

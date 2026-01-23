@@ -483,12 +483,7 @@ IoResult ImportExportService::exportStl(const std::string& path, bool ascii_mode
             double vertices[3][3];
         };
         
-        auto generateCubeTriangles = []() -> std::vector<Triangle> {
-        struct Triangle {
-            double normal[3];
-            double vertices[3][3];
-        };
-        
+        auto generateCubeTriangles = [&]() -> std::vector<Triangle> {
             std::vector<Triangle> triangles;
             
             double size = 1.0;
@@ -1086,8 +1081,9 @@ bool ImportExportService::validateFileFormat(const std::string& path, FileFormat
     if (expected_format == FileFormat::Step) {
         return header_str.find("ISO-10303") != std::string::npos;
     } else if (expected_format == FileFormat::Stl) {
+        // Check for ASCII STL (starts with "solid") or binary STL (first 80 bytes should be header)
         return header_str.find("solid") != std::string::npos || 
-               (header[0] == 0 && header[79] == 0);
+               (header[0] == 0 && header_str.length() >= 16);
     } else if (expected_format == FileFormat::Iges) {
         return header_str.find("S") == 0;
     }
@@ -1142,14 +1138,13 @@ cad::core::Assembly ImportExportService::importStepToAssembly(const std::string&
             entity.type.find("SOLID") != std::string::npos ||
             entity.type.find("MANIFOLD") != std::string::npos) {
             
-            cad::core::Part part("Part_" + std::to_string(entity.id));
-            
+            std::string part_name = "Part_" + std::to_string(entity.id);
             auto param_it = entity.parameters.find("name");
             if (param_it != entity.parameters.end()) {
-                part = cad::core::Part(param_it->second);
+                part_name = param_it->second;
             }
             
-            part_map[entity.id] = part;
+            part_map.emplace(entity.id, cad::core::Part(part_name));
         }
         
         if (entity.type.find("CARTESIAN_POINT") != std::string::npos) {

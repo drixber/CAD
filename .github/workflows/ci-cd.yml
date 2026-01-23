@@ -26,13 +26,13 @@ jobs:
     - name: Setup Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.5.0'
+        version: '6.6.0'
         arch: 'win64_msvc2022_64'
         modules: 'qtbase qttools'
     
     - name: Configure CMake
       run: |
-        $QtDir = if ($env:Qt6_DIR) { $env:Qt6_DIR } else { "$env:RUNNER_TEMP\Qt\6.5.0\msvc2022_64\lib\cmake\Qt6" }
+        $QtDir = if ($env:Qt6_DIR) { $env:Qt6_DIR } else { "$env:RUNNER_TEMP\Qt\6.6.0\msvc2022_64\lib\cmake\Qt6" }
         Write-Host "Using Qt6_DIR: $QtDir"
         cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
           -DCAD_USE_QT=ON `
