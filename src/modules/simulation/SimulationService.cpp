@@ -439,7 +439,7 @@ double SimulationService::calculateDeflection(const SimulationRequest& request) 
     return deflection;
 }
 
-SimulationRequest SimulationService::optimizeParameters(const SimulationRequest& request) const {
+SimulationRequest cad::modules::SimulationService::optimizeParameters(const SimulationRequest& request) const {
     SimulationRequest optimized = request;
     
     double best_safety_factor = 0.0;
