@@ -139,11 +139,31 @@ void RenderEngine3D::render() {
         return;
     }
     
+    std::vector<SceneNode> visible_nodes;
+    visible_nodes.reserve(scene_order_.size());
+    
     for (const auto& geometry_id : scene_order_) {
         auto it = scene_nodes_.find(geometry_id);
         if (it != scene_nodes_.end() && it->second.visible) {
-            renderGeometry(it->second);
+            if (frustum_culling_enabled_ && !isInFrustum(it->second)) {
+                continue;
+            }
+            visible_nodes.push_back(it->second);
         }
+    }
+    
+    if (occlusion_culling_enabled_) {
+        std::vector<SceneNode> culled_nodes;
+        for (const auto& node : visible_nodes) {
+            if (!isOccluded(node, visible_nodes)) {
+                culled_nodes.push_back(node);
+            }
+        }
+        visible_nodes = culled_nodes;
+    }
+    
+    for (const auto& node : visible_nodes) {
+        renderGeometry(node);
     }
 }
 
@@ -248,6 +268,91 @@ std::string RenderEngine3D::raycastPick(int x, int y) const {
     }
     
     return closest_id;
+}
+
+bool RenderEngine3D::isInFrustum(const SceneNode& node) const {
+    double node_pos[3] = {node.transform[12], node.transform[13], node.transform[14]};
+    
+    double dx = node_pos[0] - camera_pos_[0];
+    double dy = node_pos[1] - camera_pos_[1];
+    double dz = node_pos[2] - camera_pos_[2];
+    double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+    
+    double view_dir[3] = {
+        camera_target_[0] - camera_pos_[0],
+        camera_target_[1] - camera_pos_[1],
+        camera_target_[2] - camera_pos_[2]
+    };
+    double view_dist = std::sqrt(view_dir[0]*view_dir[0] + view_dir[1]*view_dir[1] + view_dir[2]*view_dir[2]);
+    
+    if (view_dist < 0.001) {
+        return true;
+    }
+    
+    double dot = (dx*view_dir[0] + dy*view_dir[1] + dz*view_dir[2]) / view_dist;
+    
+    double fov_rad = camera_fov_ * M_PI / 180.0;
+    double near_plane = 0.1;
+    double far_plane = 1000.0;
+    
+    if (dot < near_plane || dot > far_plane) {
+        return false;
+    }
+    
+    double aspect = static_cast<double>(viewport_width_) / viewport_height_;
+    double tan_fov = std::tan(fov_rad * 0.5);
+    double max_side_dist = dot * tan_fov * aspect;
+    
+    double side_dist = std::sqrt((dx*dx + dy*dy + dz*dz) - dot*dot);
+    
+    return side_dist < max_side_dist * 1.5;
+}
+
+bool RenderEngine3D::isOccluded(const SceneNode& node, const std::vector<SceneNode>& other_nodes) const {
+    double node_pos[3] = {node.transform[12], node.transform[13], node.transform[14]};
+    
+    double view_dir[3] = {
+        camera_target_[0] - camera_pos_[0],
+        camera_target_[1] - camera_pos_[1],
+        camera_target_[2] - camera_pos_[2]
+    };
+    double view_dist = std::sqrt(view_dir[0]*view_dir[0] + view_dir[1]*view_dir[1] + view_dir[2]*view_dir[2]);
+    
+    if (view_dist < 0.001) {
+        return false;
+    }
+    
+    double node_dist = std::sqrt(
+        (node_pos[0] - camera_pos_[0]) * (node_pos[0] - camera_pos_[0]) +
+        (node_pos[1] - camera_pos_[1]) * (node_pos[1] - camera_pos_[1]) +
+        (node_pos[2] - camera_pos_[2]) * (node_pos[2] - camera_pos_[2])
+    );
+    
+    for (const auto& other : other_nodes) {
+        if (other.id == node.id) {
+            continue;
+        }
+        
+        double other_pos[3] = {other.transform[12], other.transform[13], other.transform[14]};
+        double other_dist = std::sqrt(
+            (other_pos[0] - camera_pos_[0]) * (other_pos[0] - camera_pos_[0]) +
+            (other_pos[1] - camera_pos_[1]) * (other_pos[1] - camera_pos_[1]) +
+            (other_pos[2] - camera_pos_[2]) * (other_pos[2] - camera_pos_[2])
+        );
+        
+        if (other_dist < node_dist) {
+            double dx = other_pos[0] - node_pos[0];
+            double dy = other_pos[1] - node_pos[1];
+            double dz = other_pos[2] - node_pos[2];
+            double dist_between = std::sqrt(dx*dx + dy*dy + dz*dz);
+            
+            if (dist_between < 10.0) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
 }  // namespace ui

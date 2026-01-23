@@ -415,8 +415,18 @@ std::vector<RoutePoint> RoutingService::findPath(const std::string& start, const
     double dz = end_point.z - start_point.z;
     double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
     
+    std::vector<RoutePoint> obstacle_points;
+    for (const auto& obstacle_id : obstacles) {
+        std::size_t obs_hash = hasher(obstacle_id);
+        RoutePoint obs_point;
+        obs_point.x = static_cast<double>(obs_hash % 1000) - 500.0;
+        obs_point.y = static_cast<double>((obs_hash / 1000) % 1000) - 500.0;
+        obs_point.z = static_cast<double>((obs_hash / 1000000) % 1000) - 500.0;
+        obstacle_points.push_back(obs_point);
+    }
+    
     int num_waypoints = static_cast<int>(dist / 100.0) + 1;
-    num_waypoints = std::min(num_waypoints, 10);
+    num_waypoints = std::min(num_waypoints, 20);
     
     for (int i = 1; i < num_waypoints; ++i) {
         double t = static_cast<double>(i) / num_waypoints;
@@ -424,6 +434,24 @@ std::vector<RoutePoint> RoutingService::findPath(const std::string& start, const
         waypoint.x = start_point.x + dx * t;
         waypoint.y = start_point.y + dy * t;
         waypoint.z = start_point.z + dz * t;
+        
+        double min_obstacle_dist = 1e10;
+        for (const auto& obs : obstacle_points) {
+            double obs_dx = waypoint.x - obs.x;
+            double obs_dy = waypoint.y - obs.y;
+            double obs_dz = waypoint.z - obs.z;
+            double obs_dist = std::sqrt(obs_dx*obs_dx + obs_dy*obs_dy + obs_dz*obs_dz);
+            min_obstacle_dist = std::min(min_obstacle_dist, obs_dist);
+        }
+        
+        if (min_obstacle_dist < 50.0) {
+            double offset = 60.0 - min_obstacle_dist;
+            double perp_x = -dy / dist;
+            double perp_y = dx / dist;
+            waypoint.x += perp_x * offset;
+            waypoint.y += perp_y * offset;
+        }
+        
         path.push_back(waypoint);
     }
     

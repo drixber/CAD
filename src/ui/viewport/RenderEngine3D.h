@@ -58,6 +58,9 @@ public:
     
     void* getRenderContext() const { return render_context_; }
     
+    void enableFrustumCulling(bool enabled) { frustum_culling_enabled_ = enabled; }
+    void enableOcclusionCulling(bool enabled) { occlusion_culling_enabled_ = enabled; }
+    
 private:
     bool initialized_{false};
     void* render_context_{nullptr};
@@ -70,6 +73,11 @@ private:
     double camera_fov_{45.0};
     int viewport_width_{800};
     int viewport_height_{600};
+    bool frustum_culling_enabled_{true};
+    bool occlusion_culling_enabled_{false};
+    
+    bool isInFrustum(const SceneNode& node) const;
+    bool isOccluded(const SceneNode& node, const std::vector<SceneNode>& other_nodes) const;
     
     void initializeOpenGL();
     void renderGeometry(const SceneNode& node);
