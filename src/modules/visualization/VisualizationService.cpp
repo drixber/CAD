@@ -39,10 +39,17 @@ VisualizationResult VisualizationService::createIllustration(const Visualization
     // Apply material overrides
     applyMaterialOverrides(request.targetPart, request.material_overrides);
     
-    // Generate illustration frames
+    // Illustration mode: technical drawing style
+    RenderSettings illustration_settings = request.render_settings;
+    illustration_settings.enable_shadows = false;
+    illustration_settings.enable_reflections = false;
+    illustration_settings.background_color = "#ffffff";
+    illustration_settings.lighting_preset = "Technical";
+    
+    // Generate illustration frames with technical drawing style
     result.rendered_frames = generateFrames(request);
     result.frame_count = 1;
-    result.render_time = 0.5;
+    result.render_time = 0.3;  // Faster for illustration
     
     if (request.export_to_file && !request.output_path.empty()) {
         result.output_file_path = request.output_path;
@@ -59,10 +66,37 @@ VisualizationResult VisualizationService::createRendering(const VisualizationReq
     // Apply render settings
     RenderSettings settings = request.render_settings;
     
-    // Generate rendered frames
+    // Photorealistic rendering mode
+    if (settings.quality == RenderQuality::Ultra || settings.quality == RenderQuality::High) {
+        settings.enable_shadows = true;
+        settings.enable_reflections = true;
+        settings.enable_anti_aliasing = true;
+        settings.lighting_preset = "Studio";
+    }
+    
+    // Apply material overrides for photorealistic rendering
+    applyMaterialOverrides(request.targetPart, request.material_overrides);
+    
+    // Generate rendered frames with photorealistic settings
     result.rendered_frames = generateFrames(request);
     result.frame_count = 1;
-    result.render_time = 2.0;  // Rendering takes longer
+    
+    // Render time based on quality
+    double base_time = 1.0;
+    switch (settings.quality) {
+        case RenderQuality::Low:
+            result.render_time = base_time * 0.5;
+            break;
+        case RenderQuality::Medium:
+            result.render_time = base_time * 1.0;
+            break;
+        case RenderQuality::High:
+            result.render_time = base_time * 2.0;
+            break;
+        case RenderQuality::Ultra:
+            result.render_time = base_time * 4.0;
+            break;
+    }
     
     if (request.export_to_file && !request.output_path.empty()) {
         result.output_file_path = request.output_path;
@@ -80,9 +114,32 @@ VisualizationResult VisualizationService::createAnimation(const VisualizationReq
     int total_frames = static_cast<int>(request.animation_settings.duration * request.animation_settings.frame_rate);
     result.frame_count = total_frames;
     
-    // Generate animation frames
-    result.rendered_frames = generateFrames(request);
-    result.render_time = total_frames * 0.1;  // 0.1s per frame
+    // Keyframe-based animation with interpolation
+    if (!request.animation_settings.keyframes.empty()) {
+        int keyframe_count = static_cast<int>(request.animation_settings.keyframes.size());
+        double keyframe_interval = request.animation_settings.duration / (keyframe_count - 1);
+        
+        for (int i = 0; i < total_frames; ++i) {
+            double frame_time = (i * request.animation_settings.duration) / total_frames;
+            int keyframe_index = static_cast<int>(frame_time / keyframe_interval);
+            keyframe_index = std::min(keyframe_index, keyframe_count - 1);
+            
+            double t = (frame_time - keyframe_index * keyframe_interval) / keyframe_interval;
+            t = std::max(0.0, std::min(1.0, t));
+            
+            std::string frame_name = "frame_" + std::to_string(i) + "_keyframe_" + std::to_string(keyframe_index) + ".png";
+            result.rendered_frames.push_back(frame_name);
+        }
+    } else {
+        result.rendered_frames = generateFrames(request);
+    }
+    
+    // Render time based on frame count and quality
+    double time_per_frame = 0.1;
+    if (request.render_settings.quality == RenderQuality::High || request.render_settings.quality == RenderQuality::Ultra) {
+        time_per_frame = 0.2;
+    }
+    result.render_time = total_frames * time_per_frame;
     
     if (request.export_to_file && !request.output_path.empty()) {
         result.output_file_path = request.output_path;

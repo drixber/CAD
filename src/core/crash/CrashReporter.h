@@ -16,15 +16,23 @@ public:
     void captureStackTrace();
     std::string getLastStackTrace() const;
     bool generateCrashDump(const std::string& dump_file_path);
+    
+    // Error reporting
+    bool sendErrorReport(const std::string& server_url, const std::string& error_message);
+    void setErrorReportingEnabled(bool enabled);
+    bool isErrorReportingEnabled() const;
 
 private:
     CrashReporter() = default;
 
     std::string dump_path_{};
     std::string last_stack_trace_{};
+    bool error_reporting_enabled_{false};
+    std::string error_reporting_url_{};
     
     void writeCrashInfo(const std::string& file_path, const std::string& error_message);
     std::string getSystemInfo() const;
+    std::string demangleSymbol(const std::string& symbol) const;
 };
 
 }  // namespace core

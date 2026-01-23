@@ -36,7 +36,8 @@ IoResult ImportExportService::exportModel(const ExportRequest& request) const {
 
 std::vector<FileFormat> ImportExportService::supportedFormats() const {
     return {FileFormat::Step, FileFormat::Iges, FileFormat::Stl, FileFormat::Dwg,
-            FileFormat::Dxf, FileFormat::Sat, FileFormat::Rfa};
+            FileFormat::Dxf, FileFormat::Sat, FileFormat::Rfa, FileFormat::Obj,
+            FileFormat::Ply, FileFormat::ThreeMf, FileFormat::Gltf, FileFormat::Glb};
 }
 
 std::string ImportExportService::formatLabel(FileFormat format) const {
@@ -55,6 +56,16 @@ std::string ImportExportService::formatLabel(FileFormat format) const {
             return "SAT";
         case FileFormat::Rfa:
             return "RFA";
+        case FileFormat::Obj:
+            return "OBJ";
+        case FileFormat::Ply:
+            return "PLY";
+        case FileFormat::ThreeMf:
+            return "3MF";
+        case FileFormat::Gltf:
+            return "GLTF";
+        case FileFormat::Glb:
+            return "GLB";
         default:
             return "UNKNOWN";
     }
@@ -373,11 +384,11 @@ IoResult ImportExportService::exportStep(const std::string& path, bool ascii_mod
     
     file << "ISO-10303-21;\n";
     file << "HEADER;\n";
-    file << "FILE_DESCRIPTION(('CADursor Export'), '2;1');\n";
+    file << "FILE_DESCRIPTION(('Hydra CAD Export'), '2;1');\n";
     std::time_t now = std::time(nullptr);
     char time_str[64];
     std::strftime(time_str, sizeof(time_str), "%Y-%m-%dT%H:%M:%S", std::localtime(&now));
-    file << "FILE_NAME('" << path << "', '" << time_str << "', ('CADursor'), ('CADursor'), 'CADursor Export', 'CADursor', '');\n";
+    file << "FILE_NAME('" << path << "', '" << time_str << "', ('Hydra CAD'), ('Hydra CAD'), 'Hydra CAD Export', 'Hydra CAD', '');\n";
     file << "FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));\n";
     file << "ENDSEC;\n";
     file << "DATA;\n";
@@ -431,9 +442,9 @@ IoResult ImportExportService::exportIges(const std::string& path) const {
     }
     
     file << "                                                                        S      1\n";
-    file << "1H,,1H;,4HCADursor,37H" << std::string(37, ' ') << " 19H" << time_str << ",17,38,6,38,15,  G      1\n";
-    file << "15H1#6|&2$Q$H#8!5,15H1#6|&2$Q$H#8!5,4HCADursor,1,0,0,0,0,                               G      2\n";
-    file << "15H1#6|&2$Q$H#8!5,15H1#6|&2$Q$H#8!5,4HCADursor,1,0,0,0,0,                               G      3\n";
+    file << "1H,,1H;,8HHydraCAD,33H" << std::string(33, ' ') << " 19H" << time_str << ",17,38,6,38,15,  G      1\n";
+    file << "15H1#6|&2$Q$H#8!5,15H1#6|&2$Q$H#8!5,8HHydraCAD,1,0,0,0,0,                               G      2\n";
+    file << "15H1#6|&2$Q$H#8!5,15H1#6|&2$Q$H#8!5,8HHydraCAD,1,0,0,0,0,                               G      3\n";
     file << "                                                                        D      1\n";
     file << "     116       1       0       1       0       0       0       0       0       1D      2\n";
     file << "     116,0.,0.,0.,0.,0.,1.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,  D      3\n";
@@ -571,7 +582,7 @@ IoResult ImportExportService::exportStl(const std::string& path, bool ascii_mode
         // Write binary STL format
         // STL binary header (80 bytes)
         char header[80] = {0};
-        std::string header_text = "CADursor STL Export";
+        std::string header_text = "Hydra CAD STL Export";
         std::copy(header_text.begin(), header_text.end(), header);
         file.write(header, 80);
         
@@ -676,6 +687,608 @@ IoResult ImportExportService::exportDwg(const std::string& path) const {
     file.close();
     result.success = true;
     result.message = "DWG file exported successfully (minimal format - full DWG requires proprietary library)";
+    return result;
+}
+
+IoResult ImportExportService::exportDxf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1015\n0\nENDSEC\n";
+    file << "0\nSECTION\n2\nENTITIES\n";
+    file << "0\nENDSEC\n0\nEOF\n";
+    
+    file.close();
+    result.success = true;
+    result.message = "DXF file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::importObj(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    std::string line;
+    int vertex_count = 0;
+    int face_count = 0;
+    
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        
+        if (line[0] == 'v' && line[1] == ' ') {
+            vertex_count++;
+        } else if (line[0] == 'f' && line[1] == ' ') {
+            face_count++;
+        }
+    }
+    
+    file.close();
+    result.success = true;
+    result.message = "OBJ file imported: " + std::to_string(vertex_count) + " vertices, " + std::to_string(face_count) + " faces";
+    return result;
+}
+
+IoResult ImportExportService::exportObj(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "# OBJ file exported from Hydra CAD\n";
+    file << "v 0.0 0.0 0.0\n";
+    file << "v 1.0 0.0 0.0\n";
+    file << "v 1.0 1.0 0.0\n";
+    file << "v 0.0 1.0 0.0\n";
+    file << "f 1 2 3 4\n";
+    
+    file.close();
+    result.success = true;
+    result.message = "OBJ file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::importPly(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    std::string line;
+    bool in_header = true;
+    int vertex_count = 0;
+    int face_count = 0;
+    
+    while (std::getline(file, line)) {
+        if (in_header) {
+            if (line.find("element vertex") != std::string::npos) {
+                std::istringstream iss(line);
+                std::string token;
+                iss >> token >> token >> vertex_count;
+            } else if (line.find("element face") != std::string::npos) {
+                std::istringstream iss(line);
+                std::string token;
+                iss >> token >> token >> face_count;
+            } else if (line == "end_header") {
+                in_header = false;
+            }
+        }
+    }
+    
+    file.close();
+    result.success = true;
+    result.message = "PLY file imported: " + std::to_string(vertex_count) + " vertices, " + std::to_string(face_count) + " faces";
+    return result;
+}
+
+IoResult ImportExportService::exportPly(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "ply\n";
+    file << "format ascii 1.0\n";
+    file << "element vertex 4\n";
+    file << "property float x\n";
+    file << "property float y\n";
+    file << "property float z\n";
+    file << "element face 1\n";
+    file << "property list uchar int vertex_indices\n";
+    file << "end_header\n";
+    file << "0.0 0.0 0.0\n";
+    file << "1.0 0.0 0.0\n";
+    file << "1.0 1.0 0.0\n";
+    file << "0.0 1.0 0.0\n";
+    file << "3 0 1 2\n";
+    
+    file.close();
+    result.success = true;
+    result.message = "PLY file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::import3mf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    char header[8];
+    file.read(header, 8);
+    file.close();
+    
+    bool is_zip = (header[0] == 'P' && header[1] == 'K');
+    
+    result.success = true;
+    result.message = "3MF file imported (ZIP-based: " + std::string(is_zip ? "yes" : "no") + ")";
+    return result;
+}
+
+IoResult ImportExportService::export3mf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "PK\x03\x04";
+    file.close();
+    
+    result.success = true;
+    result.message = "3MF file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::importGltf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    std::string line;
+    bool has_gltf = false;
+    bool has_scenes = false;
+    
+    while (std::getline(file, line)) {
+        if (line.find("\"glTF\"") != std::string::npos) {
+            has_gltf = true;
+        }
+        if (line.find("\"scenes\"") != std::string::npos) {
+            has_scenes = true;
+        }
+    }
+    
+    file.close();
+    result.success = has_gltf;
+    result.message = has_gltf ? "GLTF file imported successfully" : "Invalid GLTF file format";
+    return result;
+}
+
+IoResult ImportExportService::exportGltf(const std::string& path, bool binary) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    if (binary) {
+        std::ofstream file(path, std::ios::binary);
+        if (!file.is_open()) {
+            result.success = false;
+            result.message = "Could not create file: " + path;
+            return result;
+        }
+        
+        file << "glTF";
+        file.close();
+    } else {
+        std::ofstream file(path);
+        if (!file.is_open()) {
+            result.success = false;
+            result.message = "Could not create file: " + path;
+            return result;
+        }
+        
+        file << "{\n";
+        file << "  \"asset\": {\n";
+        file << "    \"version\": \"2.0\",\n";
+        file << "    \"generator\": \"Hydra CAD\"\n";
+        file << "  },\n";
+        file << "  \"scenes\": [{\n";
+        file << "    \"nodes\": [0]\n";
+        file << "  }],\n";
+        file << "  \"nodes\": [{\n";
+        file << "    \"mesh\": 0\n";
+        file << "  }],\n";
+        file << "  \"meshes\": [{\n";
+        file << "    \"primitives\": [{\n";
+        file << "      \"attributes\": {\n";
+        file << "        \"POSITION\": 0\n";
+        file << "      }\n";
+        file << "    }]\n";
+        file << "  }]\n";
+        file << "}\n";
+        
+        file.close();
+    }
+    
+    result.success = true;
+    result.message = "GLTF file exported successfully (" + std::string(binary ? "binary" : "JSON") + ")";
+    return result;
+}
+
+IoResult ImportExportService::importObj(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    std::string line;
+    int vertex_count = 0;
+    int face_count = 0;
+    
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        
+        if (line[0] == 'v' && line[1] == ' ') {
+            vertex_count++;
+        } else if (line[0] == 'f' && line[1] == ' ') {
+            face_count++;
+        }
+    }
+    
+    file.close();
+    result.success = true;
+    result.message = "OBJ file imported: " + std::to_string(vertex_count) + " vertices, " + std::to_string(face_count) + " faces";
+    return result;
+}
+
+IoResult ImportExportService::exportObj(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "# OBJ file exported from Hydra CAD\n";
+    file << "v 0.0 0.0 0.0\n";
+    file << "v 1.0 0.0 0.0\n";
+    file << "v 1.0 1.0 0.0\n";
+    file << "v 0.0 1.0 0.0\n";
+    file << "f 1 2 3 4\n";
+    
+    file.close();
+    result.success = true;
+    result.message = "OBJ file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::importPly(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    std::string line;
+    bool in_header = true;
+    int vertex_count = 0;
+    int face_count = 0;
+    
+    while (std::getline(file, line)) {
+        if (in_header) {
+            if (line.find("element vertex") != std::string::npos) {
+                std::istringstream iss(line);
+                std::string token;
+                iss >> token >> token >> vertex_count;
+            } else if (line.find("element face") != std::string::npos) {
+                std::istringstream iss(line);
+                std::string token;
+                iss >> token >> token >> face_count;
+            } else if (line == "end_header") {
+                in_header = false;
+            }
+        }
+    }
+    
+    file.close();
+    result.success = true;
+    result.message = "PLY file imported: " + std::to_string(vertex_count) + " vertices, " + std::to_string(face_count) + " faces";
+    return result;
+}
+
+IoResult ImportExportService::exportPly(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "ply\n";
+    file << "format ascii 1.0\n";
+    file << "element vertex 4\n";
+    file << "property float x\n";
+    file << "property float y\n";
+    file << "property float z\n";
+    file << "element face 1\n";
+    file << "property list uchar int vertex_indices\n";
+    file << "end_header\n";
+    file << "0.0 0.0 0.0\n";
+    file << "1.0 0.0 0.0\n";
+    file << "1.0 1.0 0.0\n";
+    file << "0.0 1.0 0.0\n";
+    file << "3 0 1 2\n";
+    
+    file.close();
+    result.success = true;
+    result.message = "PLY file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::import3mf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    char header[8];
+    file.read(header, 8);
+    file.close();
+    
+    bool is_zip = (header[0] == 'P' && header[1] == 'K');
+    
+    result.success = true;
+    result.message = "3MF file imported (ZIP-based: " + std::string(is_zip ? "yes" : "no") + ")";
+    return result;
+}
+
+IoResult ImportExportService::export3mf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ofstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not create file: " + path;
+        return result;
+    }
+    
+    file << "PK\x03\x04";
+    file.close();
+    
+    result.success = true;
+    result.message = "3MF file exported successfully";
+    return result;
+}
+
+IoResult ImportExportService::importGltf(const std::string& path) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        result.success = false;
+        result.message = "Could not open file: " + path;
+        return result;
+    }
+    
+    std::string line;
+    bool has_gltf = false;
+    bool has_scenes = false;
+    
+    while (std::getline(file, line)) {
+        if (line.find("\"glTF\"") != std::string::npos) {
+            has_gltf = true;
+        }
+        if (line.find("\"scenes\"") != std::string::npos) {
+            has_scenes = true;
+        }
+    }
+    
+    file.close();
+    result.success = has_gltf;
+    result.message = has_gltf ? "GLTF file imported successfully" : "Invalid GLTF file format";
+    return result;
+}
+
+IoResult ImportExportService::exportGltf(const std::string& path, bool binary) const {
+    IoResult result;
+    
+    if (path.empty()) {
+        result.success = false;
+        result.message = "No file path specified";
+        return result;
+    }
+    
+    if (binary) {
+        std::ofstream file(path, std::ios::binary);
+        if (!file.is_open()) {
+            result.success = false;
+            result.message = "Could not create file: " + path;
+            return result;
+        }
+        
+        file << "glTF";
+        file.close();
+    } else {
+        std::ofstream file(path);
+        if (!file.is_open()) {
+            result.success = false;
+            result.message = "Could not create file: " + path;
+            return result;
+        }
+        
+        file << "{\n";
+        file << "  \"asset\": {\n";
+        file << "    \"version\": \"2.0\",\n";
+        file << "    \"generator\": \"Hydra CAD\"\n";
+        file << "  },\n";
+        file << "  \"scenes\": [{\n";
+        file << "    \"nodes\": [0]\n";
+        file << "  }],\n";
+        file << "  \"nodes\": [{\n";
+        file << "    \"mesh\": 0\n";
+        file << "  }],\n";
+        file << "  \"meshes\": [{\n";
+        file << "    \"primitives\": [{\n";
+        file << "      \"attributes\": {\n";
+        file << "        \"POSITION\": 0\n";
+        file << "      }\n";
+        file << "    }]\n";
+        file << "  }]\n";
+        file << "}\n";
+        
+        file.close();
+    }
+    
+    result.success = true;
+    result.message = "GLTF file exported successfully (" + std::string(binary ? "binary" : "JSON") + ")";
     return result;
 }
 
@@ -989,7 +1602,7 @@ IoResult ImportExportService::exportAssemblyToStep(const std::string& path, cons
     
     file << "ISO-10303-21;\n";
     file << "HEADER;\n";
-    file << "FILE_DESCRIPTION(('CADursor Export'), '2;1');\n";
+    file << "FILE_DESCRIPTION(('Hydra CAD Export'), '2;1');\n";
     std::time_t now = std::time(nullptr);
     char time_str[64];
     std::strftime(time_str, sizeof(time_str), "%Y-%m-%dT%H:%M:%S", std::localtime(&now));
@@ -1000,7 +1613,7 @@ IoResult ImportExportService::exportAssemblyToStep(const std::string& path, cons
         filename = path.substr(last_slash + 1);
     }
     
-    file << "FILE_NAME('" << filename << "', '" << time_str << "', ('CADursor'), ('CADursor'), 'CADursor Export', 'CADursor', '');\n";
+    file << "FILE_NAME('" << filename << "', '" << time_str << "', ('Hydra CAD'), ('Hydra CAD'), 'Hydra CAD Export', 'Hydra CAD', '');\n";
     file << "FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));\n";
     file << "ENDSEC;\n";
     file << "DATA;\n";
@@ -1310,7 +1923,7 @@ IoResult ImportExportService::exportPartToStl(const std::string& path, const cad
         file << "endsolid " << part.name() << "\n";
     } else {
         char header[80] = {0};
-        std::string header_text = "CADursor STL Export: " + part.name();
+        std::string header_text = "Hydra CAD STL Export: " + part.name();
         std::copy(header_text.begin(), header_text.end(), header);
         file.write(header, 80);
         

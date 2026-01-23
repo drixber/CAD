@@ -1,0 +1,282 @@
+#include "OpenAIProvider.h"
+#include "../HttpClient.h"
+#include <sstream>
+#include <stdexcept>
+#include <algorithm>
+
+#ifdef CAD_USE_QT
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
+#include <QString>
+#endif
+
+namespace cad {
+namespace app {
+namespace ai {
+
+OpenAIProvider::OpenAIProvider() {
+}
+
+std::vector<std::string> OpenAIProvider::getAvailableModels() const {
+    return {
+        "gpt-4",
+        "gpt-4-turbo-preview",
+        "gpt-4-0125-preview",
+        "gpt-3.5-turbo",
+        "gpt-3.5-turbo-16k"
+    };
+}
+
+bool OpenAIProvider::setApiKey(const std::string& api_key) {
+    if (api_key.empty()) {
+        return false;
+    }
+    api_key_ = api_key;
+    configured_ = true;
+    return true;
+}
+
+AIResponse OpenAIProvider::sendRequest(const AIRequest& request) {
+    AIResponse response;
+    
+    if (!isConfigured()) {
+        response.success = false;
+        response.error_message = "OpenAI provider not configured. Please set API key.";
+        return response;
+    }
+    
+    try {
+        HttpClient http_client;
+        http_client.setTimeout(60); // Longer timeout for AI requests
+        
+        std::string url = base_url_ + "/chat/completions";
+        std::string request_body = buildRequestBody(request);
+        
+        std::map<std::string, std::string> headers = buildHeaders();
+        headers["Content-Type"] = "application/json";
+        
+        HttpResponse http_response = http_client.post(url, request_body, headers);
+        
+        if (http_response.success && http_response.status_code == 200) {
+            response = parseResponse(http_response.body);
+        } else {
+            response.success = false;
+            response.error_message = "HTTP Error: " + std::to_string(http_response.status_code);
+            if (!http_response.body.empty()) {
+                response.error_message += " - " + http_response.body;
+            }
+        }
+    } catch (const std::exception& e) {
+        response.success = false;
+        response.error_message = "Exception: " + std::string(e.what());
+    } catch (...) {
+        response.success = false;
+        response.error_message = "Unknown error occurred";
+    }
+    
+    return response;
+}
+
+bool OpenAIProvider::sendStreamingRequest(const AIRequest& request,
+                                         std::function<void(const StreamChunk&)> callback) {
+    if (!isConfigured()) {
+        StreamChunk error_chunk;
+        error_chunk.done = true;
+        error_chunk.error = "OpenAI provider not configured";
+        callback(error_chunk);
+        return false;
+    }
+    
+    // For now, implement non-streaming fallback
+    // Full streaming implementation would require SSE parsing
+    AIRequest non_stream_request = request;
+    non_stream_request.stream = false;
+    
+    AIResponse response = sendRequest(non_stream_request);
+    
+    if (response.success) {
+        // Simulate streaming by sending chunks
+        const std::string& content = response.content;
+        size_t chunk_size = 10; // Characters per chunk
+        
+        for (size_t i = 0; i < content.length(); i += chunk_size) {
+            StreamChunk chunk;
+            chunk.content = content.substr(i, chunk_size);
+            chunk.done = (i + chunk_size >= content.length());
+            callback(chunk);
+        }
+        
+        StreamChunk final_chunk;
+        final_chunk.done = true;
+        callback(final_chunk);
+        return true;
+    } else {
+        StreamChunk error_chunk;
+        error_chunk.done = true;
+        error_chunk.error = response.error_message;
+        callback(error_chunk);
+        return false;
+    }
+}
+
+bool OpenAIProvider::testConnection() {
+    if (!isConfigured()) {
+        return false;
+    }
+    
+    // Send a minimal test request
+    AIRequest test_request;
+    test_request.model = "gpt-3.5-turbo";
+    test_request.messages.push_back({{"user", "test"}});
+    test_request.max_tokens = 5;
+    
+    AIResponse response = sendRequest(test_request);
+    return response.success;
+}
+
+std::string OpenAIProvider::buildRequestBody(const AIRequest& request) const {
+    #ifdef CAD_USE_QT
+    QJsonObject json;
+    json["model"] = QString::fromStdString(request.model);
+    json["temperature"] = request.temperature;
+    json["max_tokens"] = request.max_tokens;
+    json["stream"] = request.stream;
+    
+    QJsonArray messages;
+    for (const auto& msg : request.messages) {
+        QJsonObject message;
+        message["role"] = QString::fromStdString(msg.role);
+        message["content"] = QString::fromStdString(msg.content);
+        messages.append(message);
+    }
+    json["messages"] = messages;
+    
+    QJsonDocument doc(json);
+    return doc.toJson(QJsonDocument::Compact).toStdString();
+    #else
+    // Fallback for non-Qt builds (simplified JSON)
+    std::ostringstream oss;
+    oss << "{\"model\":\"" << request.model << "\",";
+    oss << "\"temperature\":" << request.temperature << ",";
+    oss << "\"max_tokens\":" << request.max_tokens << ",";
+    oss << "\"stream\":" << (request.stream ? "true" : "false") << ",";
+    oss << "\"messages\":[";
+    for (size_t i = 0; i < request.messages.size(); ++i) {
+        if (i > 0) oss << ",";
+        oss << "{\"role\":\"" << request.messages[i].role << "\",";
+        oss << "\"content\":\"" << request.messages[i].content << "\"}";
+    }
+    oss << "]}";
+    return oss.str();
+    #endif
+}
+
+AIResponse OpenAIProvider::parseResponse(const std::string& json_response) const {
+    AIResponse response;
+    
+    #ifdef CAD_USE_QT
+    QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(json_response));
+    if (doc.isNull() || !doc.isObject()) {
+        response.success = false;
+        response.error_message = "Invalid JSON response";
+        return response;
+    }
+    
+    QJsonObject root = doc.object();
+    
+    if (root.contains("error")) {
+        QJsonObject error = root["error"].toObject();
+        response.success = false;
+        response.error_message = error["message"].toString().toStdString();
+        return response;
+    }
+    
+    if (root.contains("choices")) {
+        QJsonArray choices = root["choices"].toArray();
+        if (!choices.isEmpty()) {
+            QJsonObject choice = choices[0].toObject();
+            QJsonObject message = choice["message"].toObject();
+            response.content = message["content"].toString().toStdString();
+            response.success = true;
+        }
+    }
+    
+    if (root.contains("usage")) {
+        QJsonObject usage = root["usage"].toObject();
+        response.tokens_used = usage["total_tokens"].toInt();
+    }
+    
+    if (root.contains("model")) {
+        response.model_used = root["model"].toString().toStdString();
+    }
+    #else
+    // Simplified parsing for non-Qt builds
+    // In a real implementation, use a JSON library
+    size_t content_pos = json_response.find("\"content\":\"");
+    if (content_pos != std::string::npos) {
+        content_pos += 11; // Skip "content":"
+        size_t content_end = json_response.find("\"", content_pos);
+        if (content_end != std::string::npos) {
+            response.content = json_response.substr(content_pos, content_end - content_pos);
+            response.success = true;
+        }
+    }
+    #endif
+    
+    return response;
+}
+
+StreamChunk OpenAIProvider::parseStreamChunk(const std::string& chunk_data) const {
+    StreamChunk chunk;
+    
+    #ifdef CAD_USE_QT
+    // Parse SSE format: "data: {...}\n\n"
+    if (chunk_data.find("data: ") == 0) {
+        std::string json_str = chunk_data.substr(6); // Skip "data: "
+        if (json_str == "[DONE]") {
+            chunk.done = true;
+            return chunk;
+        }
+        
+        QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(json_str));
+        if (!doc.isNull() && doc.isObject()) {
+            QJsonObject root = doc.object();
+            if (root.contains("choices")) {
+                QJsonArray choices = root["choices"].toArray();
+                if (!choices.isEmpty()) {
+                    QJsonObject choice = choices[0].toObject();
+                    QJsonObject delta = choice["delta"].toObject();
+                    if (delta.contains("content")) {
+                        chunk.content = delta["content"].toString().toStdString();
+                    }
+                }
+            }
+        }
+    }
+    #else
+    // Simplified parsing
+    size_t content_pos = chunk_data.find("\"content\":\"");
+    if (content_pos != std::string::npos) {
+        content_pos += 11;
+        size_t content_end = chunk_data.find("\"", content_pos);
+        if (content_end != std::string::npos) {
+            chunk.content = chunk_data.substr(content_pos, content_end - content_pos);
+        }
+    }
+    #endif
+    
+    return chunk;
+}
+
+std::map<std::string, std::string> OpenAIProvider::buildHeaders() const {
+    std::map<std::string, std::string> headers;
+    headers["Authorization"] = "Bearer " + api_key_;
+    headers["User-Agent"] = "HydraCAD/2.0.0";
+    return headers;
+}
+
+}  // namespace ai
+}  // namespace app
+}  // namespace cad

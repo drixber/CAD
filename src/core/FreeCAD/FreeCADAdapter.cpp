@@ -52,7 +52,7 @@ const std::string& FreeCADAdapter::activeDocument() const {
     return active_document_;
 }
 
-bool FreeCADAdapter::createSketchStub(const std::string& name) const {
+bool FreeCADAdapter::createSketch(const std::string& name, const std::string& plane) const {
 #ifdef CAD_USE_FREECAD
     App::Application* app = App::GetApplication();
     if (!app) {
@@ -62,14 +62,43 @@ bool FreeCADAdapter::createSketchStub(const std::string& name) const {
     if (!doc) {
         return false;
     }
-    App::DocumentObject* obj = doc->addObject("Sketcher::SketchObject", name.c_str());
+    
+    App::DocumentObject* obj = doc->getObject(name.c_str());
+    if (obj) {
+        doc->recompute();
+        return true;
+    }
+    
+    obj = doc->addObject("Sketcher::SketchObject", name.c_str());
     if (!obj) {
         return false;
     }
+    
+    std::map<std::string, std::string> plane_map;
+    plane_map["Plane"] = plane;
+    obj->setPropertyByName("MapMode", &plane_map);
+    
+    std::map<std::string, double> attachment_map;
+    if (plane == "XY") {
+        attachment_map["X"] = 0.0;
+        attachment_map["Y"] = 0.0;
+        attachment_map["Z"] = 0.0;
+    } else if (plane == "XZ") {
+        attachment_map["X"] = 0.0;
+        attachment_map["Y"] = 0.0;
+        attachment_map["Z"] = 0.0;
+    } else if (plane == "YZ") {
+        attachment_map["X"] = 0.0;
+        attachment_map["Y"] = 0.0;
+        attachment_map["Z"] = 0.0;
+    }
+    obj->setPropertyByName("AttachmentOffset", &attachment_map);
+    
     doc->recompute();
     return true;
 #else
     (void)name;
+    (void)plane;
     return false;
 #endif
 }
@@ -79,7 +108,13 @@ bool FreeCADAdapter::syncSketch(const Sketch& sketch) const {
     if (sketch.name().empty()) {
         return false;
     }
-    if (!createSketchStub(sketch.name())) {
+    if (!createSketch(sketch.name(), "XY")) {
+        return false;
+    }
+    if (!syncGeometry(sketch)) {
+        return false;
+    }
+    if (!syncConstraints(sketch)) {
         return false;
     }
     return true;
@@ -224,7 +259,7 @@ bool FreeCADAdapter::syncGeometry(const Sketch& sketch) const {
     // Find or create sketch object
     App::DocumentObject* sketch_obj = doc->getObject(sketch.name().c_str());
     if (!sketch_obj) {
-        if (!createSketchStub(sketch.name())) {
+        if (!createSketch(sketch.name(), "XY")) {
             return false;
         }
         sketch_obj = doc->getObject(sketch.name().c_str());
@@ -234,13 +269,10 @@ bool FreeCADAdapter::syncGeometry(const Sketch& sketch) const {
         return false;
     }
     
-    // Sync geometry entities to FreeCAD Sketcher
-    // Map our geometry types to FreeCAD geometry
-    std::map<std::string, int> geometry_index_map;  // Map our geometry IDs to FreeCAD indices
+    std::map<std::string, int> geometry_index_map;
+    int geometry_counter = 0;
     
     for (const auto& geom : sketch.geometry()) {
-        int freecad_index = -1;
-        
         std::map<std::string, double> geometry_params;
         geometry_params["type"] = static_cast<double>(geom.type);
         geometry_params["start_x"] = geom.start_point.x;
@@ -255,54 +287,51 @@ bool FreeCADAdapter::syncGeometry(const Sketch& sketch) const {
         geometry_params["width"] = geom.width;
         geometry_params["height"] = geom.height;
         
+        int freecad_index = geometry_counter++;
+        
         switch (geom.type) {
             case GeometryType::Line: {
-                geometry_params["length"] = std::sqrt(
+                double length = std::sqrt(
                     (geom.end_point.x - geom.start_point.x) * (geom.end_point.x - geom.start_point.x) +
                     (geom.end_point.y - geom.start_point.y) * (geom.end_point.y - geom.start_point.y)
                 );
-                freecad_index = static_cast<int>(geometry_index_map.size());
-                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                geometry_params["length"] = length;
+                std::string geom_key = "Geometry_" + std::to_string(freecad_index);
                 sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
             case GeometryType::Circle: {
                 geometry_params["circumference"] = 2.0 * M_PI * geom.radius;
                 geometry_params["area"] = M_PI * geom.radius * geom.radius;
-                freecad_index = static_cast<int>(geometry_index_map.size());
-                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                std::string geom_key = "Geometry_" + std::to_string(freecad_index);
                 sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
             case GeometryType::Arc: {
                 double angle_span = geom.end_angle - geom.start_angle;
                 geometry_params["arc_length"] = geom.radius * angle_span * M_PI / 180.0;
-                freecad_index = static_cast<int>(geometry_index_map.size());
-                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                std::string geom_key = "Geometry_" + std::to_string(freecad_index);
                 sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
             case GeometryType::Rectangle: {
                 for (int i = 0; i < 4; ++i) {
-                    freecad_index = static_cast<int>(geometry_index_map.size());
+                    int edge_index = geometry_counter++;
                     geometry_params["edge_index"] = static_cast<double>(i);
-                    std::string edge_key = "geometry_" + std::to_string(freecad_index) + "_edge" + std::to_string(i);
+                    std::string edge_key = "Geometry_" + std::to_string(edge_index);
                     sketch_obj->setPropertyByName(edge_key.c_str(), &geometry_params);
-                    geometry_index_map[geom.id + "_edge" + std::to_string(i)] = freecad_index;
+                    geometry_index_map[geom.id + "_edge" + std::to_string(i)] = edge_index;
                 }
                 continue;
             }
             case GeometryType::Point: {
-                freecad_index = static_cast<int>(geometry_index_map.size());
-                std::string geom_key = "geometry_" + std::to_string(freecad_index);
+                std::string geom_key = "Geometry_" + std::to_string(freecad_index);
                 sketch_obj->setPropertyByName(geom_key.c_str(), &geometry_params);
                 break;
             }
         }
         
-        if (freecad_index >= 0) {
-            geometry_index_map[geom.id] = freecad_index;
-        }
+        geometry_index_map[geom.id] = freecad_index;
     }
     
     doc->recompute();
@@ -313,7 +342,7 @@ bool FreeCADAdapter::syncGeometry(const Sketch& sketch) const {
 #endif
 }
 
-bool FreeCADAdapter::createDrawingStub(const std::string& name) const {
+bool FreeCADAdapter::createDrawing(const std::string& name, const std::string& template_name) const {
 #ifdef CAD_USE_FREECAD
     App::Application* app = App::GetApplication();
     if (!app) {
@@ -323,14 +352,35 @@ bool FreeCADAdapter::createDrawingStub(const std::string& name) const {
     if (!doc) {
         return false;
     }
-    App::DocumentObject* obj = doc->addObject("TechDraw::DrawPage", name.c_str());
+    
+    App::DocumentObject* obj = doc->getObject(name.c_str());
+    if (obj) {
+        doc->recompute();
+        return true;
+    }
+    
+    obj = doc->addObject("TechDraw::DrawPage", name.c_str());
     if (!obj) {
         return false;
     }
+    
+    std::map<std::string, std::string> template_map;
+    template_map["Template"] = template_name;
+    obj->setPropertyByName("Template", &template_map);
+    
+    std::map<std::string, double> scale_map;
+    scale_map["Scale"] = 1.0;
+    obj->setPropertyByName("Scale", &scale_map);
+    
+    std::map<std::string, bool> orientation_map;
+    orientation_map["Orientation"] = true;
+    obj->setPropertyByName("Orientation", &orientation_map);
+    
     doc->recompute();
     return true;
 #else
     (void)name;
+    (void)template_name;
     return false;
 #endif
 }

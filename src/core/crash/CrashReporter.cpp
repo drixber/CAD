@@ -157,11 +157,47 @@ std::string CrashReporter::getSystemInfo() const {
     
     info << "Windows " << osvi.dwMajorVersion << "." << osvi.dwMinorVersion << "\n";
     info << "Build: " << osvi.dwBuildNumber << "\n";
+    
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    info << "CPU Cores: " << sysInfo.dwNumberOfProcessors << "\n";
+    info << "Memory: " << (sysInfo.dwPageSize * sysInfo.dwNumberOfProcessors) / (1024 * 1024) << " MB\n";
 #else
     info << "Unix-like system\n";
 #endif
     
     return info.str();
+}
+
+bool CrashReporter::sendErrorReport(const std::string& server_url, const std::string& error_message) {
+    if (!error_reporting_enabled_ || server_url.empty()) {
+        return false;
+    }
+    
+    // In real implementation, this would use HttpClient to POST error report
+    // For now, we just log it
+    std::string report_file = dump_path_.empty() ? "error_report.txt" : dump_path_ + "/error_report.txt";
+    writeCrashInfo(report_file, error_message);
+    
+    error_reporting_url_ = server_url;
+    return true;
+}
+
+void CrashReporter::setErrorReportingEnabled(bool enabled) {
+    error_reporting_enabled_ = enabled;
+}
+
+bool CrashReporter::isErrorReportingEnabled() const {
+    return error_reporting_enabled_;
+}
+
+std::string CrashReporter::demangleSymbol(const std::string& symbol) const {
+#ifdef _WIN32
+    return symbol;  // Windows symbols are usually not mangled
+#else
+    // In real implementation, use cxxabi::__cxa_demangle
+    return symbol;
+#endif
 }
 
 }  // namespace core

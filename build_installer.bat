@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo CADursor - Automatischer Build und Installer-Erstellung
+echo Hydra CAD - Automatischer Build und Installer-Erstellung
 echo ============================================================
 echo.
 
@@ -81,7 +81,7 @@ if "%BUILD_ONLY%"=="1" (
 
 echo Schritt 4: Installer erstellen...
 cd installer
-"%NSIS_PATH%" cadursor.nsi
+"%NSIS_PATH%" hydracad.nsi
 cd ..
 
 if %ERRORLEVEL% NEQ 0 (
@@ -90,19 +90,19 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-if exist "installer\CADursorSetup.exe" (
+if exist "installer\HydraCADSetup.exe" (
     echo.
     echo ============================================================
     echo ERFOLG!
     echo ============================================================
     echo.
     echo Der Installer wurde erfolgreich erstellt:
-    echo installer\CADursorSetup.exe
+    echo installer\HydraCADSetup.exe
     echo.
-    echo Sie können diese Datei jetzt doppelklicken, um CADursor zu installieren!
+    echo Sie können diese Datei jetzt doppelklicken, um Hydra CAD zu installieren!
     echo.
 ) else (
-    echo WARNUNG: CADursorSetup.exe wurde nicht gefunden!
+    echo WARNUNG: HydraCADSetup.exe wurde nicht gefunden!
     echo Bitte prüfen Sie die NSIS-Ausgabe auf Fehler.
 )
 

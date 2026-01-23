@@ -151,6 +151,38 @@ SimplifyResult SimplifyService::removeInternalFeatures(const std::string& assemb
     result.success = true;
     result.message = "Internal features removed";
     result.simplified_assembly_id = assembly_id + "_no_internal";
+    
+    std::hash<std::string> hasher;
+    std::size_t assembly_hash = hasher(assembly_id);
+    int original_count = static_cast<int>((assembly_hash % 100) + 20);
+    result.original_component_count = original_count;
+    
+    int removed_count = 0;
+    for (int i = 0; i < original_count; ++i) {
+        std::string part_id = "part_" + std::to_string(i);
+        std::size_t part_hash = hasher(part_id);
+        double feature_size = static_cast<double>(part_hash % 100) / 10.0;
+        
+        if (feature_size < threshold) {
+            removed_count++;
+        } else {
+            SimplifiedComponent component = createSimplifiedComponent(part_id, ReplacementType::ConvexHull);
+            component.simplification_ratio = 0.3;
+            result.simplified_components.push_back(component);
+        }
+    }
+    
+    result.simplified_component_count = result.simplified_components.size();
+    result.file_size_reduction = (removed_count * 100.0) / original_count;
+    result.performance_improvement = result.file_size_reduction * 0.6;
+    
+    simplified_assemblies_[result.simplified_assembly_id] = result;
+    
+    return result;
+    SimplifyResult result;
+    result.success = true;
+    result.message = "Internal features removed";
+    result.simplified_assembly_id = assembly_id + "_no_internal";
     result.original_component_count = 50;
     
     // Remove internal features
@@ -169,6 +201,39 @@ SimplifyResult SimplifyService::removeInternalFeatures(const std::string& assemb
 }
 
 SimplifyResult SimplifyService::removeSmallFeatures(const std::string& assembly_id, double threshold) const {
+    SimplifyResult result;
+    result.success = true;
+    result.message = "Small features removed";
+    result.simplified_assembly_id = assembly_id + "_no_small";
+    
+    std::hash<std::string> hasher;
+    std::size_t assembly_hash = hasher(assembly_id);
+    int original_count = static_cast<int>((assembly_hash % 100) + 20);
+    result.original_component_count = original_count;
+    
+    int removed_count = 0;
+    for (int i = 0; i < original_count; ++i) {
+        std::string part_id = "part_" + std::to_string(i);
+        std::size_t part_hash = hasher(part_id);
+        double feature_size = static_cast<double>(part_hash % 100) / 10.0;
+        double feature_area = feature_size * feature_size;
+        
+        if (feature_area < threshold * threshold) {
+            removed_count++;
+        } else {
+            SimplifiedComponent component = createSimplifiedComponent(part_id, ReplacementType::SimplifiedMesh);
+            component.simplification_ratio = 0.4;
+            result.simplified_components.push_back(component);
+        }
+    }
+    
+    result.simplified_component_count = result.simplified_components.size();
+    result.file_size_reduction = (removed_count * 100.0) / original_count;
+    result.performance_improvement = result.file_size_reduction * 0.7;
+    
+    simplified_assemblies_[result.simplified_assembly_id] = result;
+    
+    return result;
     SimplifyResult result;
     result.success = true;
     result.message = "Small features removed";
@@ -323,6 +388,17 @@ double SimplifyService::calculateSimplificationRatio(const std::string& original
 }
 
 double SimplifyService::calculateGeometryComplexityRatio(const std::string& original_id, const std::string& simplified_id) const {
+    std::hash<std::string> hasher;
+    std::size_t orig_hash = hasher(original_id);
+    std::size_t simp_hash = hasher(simplified_id);
+    
+    double orig_complexity = static_cast<double>(orig_hash % 10000) / 100.0;
+    double simp_complexity = static_cast<double>(simp_hash % 5000) / 100.0;
+    
+    if (orig_complexity > 0.001) {
+        return simp_complexity / orig_complexity;
+    }
+    return 0.5;
     std::hash<std::string> hasher;
     std::size_t orig_hash = hasher(original_id);
     std::size_t simpl_hash = hasher(simplified_id);

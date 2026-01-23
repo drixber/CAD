@@ -63,6 +63,9 @@ public:
     void enableOcclusionCulling(bool enabled) { occlusion_culling_enabled_ = enabled; }
     
 private:
+    bool isInFrustum(const SceneNode& node) const;
+    bool isOccluded(const SceneNode& node, const std::vector<SceneNode>& other_nodes) const;
+    void reduceGeometryForLod(const std::string& geometry_id, double lod_factor) const;
     bool initialized_{false};
     void* render_context_{nullptr};
     std::map<std::string, SceneNode> scene_nodes_;

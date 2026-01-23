@@ -32,3 +32,14 @@ __pycache__/
 # Logs / dumps
 *.log
 *.dmp
+
+# Installer outputs
+installer/*.exe
+installer/*.zip
+
+# Temporary files
+*.tmp
+*.bak
+*~
+.DS_Store
+Thumbs.db

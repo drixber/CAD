@@ -1,5 +1,6 @@
 #include "Viewport3D.h"
 #include "RenderEngine3D.h"
+#include "SoQtViewerIntegration.h"
 
 #include <QMouseEvent>
 #include <QPaintEvent>
@@ -24,6 +25,19 @@ Viewport3D::Viewport3D(QWidget* parent) : QWidget(parent) {
     setMinimumSize(400, 300);
     setFocusPolicy(Qt::StrongFocus);
     render_engine_ = std::make_unique<RenderEngine3D>();
+#ifdef CAD_USE_COIN3D
+#ifdef CAD_USE_QT
+    soqt_viewer_ = std::make_unique<SoQtViewerIntegration>();
+    if (soqt_viewer_->initialize(this)) {
+        QWidget* viewer_widget = soqt_viewer_->getWidget();
+        if (viewer_widget) {
+            viewer_widget->setParent(this);
+            viewer_widget->setGeometry(0, 0, width(), height());
+            viewer_widget->show();
+        }
+    }
+#endif
+#endif
     initializeViewport();
 }
 
@@ -34,48 +48,94 @@ Viewport3D::~Viewport3D() {
 }
 
 void Viewport3D::initializeViewport() {
-    if (render_engine_) {
-        render_engine_->initialize(width(), height());
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            soqt_viewer_->setCamera(
+                camera_.position_x, camera_.position_y, camera_.position_z,
+                camera_.target_x, camera_.target_y, camera_.target_z,
+                camera_.up_x, camera_.up_y, camera_.up_z,
+                camera_.field_of_view
+            );
+            QColor bg_color(settings_.background_color.c_str());
+            if (bg_color.isValid()) {
+                soqt_viewer_->setBackgroundColor(
+                    bg_color.redF(), bg_color.greenF(), bg_color.blueF()
+                );
+            }
+            soqt_viewer_->showGrid(settings_.show_grid);
+            soqt_viewer_->showAxes(settings_.show_axes);
+        }
+    } else {
+        if (render_engine_) {
+            render_engine_->initialize(width(), height());
+        }
     }
     resetCamera();
 }
 
 void Viewport3D::renderGeometry(const std::string& geometry_id, void* geometry_handle) {
-    if (!render_engine_ || !render_engine_->isInitialized()) {
-        return;
-    }
-    
-    GeometryData data = createGeometryData(geometry_id, geometry_handle);
-    convertGeometryHandleToData(geometry_handle, data);
-    
-    std::string created_id = render_engine_->createGeometry(data);
-    if (!created_id.empty()) {
-        geometry_data_[geometry_id] = data;
-        addGeometryToScene(geometry_id, data);
-        
-        if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
-            rendered_geometry_ids_.push_back(geometry_id);
+    if (useSoQtViewer()) {
+        if (soqt_viewer_ && geometry_handle) {
+            soqt_viewer_->addGeometryNode(geometry_id, geometry_handle);
+            if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
+                rendered_geometry_ids_.push_back(geometry_id);
+            }
+        }
+    } else {
+        if (!render_engine_ || !render_engine_->isInitialized()) {
+            return;
         }
         
-        updateDisplayMode();
+        GeometryData data = createGeometryData(geometry_id, geometry_handle);
+        convertGeometryHandleToData(geometry_handle, data);
+        
+        std::string created_id = render_engine_->createGeometry(data);
+        if (!created_id.empty()) {
+            geometry_data_[geometry_id] = data;
+            addGeometryToScene(geometry_id, data);
+            
+            if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), geometry_id) == rendered_geometry_ids_.end()) {
+                rendered_geometry_ids_.push_back(geometry_id);
+            }
+            
+            updateDisplayMode();
+        }
     }
     
     updateView();
 }
 
 void Viewport3D::renderAssembly(const std::string& assembly_id) {
-    if (!render_engine_ || !render_engine_->isInitialized()) {
-        return;
-    }
-    
-    if (assembly_components_.find(assembly_id) == assembly_components_.end()) {
-        assembly_components_[assembly_id] = {};
-    }
-    
-    for (const auto& component_id : assembly_components_[assembly_id]) {
-        auto it = geometry_data_.find(component_id);
-        if (it != geometry_data_.end()) {
-            render_engine_->addToScene(component_id);
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            if (assembly_components_.find(assembly_id) == assembly_components_.end()) {
+                assembly_components_[assembly_id] = {};
+            }
+            
+            for (const auto& component_id : assembly_components_[assembly_id]) {
+                auto it = geometry_data_.find(component_id);
+                if (it != geometry_data_.end() && it->second.native_handle) {
+                    soqt_viewer_->addGeometryNode(component_id, it->second.native_handle);
+                    if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), component_id) == rendered_geometry_ids_.end()) {
+                        rendered_geometry_ids_.push_back(component_id);
+                    }
+                }
+            }
+        }
+    } else {
+        if (!render_engine_ || !render_engine_->isInitialized()) {
+            return;
+        }
+        
+        if (assembly_components_.find(assembly_id) == assembly_components_.end()) {
+            assembly_components_[assembly_id] = {};
+        }
+        
+        for (const auto& component_id : assembly_components_[assembly_id]) {
+            auto it = geometry_data_.find(component_id);
+            if (it != geometry_data_.end()) {
+                render_engine_->addToScene(component_id);
+            }
         }
     }
     
@@ -83,35 +143,61 @@ void Viewport3D::renderAssembly(const std::string& assembly_id) {
 }
 
 void Viewport3D::renderMbdAnnotations(const std::vector<void*>& annotation_handles) {
-    if (!render_engine_ || !render_engine_->isInitialized()) {
-        return;
-    }
-    
-    for (size_t i = 0; i < annotation_handles.size(); ++i) {
-        std::string annotation_id = "annotation_" + std::to_string(i);
-        void* handle = annotation_handles[i];
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            for (size_t i = 0; i < annotation_handles.size(); ++i) {
+                std::string annotation_id = "annotation_" + std::to_string(i);
+                void* handle = annotation_handles[i];
+                
+                if (handle) {
+                    soqt_viewer_->addGeometryNode(annotation_id, handle);
+                    if (std::find(rendered_geometry_ids_.begin(), rendered_geometry_ids_.end(), annotation_id) == rendered_geometry_ids_.end()) {
+                        rendered_geometry_ids_.push_back(annotation_id);
+                    }
+                }
+                
+                annotation_data_[annotation_id].push_back(handle);
+            }
+        }
+    } else {
+        if (!render_engine_ || !render_engine_->isInitialized()) {
+            return;
+        }
         
-        GeometryData data;
-        data.id = annotation_id;
-        data.type = GeometryData::Custom;
-        data.params[0] = 1.0;
-        data.params[1] = 1.0;
-        data.params[2] = 0.0;
-        data.params[3] = 1.0;
-        data.native_handle = handle;
-        
-        render_engine_->createGeometry(data);
-        render_engine_->addToScene(annotation_id);
-        
-        annotation_data_[annotation_id].push_back(handle);
+        for (size_t i = 0; i < annotation_handles.size(); ++i) {
+            std::string annotation_id = "annotation_" + std::to_string(i);
+            void* handle = annotation_handles[i];
+            
+            GeometryData data;
+            data.id = annotation_id;
+            data.type = GeometryData::Custom;
+            data.params[0] = 1.0;
+            data.params[1] = 1.0;
+            data.params[2] = 0.0;
+            data.params[3] = 1.0;
+            data.native_handle = handle;
+            
+            render_engine_->createGeometry(data);
+            render_engine_->addToScene(annotation_id);
+            
+            annotation_data_[annotation_id].push_back(handle);
+        }
     }
     
     updateView();
 }
 
 void Viewport3D::clearScene() {
-    if (render_engine_ && render_engine_->isInitialized()) {
-        render_engine_->clearScene();
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            for (const auto& geom_id : rendered_geometry_ids_) {
+                soqt_viewer_->removeGeometryNode(geom_id);
+            }
+        }
+    } else {
+        if (render_engine_ && render_engine_->isInitialized()) {
+            render_engine_->clearScene();
+        }
     }
     
     rendered_geometry_ids_.clear();
@@ -132,13 +218,24 @@ void Viewport3D::updateView() {
 void Viewport3D::setCamera(const ViewportCamera& camera) {
     camera_ = camera;
     
-    if (render_engine_ && render_engine_->isInitialized()) {
-        render_engine_->setCamera(
-            camera.position_x, camera.position_y, camera.position_z,
-            camera.target_x, camera.target_y, camera.target_z,
-            camera.up_x, camera.up_y, camera.up_z,
-            camera.field_of_view
-        );
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            soqt_viewer_->setCamera(
+                camera.position_x, camera.position_y, camera.position_z,
+                camera.target_x, camera.target_y, camera.target_z,
+                camera.up_x, camera.up_y, camera.up_z,
+                camera.field_of_view
+            );
+        }
+    } else {
+        if (render_engine_ && render_engine_->isInitialized()) {
+            render_engine_->setCamera(
+                camera.position_x, camera.position_y, camera.position_z,
+                camera.target_x, camera.target_y, camera.target_z,
+                camera.up_x, camera.up_y, camera.up_z,
+                camera.field_of_view
+            );
+        }
     }
     
     updateView();
@@ -159,20 +256,32 @@ void Viewport3D::resetCamera() {
     camera_.up_y = 1.0;
     camera_.up_z = 0.0;
     camera_.field_of_view = 45.0;
+    
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            soqt_viewer_->resetCamera();
+        }
+    }
+    
     setCamera(camera_);
 }
 
 void Viewport3D::fitToView() {
-    if (!render_engine_ || rendered_geometry_ids_.empty()) {
-        return;
-    }
-    
-    double min_x = std::numeric_limits<double>::max();
-    double max_x = std::numeric_limits<double>::lowest();
-    double min_y = std::numeric_limits<double>::max();
-    double max_y = std::numeric_limits<double>::lowest();
-    double min_z = std::numeric_limits<double>::max();
-    double max_z = std::numeric_limits<double>::lowest();
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            soqt_viewer_->fitToView();
+        }
+    } else {
+        if (!render_engine_ || rendered_geometry_ids_.empty()) {
+            return;
+        }
+        
+        double min_x = std::numeric_limits<double>::max();
+        double max_x = std::numeric_limits<double>::lowest();
+        double min_y = std::numeric_limits<double>::max();
+        double max_y = std::numeric_limits<double>::lowest();
+        double min_z = std::numeric_limits<double>::max();
+        double max_z = std::numeric_limits<double>::lowest();
     
     for (const auto& geom_id : rendered_geometry_ids_) {
         auto it = geometry_data_.find(geom_id);
@@ -251,7 +360,16 @@ void Viewport3D::highlightObject(const std::string& object_id, bool highlight) {
 
 void Viewport3D::setDisplayMode(DisplayMode mode) {
     display_mode_ = mode;
-    updateDisplayMode();
+    
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            int mode_int = static_cast<int>(mode);
+            soqt_viewer_->setDisplayMode(mode_int);
+        }
+    } else {
+        updateDisplayMode();
+    }
+    
     updateView();
 }
 
@@ -260,6 +378,11 @@ Viewport3D::DisplayMode Viewport3D::getDisplayMode() const {
 }
 
 void Viewport3D::paintEvent(QPaintEvent* event) {
+    if (useSoQtViewer()) {
+        QWidget::paintEvent(event);
+        return;
+    }
+    
     QWidget::paintEvent(event);
     
     if (render_engine_ && render_engine_->isInitialized()) {
@@ -289,8 +412,17 @@ void Viewport3D::paintEvent(QPaintEvent* event) {
 void Viewport3D::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
     
-    if (render_engine_ && render_engine_->isInitialized()) {
-        render_engine_->setViewportSize(width(), height());
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            QWidget* viewer_widget = soqt_viewer_->getWidget();
+            if (viewer_widget) {
+                viewer_widget->setGeometry(0, 0, width(), height());
+            }
+        }
+    } else {
+        if (render_engine_ && render_engine_->isInitialized()) {
+            render_engine_->setViewportSize(width(), height());
+        }
     }
     
     updateView();
@@ -609,20 +741,35 @@ void Viewport3D::removeGeometryFromScene(const std::string& geometry_id) {
 }
 
 std::string Viewport3D::pickObjectAt(int x, int y) const {
-    if (render_engine_ && render_engine_->isInitialized()) {
-        return render_engine_->pickObject(x, y);
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            return soqt_viewer_->pickObject(x, y);
+        }
+    } else {
+        if (render_engine_ && render_engine_->isInitialized()) {
+            return render_engine_->pickObject(x, y, width(), height(),
+                                              &camera_.position_x, &camera_.target_x, &camera_.up_x,
+                                              camera_.field_of_view);
+        }
     }
     return {};
 }
 
 void Viewport3D::updateDisplayMode() {
-    if (!render_engine_ || !render_engine_->isInitialized()) {
-        return;
-    }
-    
-    int mode = static_cast<int>(display_mode_);
-    for (const auto& geom_id : rendered_geometry_ids_) {
-        render_engine_->setDisplayMode(geom_id, mode);
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            int mode_int = static_cast<int>(display_mode_);
+            soqt_viewer_->setDisplayMode(mode_int);
+        }
+    } else {
+        if (!render_engine_ || !render_engine_->isInitialized()) {
+            return;
+        }
+        
+        int mode = static_cast<int>(display_mode_);
+        for (const auto& geom_id : rendered_geometry_ids_) {
+            render_engine_->setDisplayMode(geom_id, mode);
+        }
     }
 }
 

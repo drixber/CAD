@@ -207,6 +207,20 @@ std::vector<PatternInstance> PatternService::generateRectangularInstances(const 
             instance.z = 0.0;
             instance.rotation = params.angle;
             
+            // Create 4x4 transform matrix
+            instance.has_transform_matrix = true;
+            double cos_a = std::cos(angle_rad);
+            double sin_a = std::sin(angle_rad);
+            instance.transform_matrix[0] = cos_a;
+            instance.transform_matrix[1] = -sin_a;
+            instance.transform_matrix[4] = sin_a;
+            instance.transform_matrix[5] = cos_a;
+            instance.transform_matrix[10] = 1.0;
+            instance.transform_matrix[14] = 1.0;
+            instance.transform_matrix[12] = instance.x;
+            instance.transform_matrix[13] = instance.y;
+            instance.transform_matrix[14] = instance.z;
+            
             instances.push_back(instance);
         }
     }
@@ -228,6 +242,20 @@ std::vector<PatternInstance> PatternService::generateCircularInstances(const Cir
         instance.y = params.center_y + params.radius * std::sin(angle);
         instance.z = params.center_z;
         instance.rotation = i * angle_step;
+        
+        // Create 4x4 transform matrix with rotation
+        instance.has_transform_matrix = true;
+        double cos_r = std::cos(instance.rotation * M_PI / 180.0);
+        double sin_r = std::sin(instance.rotation * M_PI / 180.0);
+        instance.transform_matrix[0] = cos_r;
+        instance.transform_matrix[1] = -sin_r;
+        instance.transform_matrix[4] = sin_r;
+        instance.transform_matrix[5] = cos_r;
+        instance.transform_matrix[10] = 1.0;
+        instance.transform_matrix[14] = 1.0;
+        instance.transform_matrix[12] = instance.x;
+        instance.transform_matrix[13] = instance.y;
+        instance.transform_matrix[14] = instance.z;
         
         instances.push_back(instance);
     }
@@ -268,6 +296,20 @@ std::vector<PatternInstance> PatternService::generateCurveInstances(const CurveP
         } else {
             instance.rotation = 0.0;
         }
+        
+        // Create 4x4 transform matrix with curve alignment
+        instance.has_transform_matrix = true;
+        double cos_r = std::cos(instance.rotation * M_PI / 180.0);
+        double sin_r = std::sin(instance.rotation * M_PI / 180.0);
+        instance.transform_matrix[0] = cos_r;
+        instance.transform_matrix[1] = -sin_r;
+        instance.transform_matrix[4] = sin_r;
+        instance.transform_matrix[5] = cos_r;
+        instance.transform_matrix[10] = 1.0;
+        instance.transform_matrix[14] = 1.0;
+        instance.transform_matrix[12] = instance.x;
+        instance.transform_matrix[13] = instance.y;
+        instance.transform_matrix[14] = instance.z;
         
         instances.push_back(instance);
     }

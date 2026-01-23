@@ -615,52 +615,194 @@ bool Modeler::evaluateParameters(Sketch& sketch) const {
 
 bool Modeler::solveConstraints(Sketch& sketch) const {
     const std::vector<Constraint>& constraints = sketch.constraints();
+    std::vector<GeometryEntity>& geometry = const_cast<std::vector<GeometryEntity>&>(sketch.geometry());
     
-    int max_iterations = 100;
-    double tolerance = 1e-6;
-    double damping = 0.1;
+    if (constraints.empty() || geometry.empty()) {
+        return true;
+    }
+    
+    int max_iterations = 200;
+    double tolerance = 1e-8;
+    double damping_factor = 0.5;
+    double convergence_rate = 0.1;
+    
+    std::vector<double> residuals(constraints.size(), 0.0);
+    std::vector<std::vector<double>> jacobian(constraints.size());
+    for (auto& row : jacobian) {
+        row.resize(geometry.size() * 4, 0.0);
+    }
+    
+    std::map<std::string, int> geometry_index_map;
+    for (size_t i = 0; i < geometry.size(); ++i) {
+        geometry_index_map[geometry[i].id] = static_cast<int>(i);
+    }
     
     for (int iter = 0; iter < max_iterations; ++iter) {
-        double max_error = 0.0;
+        double max_residual = 0.0;
         
-        for (const auto& constraint : constraints) {
-        GeometryEntity* geom_a = sketch.findGeometry(constraint.a);
-        GeometryEntity* geom_b = sketch.findGeometry(constraint.b);
-        
-        if (!geom_a && !geom_b) {
-            // Constraint might reference parameters or other entities
-            continue;
+        for (size_t c_idx = 0; c_idx < constraints.size(); ++c_idx) {
+            const auto& constraint = constraints[c_idx];
+            GeometryEntity* geom_a = sketch.findGeometry(constraint.a);
+            GeometryEntity* geom_b = sketch.findGeometry(constraint.b);
+            
+            if (!geom_a && !geom_b) {
+                residuals[c_idx] = 0.0;
+                continue;
+            }
+            
+            double residual = 0.0;
+            double weight = 1.0;
+            
+            switch (constraint.type) {
+                case ConstraintType::Distance:
+                    if (geom_a && geom_b) {
+                        double dx = geom_b->start_point.x - geom_a->start_point.x;
+                        double dy = geom_b->start_point.y - geom_a->start_point.y;
+                        double current_dist = std::sqrt(dx*dx + dy*dy);
+                        residual = current_dist - constraint.value;
+                        weight = 1.0 / (1.0 + current_dist * current_dist);
+                    }
+                    break;
+                case ConstraintType::Horizontal:
+                    if (geom_a && geom_b) {
+                        residual = geom_b->start_point.y - geom_a->start_point.y;
+                    }
+                    break;
+                case ConstraintType::Vertical:
+                    if (geom_a && geom_b) {
+                        residual = geom_b->start_point.x - geom_a->start_point.x;
+                    }
+                    break;
+                case ConstraintType::Coincident:
+                    if (geom_a && geom_b) {
+                        double dx = geom_b->start_point.x - geom_a->start_point.x;
+                        double dy = geom_b->start_point.y - geom_a->start_point.y;
+                        residual = std::sqrt(dx*dx + dy*dy);
+                    }
+                    break;
+                case ConstraintType::Parallel:
+                    if (geom_a && geom_b) {
+                        double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                        double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                        double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                        double dy_b = geom_b->end_point.y - geom_b->start_point.y;
+                        double cross = dx_a * dy_b - dy_a * dx_b;
+                        residual = cross;
+                    }
+                    break;
+                case ConstraintType::Perpendicular:
+                    if (geom_a && geom_b) {
+                        double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                        double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                        double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                        double dy_b = geom_b->end_point.y - geom_b->start_point.y;
+                        double dot = dx_a * dx_b + dy_a * dy_b;
+                        residual = dot;
+                    }
+                    break;
+                case ConstraintType::Tangent:
+                    if (geom_a && geom_b) {
+                        if (geom_a->type == GeometryType::Circle && geom_b->type == GeometryType::Line) {
+                            double dx = geom_b->end_point.x - geom_b->start_point.x;
+                            double dy = geom_b->end_point.y - geom_b->start_point.y;
+                            double dist_to_center = std::abs(
+                                (dy * geom_a->center_point.x - dx * geom_a->center_point.y +
+                                 dx * geom_b->start_point.y - dy * geom_b->start_point.x) /
+                                std::sqrt(dx*dx + dy*dy)
+                            );
+                            residual = dist_to_center - geom_a->radius;
+                        }
+                    }
+                    break;
+                case ConstraintType::Equal:
+                    if (geom_a && geom_b) {
+                        if (geom_a->type == GeometryType::Circle && geom_b->type == GeometryType::Circle) {
+                            residual = geom_a->radius - geom_b->radius;
+                        } else if (geom_a->type == GeometryType::Line && geom_b->type == GeometryType::Line) {
+                            double len_a = std::sqrt(
+                                (geom_a->end_point.x - geom_a->start_point.x) * (geom_a->end_point.x - geom_a->start_point.x) +
+                                (geom_a->end_point.y - geom_a->start_point.y) * (geom_a->end_point.y - geom_a->start_point.y)
+                            );
+                            double len_b = std::sqrt(
+                                (geom_b->end_point.x - geom_b->start_point.x) * (geom_b->end_point.x - geom_b->start_point.x) +
+                                (geom_b->end_point.y - geom_b->start_point.y) * (geom_b->end_point.y - geom_b->start_point.y)
+                            );
+                            residual = len_a - len_b;
+                        }
+                    }
+                    break;
+                case ConstraintType::Angle:
+                    if (geom_a && geom_b) {
+                        double dx_a = geom_a->end_point.x - geom_a->start_point.x;
+                        double dy_a = geom_a->end_point.y - geom_a->start_point.y;
+                        double dx_b = geom_b->end_point.x - geom_b->start_point.x;
+                        double dy_b = geom_b->end_point.y - geom_b->start_point.y;
+                        double angle_a = std::atan2(dy_a, dx_a);
+                        double angle_b = std::atan2(dy_b, dx_b);
+                        double angle_diff = angle_b - angle_a;
+                        while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+                        while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+                        double target_angle = constraint.value * M_PI / 180.0;
+                        residual = angle_diff - target_angle;
+                    }
+                    break;
+            }
+            
+            residuals[c_idx] = residual * weight;
+            max_residual = std::max(max_residual, std::abs(residuals[c_idx]));
+            
+            if (geom_a) {
+                auto it_a = geometry_index_map.find(constraint.a);
+                if (it_a != geometry_index_map.end()) {
+                    int idx = it_a->second * 4;
+                    jacobian[c_idx][idx] = -weight * convergence_rate;
+                    jacobian[c_idx][idx + 1] = -weight * convergence_rate;
+                }
+            }
+            if (geom_b) {
+                auto it_b = geometry_index_map.find(constraint.b);
+                if (it_b != geometry_index_map.end()) {
+                    int idx = it_b->second * 4;
+                    jacobian[c_idx][idx] = weight * convergence_rate;
+                    jacobian[c_idx][idx + 1] = weight * convergence_rate;
+                }
+            }
         }
         
-        switch (constraint.type) {
-            case ConstraintType::Distance:
-                if (geom_a && geom_b) {
-                    // Apply distance constraint
-                    double dx = geom_b->start_point.x - geom_a->start_point.x;
-                    double dy = geom_b->start_point.y - geom_a->start_point.y;
-                    double current_dist = std::sqrt(dx*dx + dy*dy);
-                    if (current_dist > 0.001) {
-                        double scale = constraint.value / current_dist;
-                        geom_b->start_point.x = geom_a->start_point.x + dx * scale;
-                        geom_b->start_point.y = geom_a->start_point.y + dy * scale;
-                    }
-                }
-                break;
-            case ConstraintType::Horizontal:
-                if (geom_a && geom_b) {
-                    // Make line horizontal
-                    geom_b->start_point.y = geom_a->start_point.y;
-                }
-                break;
-            case ConstraintType::Vertical:
-                if (geom_a && geom_b) {
-                    // Make line vertical
-                    geom_b->start_point.x = geom_a->start_point.x;
-                }
-                break;
-            case ConstraintType::Coincident:
-                if (geom_a && geom_b) {
-                    // Make points coincident
+        if (max_residual < tolerance) {
+            return true;
+        }
+        
+        for (size_t g_idx = 0; g_idx < geometry.size(); ++g_idx) {
+            double delta_x = 0.0;
+            double delta_y = 0.0;
+            
+            for (size_t c_idx = 0; c_idx < constraints.size(); ++c_idx) {
+                int jac_idx = static_cast<int>(g_idx * 4);
+                delta_x += jacobian[c_idx][jac_idx] * residuals[c_idx] * damping_factor;
+                delta_y += jacobian[c_idx][jac_idx + 1] * residuals[c_idx] * damping_factor;
+            }
+            
+            geometry[g_idx].start_point.x += delta_x;
+            geometry[g_idx].start_point.y += delta_y;
+            
+            if (geometry[g_idx].type == GeometryType::Line || geometry[g_idx].type == GeometryType::Rectangle) {
+                geometry[g_idx].end_point.x += delta_x * 0.5;
+                geometry[g_idx].end_point.y += delta_y * 0.5;
+            }
+            
+            if (geometry[g_idx].type == GeometryType::Circle || geometry[g_idx].type == GeometryType::Arc) {
+                geometry[g_idx].center_point.x += delta_x;
+                geometry[g_idx].center_point.y += delta_y;
+            }
+        }
+        
+        if (iter > 50 && max_residual > 1.0) {
+            damping_factor *= 0.95;
+        }
+    }
+    
+    return false;
                     geom_b->start_point = geom_a->start_point;
                 }
                 break;

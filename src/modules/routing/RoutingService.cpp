@@ -356,36 +356,89 @@ std::vector<RoutePoint> RoutingService::optimizeWaypoints(const std::vector<Rout
     }
     
     std::vector<RoutePoint> optimized = waypoints;
+    bool changed = true;
+    int max_iterations = 10;
+    int iteration = 0;
     
-    for (size_t i = 1; i < optimized.size() - 1; ++i) {
-        RoutePoint& prev = optimized[i - 1];
-        RoutePoint& curr = optimized[i];
-        RoutePoint& next = optimized[i + 1];
+    while (changed && iteration < max_iterations) {
+        iteration++;
+        changed = false;
         
-        double dx1 = curr.x - prev.x;
-        double dy1 = curr.y - prev.y;
-        double dz1 = curr.z - prev.z;
-        
-        double dx2 = next.x - curr.x;
-        double dy2 = next.y - curr.y;
-        double dz2 = next.z - curr.z;
-        
-        double dot = dx1*dx2 + dy1*dy2 + dz1*dz2;
-        double len1 = std::sqrt(dx1*dx1 + dy1*dy1 + dz1*dz1);
-        double len2 = std::sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
-        
-        if (len1 > 0.001 && len2 > 0.001) {
-            double cos_angle = dot / (len1 * len2);
+        for (size_t i = 1; i < optimized.size() - 1; ++i) {
+            RoutePoint& prev = optimized[i - 1];
+            RoutePoint& curr = optimized[i];
+            RoutePoint& next = optimized[i + 1];
             
-            if (cos_angle > 0.95) {
-                curr.x = (prev.x + next.x) * 0.5;
-                curr.y = (prev.y + next.y) * 0.5;
-                curr.z = (prev.z + next.z) * 0.5;
+            double dx1 = curr.x - prev.x;
+            double dy1 = curr.y - prev.y;
+            double dz1 = curr.z - prev.z;
+            
+            double dx2 = next.x - curr.x;
+            double dy2 = next.y - curr.y;
+            double dz2 = next.z - curr.z;
+            
+            double dot = dx1*dx2 + dy1*dy2 + dz1*dz2;
+            double len1 = std::sqrt(dx1*dx1 + dy1*dy1 + dz1*dz1);
+            double len2 = std::sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
+            
+            if (len1 > 0.001 && len2 > 0.001) {
+                double cos_angle = dot / (len1 * len2);
+                
+                if (cos_angle > 0.98) {
+                    RoutePoint new_curr;
+                    new_curr.x = (prev.x + next.x) * 0.5;
+                    new_curr.y = (prev.y + next.y) * 0.5;
+                    new_curr.z = (prev.z + next.z) * 0.5;
+                    new_curr.radius = curr.radius;
+                    new_curr.connection_id = curr.connection_id;
+                    new_curr.is_fitting = curr.is_fitting;
+                    
+                    bool collision = false;
+                    std::hash<std::string> hasher;
+                    for (const auto& obstacle_id : obstacles) {
+                        std::size_t obs_hash = hasher(obstacle_id);
+                        double obs_x = static_cast<double>(obs_hash % 1000) - 500.0;
+                        double obs_y = static_cast<double>((obs_hash / 1000) % 1000) - 500.0;
+                        double obs_z = static_cast<double>((obs_hash / 1000000) % 1000) - 500.0;
+                        double obs_r = 50.0;
+                        
+                        double dx = new_curr.x - obs_x;
+                        double dy = new_curr.y - obs_y;
+                        double dz = new_curr.z - obs_z;
+                        double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+                        
+                        if (dist < obs_r + 10.0) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!collision) {
+                        curr = new_curr;
+                        changed = true;
+                    }
+                }
             }
         }
     }
     
-    return optimized;
+    std::vector<RoutePoint> final_optimized;
+    final_optimized.push_back(optimized[0]);
+    
+    for (size_t i = 1; i < optimized.size() - 1; ++i) {
+        double dx = optimized[i].x - final_optimized.back().x;
+        double dy = optimized[i].y - final_optimized.back().y;
+        double dz = optimized[i].z - final_optimized.back().z;
+        double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+        
+        if (dist > 10.0) {
+            final_optimized.push_back(optimized[i]);
+        }
+    }
+    
+    final_optimized.push_back(optimized.back());
+    
+    return final_optimized;
 }
 
 std::vector<RoutePoint> RoutingService::findPath(const std::string& start, const std::string& end,
@@ -408,14 +461,8 @@ std::vector<RoutePoint> RoutingService::findPath(const std::string& start, const
     end_point.z = static_cast<double>((end_hash / 1000000) % 1000) - 500.0;
     end_point.connection_id = end;
     
-    path.push_back(start_point);
-    
-    double dx = end_point.x - start_point.x;
-    double dy = end_point.y - start_point.y;
-    double dz = end_point.z - start_point.z;
-    double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
-    
     std::vector<RoutePoint> obstacle_points;
+    std::vector<double> obstacle_radii;
     for (const auto& obstacle_id : obstacles) {
         std::size_t obs_hash = hasher(obstacle_id);
         RoutePoint obs_point;
@@ -423,40 +470,142 @@ std::vector<RoutePoint> RoutingService::findPath(const std::string& start, const
         obs_point.y = static_cast<double>((obs_hash / 1000) % 1000) - 500.0;
         obs_point.z = static_cast<double>((obs_hash / 1000000) % 1000) - 500.0;
         obstacle_points.push_back(obs_point);
+        obstacle_radii.push_back(50.0 + static_cast<double>(obs_hash % 50));
     }
     
-    int num_waypoints = static_cast<int>(dist / 100.0) + 1;
-    num_waypoints = std::min(num_waypoints, 20);
+    struct PathNode {
+        RoutePoint point;
+        double g_cost{0.0};
+        double h_cost{0.0};
+        double f_cost{0.0};
+        int parent{-1};
+    };
     
-    for (int i = 1; i < num_waypoints; ++i) {
-        double t = static_cast<double>(i) / num_waypoints;
-        RoutePoint waypoint;
-        waypoint.x = start_point.x + dx * t;
-        waypoint.y = start_point.y + dy * t;
-        waypoint.z = start_point.z + dz * t;
+    auto heuristic = [&](const RoutePoint& a, const RoutePoint& b) -> double {
+        double dx = b.x - a.x;
+        double dy = b.y - a.y;
+        double dz = b.z - a.z;
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    };
+    
+    auto checkObstacleCollision = [&](const RoutePoint& p, double radius = 10.0) -> bool {
+        for (size_t i = 0; i < obstacle_points.size(); ++i) {
+            double dx = p.x - obstacle_points[i].x;
+            double dy = p.y - obstacle_points[i].y;
+            double dz = p.z - obstacle_points[i].z;
+            double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+            if (dist < (radius + obstacle_radii[i])) {
+                return true;
+            }
+        }
+        return false;
+    };
+    
+    std::vector<PathNode> open_set;
+    std::vector<PathNode> closed_set;
+    std::map<std::string, int> node_map;
+    
+    PathNode start_node;
+    start_node.point = start_point;
+    start_node.g_cost = 0.0;
+    start_node.h_cost = heuristic(start_point, end_point);
+    start_node.f_cost = start_node.g_cost + start_node.h_cost;
+    start_node.parent = -1;
+    open_set.push_back(start_node);
+    node_map[start] = 0;
+    
+    int max_iterations = 1000;
+    int iteration = 0;
+    
+    while (!open_set.empty() && iteration < max_iterations) {
+        iteration++;
         
-        double min_obstacle_dist = 1e10;
-        for (const auto& obs : obstacle_points) {
-            double obs_dx = waypoint.x - obs.x;
-            double obs_dy = waypoint.y - obs.y;
-            double obs_dz = waypoint.z - obs.z;
-            double obs_dist = std::sqrt(obs_dx*obs_dx + obs_dy*obs_dy + obs_dz*obs_dz);
-            min_obstacle_dist = std::min(min_obstacle_dist, obs_dist);
+        int best_idx = 0;
+        double best_f = open_set[0].f_cost;
+        for (size_t i = 1; i < open_set.size(); ++i) {
+            if (open_set[i].f_cost < best_f) {
+                best_f = open_set[i].f_cost;
+                best_idx = static_cast<int>(i);
+            }
         }
         
-        if (min_obstacle_dist < 50.0) {
-            double offset = 60.0 - min_obstacle_dist;
-            double perp_x = -dy / dist;
-            double perp_y = dx / dist;
-            waypoint.x += perp_x * offset;
-            waypoint.y += perp_y * offset;
+        PathNode current = open_set[best_idx];
+        open_set.erase(open_set.begin() + best_idx);
+        closed_set.push_back(current);
+        
+        double dist_to_end = heuristic(current.point, end_point);
+        if (dist_to_end < 20.0) {
+            std::vector<RoutePoint> final_path;
+            int node_idx = static_cast<int>(closed_set.size()) - 1;
+            while (node_idx >= 0) {
+                final_path.insert(final_path.begin(), closed_set[node_idx].point);
+                node_idx = closed_set[node_idx].parent;
+            }
+            final_path.push_back(end_point);
+            return final_path;
         }
         
-        path.push_back(waypoint);
+        std::vector<RoutePoint> neighbors;
+        double step_size = 50.0;
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dz = -1; dz <= 1; ++dz) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    RoutePoint neighbor;
+                    neighbor.x = current.point.x + dx * step_size;
+                    neighbor.y = current.point.y + dy * step_size;
+                    neighbor.z = current.point.z + dz * step_size;
+                    if (!checkObstacleCollision(neighbor)) {
+                        neighbors.push_back(neighbor);
+                    }
+                }
+            }
+        }
+        
+        for (const auto& neighbor : neighbors) {
+            bool in_closed = false;
+            for (const auto& closed : closed_set) {
+                double dist = heuristic(neighbor, closed.point);
+                if (dist < 1.0) {
+                    in_closed = true;
+                    break;
+                }
+            }
+            if (in_closed) continue;
+            
+            double g_new = current.g_cost + heuristic(current.point, neighbor);
+            double h_new = heuristic(neighbor, end_point);
+            double f_new = g_new + h_new;
+            
+            bool in_open = false;
+            for (auto& open : open_set) {
+                double dist = heuristic(neighbor, open.point);
+                if (dist < 1.0) {
+                    if (f_new < open.f_cost) {
+                        open.g_cost = g_new;
+                        open.h_cost = h_new;
+                        open.f_cost = f_new;
+                        open.parent = static_cast<int>(closed_set.size()) - 1;
+                    }
+                    in_open = true;
+                    break;
+                }
+            }
+            
+            if (!in_open) {
+                PathNode new_node;
+                new_node.point = neighbor;
+                new_node.g_cost = g_new;
+                new_node.h_cost = h_new;
+                new_node.f_cost = f_new;
+                new_node.parent = static_cast<int>(closed_set.size()) - 1;
+                open_set.push_back(new_node);
+            }
+        }
     }
     
+    path.push_back(start_point);
     path.push_back(end_point);
-    
     return path;
 }
 

@@ -1,11 +1,154 @@
 #include "AppController.h"
-
+#include "ai/AIService.h"
+#include "UpdateInstaller.h"
 #include <sstream>
+#ifdef CAD_USE_QT
+#include <QSettings>
+#include <QStringList>
+#include <QMessageBox>
+#include <QTimer>
+#include <QApplication>
+#include "ui/qt/QtLoginDialog.h"
+#include "ui/qt/QtRegisterDialog.h"
+#include "ui/qt/QtAIChatPanel.h"
+#include "ui/qt/QtAISettingsDialog.h"
+#include "ui/qt/QtUpdateDialog.h"
+#include <QProcess>
+#endif
 
 namespace cad {
 namespace app {
 
 AppController::AppController() = default;
+
+bool AppController::initializeWithLogin() {
+    #ifdef CAD_USE_QT
+    // Check if user is already logged in (remember me)
+    if (user_auth_service_.loadSavedSession()) {
+        QSettings settings("HydraCAD", "HydraCAD");
+        QString remembered_username = settings.value("auth/remember_username").toString();
+        if (!remembered_username.isEmpty()) {
+            // Show login dialog with remembered username
+            cad::ui::QtLoginDialog login_dialog;
+            login_dialog.setRememberedUsername(remembered_username);
+            
+            bool login_success = false;
+            connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested,
+                   [this, &login_success](const QString& username, const QString& password, bool remember) {
+                cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString());
+                if (result.success) {
+                    login_success = true;
+                    if (remember) {
+                        user_auth_service_.saveSession(username.toStdString(), true);
+                    }
+                } else {
+                    QMessageBox::warning(&login_dialog, tr("Login Failed"), 
+                                       QString::fromStdString(result.error_message));
+                }
+            });
+            
+            connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, [this, &login_dialog]() {
+                login_dialog.hide();
+                cad::ui::QtRegisterDialog register_dialog;
+                
+                connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested,
+                       [this, &register_dialog](const QString& username, const QString& email,
+                                               const QString& password, const QString& confirm) {
+                    if (password != confirm) {
+                        register_dialog.setError(tr("Passwords do not match"));
+                        return;
+                    }
+                    
+                    cad::app::RegisterResult result = user_auth_service_.registerUser(
+                        username.toStdString(), email.toStdString(), password.toStdString());
+                    
+                    if (result.success) {
+                        QMessageBox::information(&register_dialog, tr("Registration Successful"),
+                                               tr("Account created successfully. You can now login."));
+                        register_dialog.accept();
+                    } else {
+                        register_dialog.setError(QString::fromStdString(result.error_message));
+                    }
+                });
+                
+                if (register_dialog.exec() == QDialog::Accepted) {
+                    login_dialog.show();
+                }
+            });
+            
+            if (login_dialog.exec() != QDialog::Accepted || !login_success) {
+                return false;
+            }
+        } else {
+            return requireLogin();
+        }
+    } else {
+        return requireLogin();
+    }
+    #else
+    // Non-Qt: Simple login check
+    return requireLogin();
+    #endif
+    
+    // Initialize application after successful login
+    initialize();
+    return true;
+}
+
+bool AppController::requireLogin() {
+    #ifdef CAD_USE_QT
+    cad::ui::QtLoginDialog login_dialog;
+    bool login_success = false;
+    
+    connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested,
+           [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
+        cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString());
+        if (result.success) {
+            login_success = true;
+            if (remember) {
+                user_auth_service_.saveSession(username.toStdString(), true);
+            }
+            login_dialog.accept();
+        } else {
+            login_dialog.setError(QString::fromStdString(result.error_message));
+        }
+    });
+    
+    connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, [this, &login_dialog]() {
+        login_dialog.hide();
+        cad::ui::QtRegisterDialog register_dialog;
+        
+        connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested,
+               [this, &register_dialog](const QString& username, const QString& email,
+                                       const QString& password, const QString& confirm) {
+            if (password != confirm) {
+                register_dialog.setError(tr("Passwords do not match"));
+                return;
+            }
+            
+            cad::app::RegisterResult result = user_auth_service_.registerUser(
+                username.toStdString(), email.toStdString(), password.toStdString());
+            
+            if (result.success) {
+                QMessageBox::information(&register_dialog, tr("Registration Successful"),
+                                       tr("Account created successfully. You can now login."));
+                register_dialog.accept();
+            } else {
+                register_dialog.setError(QString::fromStdString(result.error_message));
+            }
+        });
+        
+        if (register_dialog.exec() == QDialog::Accepted) {
+            login_dialog.show();
+        }
+    });
+    
+    return login_dialog.exec() == QDialog::Accepted && login_success;
+    #else
+    // Non-Qt: Always allow (no authentication)
+    return true;
+    #endif
+}
 
 void AppController::initialize() {
     main_window_.initializeLayout();
@@ -37,6 +180,64 @@ void AppController::initialize() {
     modeler_.solveConstraints(active_sketch_);
     initializeAssembly();
     bindCommands();
+    
+    // Initialize project file service with auto-save
+    #ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    bool autosave_enabled = settings.value("project/autosave_enabled", true).toBool();
+    int autosave_interval = settings.value("project/autosave_interval", 300).toInt();
+    QString autosave_path = settings.value("project/autosave_path", "autosave").toString();
+    project_file_service_.enableAutoSave(autosave_enabled);
+    project_file_service_.setAutoSaveInterval(autosave_interval);
+    project_file_service_.setAutoSavePath(autosave_path.toStdString());
+    
+    // Load recent projects from settings
+    QStringList recent = settings.value("project/recent_projects").toStringList();
+    for (const QString& path : recent) {
+        recent_projects_.push_back(path.toStdString());
+    }
+    #else
+    project_file_service_.enableAutoSave(true);
+    project_file_service_.setAutoSaveInterval(300);  // 5 minutes
+    project_file_service_.setAutoSavePath("autosave");
+    #endif
+    
+    // Setup auto-save timer if Qt is available
+    #ifdef CAD_USE_QT
+    cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+    if (qt_window) {
+        // Setup project file handlers
+        qt_window->setSaveProjectHandler([this](const std::string& path) {
+            saveProject(path);
+        });
+        qt_window->setLoadProjectHandler([this](const std::string& path) {
+            loadProject(path);
+        });
+        qt_window->setAutoSaveTriggerHandler([this]() {
+            triggerAutoSave();
+        });
+        qt_window->setAutoSaveStatusHandler([this](const std::string& status) {
+            main_window_.setViewportStatus(status);
+        });
+        // Initialize recent projects menu
+        qt_window->updateRecentProjectsMenu(recent_projects_);
+        
+        // Setup user management
+        cad::app::User current_user = user_auth_service_.getCurrentUser();
+        if (!current_user.username.empty()) {
+            qt_window->setCurrentUser(current_user.username, current_user.email);
+        }
+        qt_window->setLogoutHandler([this]() {
+            logout();
+        });
+        
+        // AI Service integration
+        setupAIService(qt_window);
+        
+        // Auto-update setup
+        setupAutoUpdate(qt_window);
+    }
+    #endif
 }
 
 void AppController::setActiveSketch(const cad::core::Sketch& sketch) {
@@ -245,7 +446,7 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
         if (result.success) {
             if (freecad_.isAvailable()) {
-                freecad_.createDrawingStub(result.drawingId);
+                freecad_.createDrawing(result.drawingId, "A4_Landscape");
             }
             cad::drawings::DrawingDocument document =
                 drawing_service_.buildDocumentSkeleton(result.drawingId);
@@ -687,6 +888,474 @@ void AppController::executeCommand(const std::string& command) {
         main_window_.setIntegrationStatus("Command: " + command);
         main_window_.setViewportStatus("Command executed: " + command);
     }
+}
+
+bool AppController::saveProject(const std::string& file_path) {
+    // Validate file path
+    if (file_path.empty()) {
+        main_window_.setIntegrationStatus("Error: File path is empty");
+        return false;
+    }
+    
+    std::filesystem::path path(file_path);
+    if (!path.has_filename()) {
+        main_window_.setIntegrationStatus("Error: Invalid file path");
+        return false;
+    }
+    
+    // Check if file exists and create backup
+    if (std::filesystem::exists(file_path)) {
+        std::string backup_path = file_path + ".backup";
+        try {
+            std::filesystem::copy_file(file_path, backup_path, 
+                                      std::filesystem::copy_options::overwrite_existing);
+        } catch (...) {
+            // Backup failed, but continue with save
+        }
+    }
+    
+    bool success = project_file_service_.saveProject(file_path, active_assembly_);
+    if (success) {
+        has_unsaved_changes_ = false;
+        current_project_path_ = file_path;
+        main_window_.setIntegrationStatus("Project saved: " + file_path);
+        
+        // Add to recent projects (avoid duplicates)
+        auto it = std::find(recent_projects_.begin(), recent_projects_.end(), file_path);
+        if (it != recent_projects_.end()) {
+            recent_projects_.erase(it);
+        }
+        recent_projects_.insert(recent_projects_.begin(), file_path);
+        if (recent_projects_.size() > 10) {
+            recent_projects_.pop_back();
+        }
+        
+        // Save to settings and update menu
+        saveRecentProjectsToSettings();
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window) {
+            qt_window->updateRecentProjectsMenu(recent_projects_);
+        }
+        #endif
+    } else {
+        std::string error_msg = "Failed to save project: " + file_path;
+        if (!std::filesystem::exists(std::filesystem::path(file_path).parent_path())) {
+            error_msg += " (Directory does not exist)";
+        } else {
+            error_msg += " (Check file permissions or disk space)";
+        }
+        main_window_.setIntegrationStatus(error_msg);
+    }
+    return success;
+}
+
+bool AppController::loadProject(const std::string& file_path) {
+    // Check for unsaved changes
+    if (has_unsaved_changes_) {
+        // In a real implementation, show a dialog here
+        // For now, we'll just log it
+        main_window_.setIntegrationStatus("Warning: Unsaved changes will be lost");
+    }
+    
+    // Validate file path
+    if (file_path.empty()) {
+        main_window_.setIntegrationStatus("Error: File path is empty");
+        return false;
+    }
+    
+    if (!std::filesystem::exists(file_path)) {
+        main_window_.setIntegrationStatus("Error: File does not exist: " + file_path);
+        return false;
+    }
+    
+    bool success = project_file_service_.loadProject(file_path, active_assembly_);
+    if (success) {
+        has_unsaved_changes_ = false;
+        current_project_path_ = file_path;
+        ProjectFileInfo info = project_file_service_.getProjectInfo(file_path);
+        main_window_.setIntegrationStatus("Project loaded: " + file_path);
+        main_window_.setDocumentLabel(info.project_name);
+        
+        // Add to recent projects (avoid duplicates)
+        auto it = std::find(recent_projects_.begin(), recent_projects_.end(), file_path);
+        if (it != recent_projects_.end()) {
+            recent_projects_.erase(it);
+        }
+        recent_projects_.insert(recent_projects_.begin(), file_path);
+        if (recent_projects_.size() > 10) {
+            recent_projects_.pop_back();
+        }
+        
+        // Save to settings and update menu
+        saveRecentProjectsToSettings();
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window) {
+            qt_window->updateRecentProjectsMenu(recent_projects_);
+        }
+        #endif
+    } else {
+        main_window_.setIntegrationStatus("Failed to load project: " + file_path + " (File may be corrupted or incompatible)");
+    }
+    return success;
+}
+
+bool AppController::saveCheckpoint(const std::string& checkpoint_path) {
+    bool success = project_file_service_.saveCheckpoint(checkpoint_path, active_assembly_);
+    if (success) {
+        main_window_.setIntegrationStatus("Checkpoint saved: " + checkpoint_path);
+    } else {
+        main_window_.setIntegrationStatus("Failed to save checkpoint: " + checkpoint_path);
+    }
+    return success;
+}
+
+bool AppController::loadCheckpoint(const std::string& checkpoint_path) {
+    bool success = project_file_service_.loadCheckpoint(checkpoint_path, active_assembly_);
+    if (success) {
+        main_window_.setIntegrationStatus("Checkpoint loaded: " + checkpoint_path);
+    } else {
+        main_window_.setIntegrationStatus("Failed to load checkpoint: " + checkpoint_path);
+    }
+    return success;
+}
+
+void AppController::triggerAutoSave() {
+    if (project_file_service_.isAutoSaveEnabled()) {
+        bool success = project_file_service_.triggerAutoSave(active_assembly_);
+        if (success) {
+            main_window_.setViewportStatus("Auto-saved");
+        }
+    }
+}
+
+std::vector<std::string> AppController::getRecentProjects() const {
+    return recent_projects_;
+}
+
+std::string AppController::getCurrentProjectPath() const {
+    return current_project_path_;
+}
+
+void AppController::saveRecentProjectsToSettings() const {
+    #ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    QStringList recent;
+    for (const auto& project : recent_projects_) {
+        recent << QString::fromStdString(project);
+    }
+    settings.setValue("project/recent_projects", recent);
+    settings.sync();
+    #endif
+}
+
+void AppController::markProjectModified() {
+    has_unsaved_changes_ = true;
+    if (!current_project_path_.empty()) {
+        main_window_.setDocumentLabel(project_file_service_.getProjectInfo(current_project_path_).project_name + " *");
+    }
+}
+
+bool AppController::isUserLoggedIn() const {
+    return user_auth_service_.isLoggedIn();
+}
+
+cad::app::User AppController::getCurrentUser() const {
+    return user_auth_service_.getCurrentUser();
+}
+
+void AppController::logout() {
+    #ifdef CAD_USE_QT
+    cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+    if (qt_window) {
+        qt_window->setCurrentUser("", "");
+    }
+    #endif
+    user_auth_service_.logout();
+    main_window_.setIntegrationStatus("Logged out");
+    main_window_.setDocumentLabel("Logged out - Please restart application");
+}
+
+void AppController::setupAIService(cad::ui::QtMainWindow* qt_window) {
+    #ifdef CAD_USE_QT
+    if (!qt_window) return;
+    
+    // Load AI settings
+    QSettings settings("HydraCAD", "HydraCAD");
+    QString provider = settings.value("ai/provider", "openai").toString();
+    QString openai_key = settings.value("ai/openai_key").toString();
+    QString anthropic_key = settings.value("ai/anthropic_key").toString();
+    QString model = settings.value("ai/model", "gpt-4").toString();
+    double temperature = settings.value("ai/temperature", 0.7).toDouble();
+    int max_tokens = settings.value("ai/max_tokens", 2000).toInt();
+    
+    // Configure provider
+    if (provider == "openai" && !openai_key.isEmpty()) {
+        ai_service_.configureProvider(cad::app::ai::ModelProviderType::OpenAI, openai_key.toStdString());
+        ai_service_.setModel(model.toStdString());
+    } else if (provider == "anthropic" && !anthropic_key.isEmpty()) {
+        // Anthropic provider will be implemented later
+        // ai_service_.configureProvider(cad::app::ai::ModelProviderType::Anthropic, anthropic_key.toStdString());
+    }
+    
+    ai_service_.setTemperature(temperature);
+    ai_service_.setMaxTokens(max_tokens);
+    
+    // Connect AI Chat Panel
+    cad::ui::QtAIChatPanel* ai_chat = qt_window->aiChatPanel();
+    if (ai_chat) {
+        ai_chat->setModelName(model);
+        
+        connect(ai_chat, &cad::ui::QtAIChatPanel::messageSent, this, [this, ai_chat](const QString& message) {
+            ai_chat->setThinking(true);
+            
+            // Get context
+            std::string context = ai_service_.getContext();
+            
+            // Send to AI
+            bool streaming = true;
+            if (streaming) {
+                ai_service_.chatStreaming(message.toStdString(),
+                    [ai_chat](const std::string& chunk) {
+                        ai_chat->appendToAIMessage(QString::fromStdString(chunk));
+                    },
+                    context);
+            } else {
+                cad::app::ai::AIResponse response = ai_service_.chat(message.toStdString(), context);
+                if (response.success) {
+                    ai_chat->addAIMessage(QString::fromStdString(response.content));
+                } else {
+                    ai_chat->addAIMessage(tr("Error: %1").arg(QString::fromStdString(response.error_message)));
+                }
+            }
+            
+            ai_chat->setThinking(false);
+        });
+        
+        connect(ai_chat, &cad::ui::QtAIChatPanel::settingsRequested, this, [this, qt_window]() {
+            showAISettingsDialog(qt_window);
+        });
+    }
+    #endif
+}
+
+void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
+    #ifdef CAD_USE_QT
+    if (!qt_window) return;
+    
+    cad::ui::QtAISettingsDialog dialog(qt_window);
+    
+    // Load current settings
+    QSettings settings("HydraCAD", "HydraCAD");
+    dialog.setOpenAIKey(settings.value("ai/openai_key").toString());
+    dialog.setAnthropicKey(settings.value("ai/anthropic_key").toString());
+    dialog.setSelectedProvider(settings.value("ai/provider", "openai").toString());
+    dialog.setSelectedModel(settings.value("ai/model", "gpt-4").toString());
+    dialog.setTemperature(settings.value("ai/temperature", 0.7).toDouble());
+    dialog.setMaxTokens(settings.value("ai/max_tokens", 2000).toInt());
+    dialog.setStreamingEnabled(settings.value("ai/streaming", true).toBool());
+    
+    // Test connection
+    connect(&dialog, &cad::ui::QtAISettingsDialog::testConnectionRequested, this, [&dialog, this](const QString& provider) {
+        if (provider == "openai") {
+            QString key = dialog.getOpenAIKey();
+            if (!key.isEmpty()) {
+                bool success = ai_service_.configureProvider(cad::app::ai::ModelProviderType::OpenAI, key.toStdString());
+                if (success) {
+                    success = ai_service_.getActiveProvider()->testConnection();
+                }
+                dialog.setTestResult(
+                    success ? tr("Connection successful!") : tr("Connection failed. Please check your API key."),
+                    success
+                );
+            }
+        }
+    });
+    
+    // Save settings
+    connect(&dialog, &cad::ui::QtAISettingsDialog::saveRequested, this, [&dialog, this, qt_window]() {
+        QSettings settings("HydraCAD", "HydraCAD");
+        settings.setValue("ai/openai_key", dialog.getOpenAIKey());
+        settings.setValue("ai/anthropic_key", dialog.getAnthropicKey());
+        settings.setValue("ai/provider", dialog.getSelectedProvider());
+        settings.setValue("ai/model", dialog.getSelectedModel());
+        settings.setValue("ai/temperature", dialog.getTemperature());
+        settings.setValue("ai/max_tokens", dialog.getMaxTokens());
+        settings.setValue("ai/streaming", dialog.getStreamingEnabled());
+        
+        // Reconfigure AI service
+        QString provider = dialog.getSelectedProvider();
+        if (provider == "openai") {
+            ai_service_.configureProvider(cad::app::ai::ModelProviderType::OpenAI, dialog.getOpenAIKey().toStdString());
+        }
+        ai_service_.setModel(dialog.getSelectedModel().toStdString());
+        ai_service_.setTemperature(dialog.getTemperature());
+        ai_service_.setMaxTokens(dialog.getMaxTokens());
+        
+        // Update chat panel
+        cad::ui::QtAIChatPanel* ai_chat = qt_window->aiChatPanel();
+        if (ai_chat) {
+            ai_chat->setModelName(dialog.getSelectedModel());
+        }
+    });
+    
+    dialog.exec();
+    #endif
+}
+
+void AppController::setupAutoUpdate(cad::ui::QtMainWindow* qt_window) {
+    #ifdef CAD_USE_QT
+    if (!qt_window) return;
+    
+    QSettings settings("HydraCAD", "HydraCAD");
+    bool auto_update_enabled = settings.value("updates/auto_check", true).toBool();
+    bool auto_install = settings.value("updates/auto_install", false).toBool();
+    int check_interval_days = settings.value("updates/check_interval_days", 7).toInt();
+    
+    update_service_.enableAutoUpdate(auto_update_enabled);
+    update_service_.setAutoUpdateCheckInterval(check_interval_days);
+    
+    // Set current version
+    update_service_.setCurrentVersion("2.0.0");
+    
+    // Set installation directory
+    QString install_path = settings.value("app/install_path", "C:/Program Files/Hydra CAD").toString();
+    settings.setValue("app/install_path", install_path);
+    
+    // Check for updates on startup (if enabled)
+    if (auto_update_enabled) {
+        QTimer::singleShot(5000, this, [this, qt_window, auto_install]() {
+            checkForUpdates(qt_window, auto_install);
+        });
+    }
+    
+    // Periodic check timer
+    QTimer* update_check_timer = new QTimer(this);
+    connect(update_check_timer, &QTimer::timeout, this, [this, qt_window, auto_install]() {
+        checkForUpdates(qt_window, auto_install);
+    });
+    
+    int interval_ms = check_interval_days * 24 * 60 * 60 * 1000;
+    update_check_timer->start(interval_ms);
+    #endif
+}
+
+void AppController::checkForUpdates(cad::ui::QtMainWindow* qt_window, bool auto_install) {
+    #ifdef CAD_USE_QT
+    if (!qt_window) return;
+    
+    if (!update_service_.checkForUpdates()) {
+        return; // No updates or error
+    }
+    
+    if (!update_service_.isUpdateAvailable()) {
+        return; // Already up to date
+    }
+    
+    cad::app::UpdateInfo update_info = update_service_.getLatestUpdateInfo();
+    
+    // Show update dialog
+    cad::ui::QtUpdateDialog dialog(qt_window);
+    dialog.setUpdateInfo(QString::fromStdString(update_info.version),
+                        QString::fromStdString(update_info.changelog),
+                        update_info.mandatory);
+    
+    // Connect install handler
+    connect(&dialog, &cad::ui::QtUpdateDialog::installRequested, this, [this, &dialog, update_info, qt_window]() {
+        installUpdate(qt_window, update_info, dialog.getCreateBackup());
+    });
+    
+    // If auto-install is enabled and not mandatory, install automatically
+    if (auto_install && !update_info.mandatory) {
+        dialog.hide();
+        installUpdate(qt_window, update_info, true);
+    } else {
+        dialog.exec();
+    }
+    #endif
+}
+
+void AppController::installUpdate(cad::ui::QtMainWindow* qt_window, 
+                                  const cad::app::UpdateInfo& update_info, 
+                                  bool create_backup) {
+    #ifdef CAD_USE_QT
+    if (!qt_window) return;
+    
+    // Show progress dialog
+    cad::ui::QtUpdateDialog progress_dialog(qt_window);
+    progress_dialog.setUpdateInfo(QString::fromStdString(update_info.version),
+                                 QString::fromStdString(update_info.changelog),
+                                 update_info.mandatory);
+    progress_dialog.setProgress(0, tr("Downloading update..."));
+    progress_dialog.show();
+    
+    // Download update
+    std::string download_path;
+    bool download_success = update_service_.downloadUpdate(update_info,
+        [&progress_dialog](const cad::app::UpdateProgress& progress) {
+            progress_dialog.setProgress(progress.percentage, 
+                                      QString::fromStdString(progress.status_message));
+            QApplication::processEvents();
+        });
+    
+    if (!download_success) {
+        progress_dialog.setCompleted(false, tr("Download failed"));
+        return;
+    }
+    
+    // Determine download path
+    download_path = "update_" + update_info.version + ".zip";
+    
+    // Install update in-place
+    progress_dialog.setProgress(50, tr("Installing update..."));
+    QApplication::processEvents();
+    
+    bool install_success = update_service_.installInPlaceUpdate(download_path,
+        [&progress_dialog](const cad::app::UpdateProgress& progress) {
+            progress_dialog.setProgress(50 + (progress.percentage / 2),
+                                      QString::fromStdString(progress.status_message));
+            if (!progress.status_message.empty() && 
+                progress.status_message.find("Updating") != std::string::npos) {
+                // Extract filename from status message
+                size_t last_slash = progress.status_message.find_last_of("/\\");
+                if (last_slash != std::string::npos) {
+                    std::string filename = progress.status_message.substr(last_slash + 1);
+                    progress_dialog.setCurrentFile(QString::fromStdString(filename));
+                }
+            }
+            QApplication::processEvents();
+        });
+    
+    if (install_success) {
+        progress_dialog.setCompleted(true, tr("Update installed successfully!"));
+        progress_dialog.exec(); // Show completion message
+        
+        // Restart application
+        QMessageBox::information(qt_window, tr("Update Complete"),
+                                tr("Update installed successfully. The application will restart."));
+        
+        // Restart application
+        #ifdef _WIN32
+        QString app_path = QApplication::applicationFilePath();
+        QStringList args = QApplication::arguments();
+        args.removeFirst(); // Remove executable path
+        
+        QProcess::startDetached(app_path, args);
+        QApplication::quit();
+        #else
+        // Linux/Mac: Use exec to replace current process
+        QString app_path = QApplication::applicationFilePath();
+        QStringList args = QApplication::arguments();
+        args.removeFirst();
+        
+        QProcess::startDetached(app_path, args);
+        QApplication::quit();
+        #endif
+    } else {
+        progress_dialog.setCompleted(false, tr("Installation failed"));
+    }
+    #endif
 }
 
 }  // namespace app

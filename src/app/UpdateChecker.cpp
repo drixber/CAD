@@ -95,7 +95,7 @@ void UpdateChecker::onUpdateInfoReceived() {
             info.download_url = response_str.substr(start, end - start);
         }
     } else {
-        info.download_url = "https://updates.cadursor.com/downloads/CADursor-" + info.version + ".exe";
+        info.download_url = "https://updates.hydracad.com/downloads/HydraCAD-" + info.version + ".exe";
     }
     
     size_t size_pos = response_str.find("\"file_size\":");
@@ -137,7 +137,7 @@ void UpdateChecker::onUpdateDownloaded() {
         emit updateReady(QString::fromStdString(installer_path), checksum);
     } else {
         QString fallback_path = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + 
-                               "/CADursor_update_installer.exe";
+                               "/HydraCAD_update_installer.exe";
         emit updateReady(fallback_path, checksum);
     }
 }
@@ -166,7 +166,7 @@ void UpdateChecker::downloadUpdateInstaller(const QString& url) {
     
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            QString download_path = QDir::tempPath() + "/CADursorUpdate.exe";
+            QString download_path = QDir::tempPath() + "/HydraCADUpdate.exe";
             QFile file(download_path);
             if (file.open(QIODevice::WriteOnly)) {
                 file.write(reply->readAll());

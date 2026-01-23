@@ -141,6 +141,11 @@ void MbdService::renderMbdInViewport(const MbdRenderResult& render_data, void* v
         datum_data.id = datum.id;
         datum_data.type = datum.type;
         datum_data.description = datum.description;
+        
+        // Datum-Symbol-Rendering: Create geometry for datum frame
+        // In real implementation, this would create Coin3D geometry nodes
+        // for datum frames (rectangular frames with datum letter)
+        
         render_info.datums.push_back(datum_data);
     }
     
@@ -150,6 +155,11 @@ void MbdService::renderMbdInViewport(const MbdRenderResult& render_data, void* v
         tol_data.upper = tolerance.upper;
         tol_data.lower = tolerance.lower;
         tol_data.units = tolerance.units;
+        
+        // Tolerance-Callout-Rendering: Create geometry for tolerance frame
+        // In real implementation, this would create Coin3D geometry nodes
+        // for tolerance frames (feature control frames)
+        
         render_info.tolerances.push_back(tol_data);
     }
     

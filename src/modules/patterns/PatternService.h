@@ -20,6 +20,8 @@ struct PatternInstance {
     double z{0.0};
     double rotation{0.0};
     bool suppressed{false};
+    double transform_matrix[16]{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};  // 4x4 Transform-Matrix
+    bool has_transform_matrix{false};
 };
 
 struct RectangularPatternParams {

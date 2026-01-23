@@ -67,6 +67,8 @@ public:
     SheetMetalResult applyOperation(const SheetMetalRequest& request) const;
     SheetMetalResult createFlange(const SheetMetalRequest& request) const;
     SheetMetalResult createBend(const SheetMetalRequest& request) const;
+    SheetMetalResult createCut(const SheetMetalRequest& request) const;
+    SheetMetalResult createFace(const SheetMetalRequest& request) const;
     SheetMetalResult unfoldSheet(const SheetMetalRequest& request) const;
     SheetMetalResult refoldSheet(const SheetMetalRequest& request) const;
     

@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <map>
+#include <memory>
 
 namespace cad {
 namespace app {
@@ -38,6 +40,10 @@ public:
                        std::function<void(const UpdateProgress&)> progress_callback = nullptr);
     bool installUpdate(const std::string& update_file_path);
     
+    // In-place update installation (without full reinstall)
+    bool installInPlaceUpdate(const std::string& update_package_path,
+                             std::function<void(const UpdateProgress&)> progress_callback = nullptr);
+    
     // Current version
     std::string getCurrentVersion() const;
     void setCurrentVersion(const std::string& version);
@@ -61,9 +67,13 @@ private:
     bool update_available_{false};
     bool auto_update_enabled_{true};
     int auto_update_check_interval_days_{7};
+    mutable std::unique_ptr<class HttpClient> http_client_;
     
+    HttpClient& getHttpClient() const;
     bool fetchUpdateInfo();
     bool verifyUpdateFile(const std::string& file_path, const std::string& checksum) const;
+    bool verifyUpdateChecksum(const std::string& update_file_path, const std::string& expected_checksum) const;
+    std::string calculateFileChecksum(const std::string& file_path) const;
     bool extractUpdatePackage(const std::string& file_path, const std::string& extract_path) const;
     bool applyUpdate(const std::string& extract_path) const;
     void cleanupUpdateFiles(const std::string& file_path) const;

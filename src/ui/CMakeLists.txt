@@ -18,9 +18,17 @@ if(CAD_USE_QT)
         qt/QtViewport.cpp
         qt/QtLogPanel.cpp
         qt/QtPerformancePanel.cpp
+        qt/QtLoginDialog.cpp
+        qt/QtRegisterDialog.cpp
+        qt/QtAIChatPanel.cpp
+        qt/QtAISettingsDialog.cpp
+        qt/QtUpdateDialog.cpp
+        theme/ThemeManager.cpp
+        theme/DockLayoutManager.cpp
         viewport/Viewport3D.cpp
         viewport/RenderEngine3D.cpp
         viewport/Coin3DIntegration.cpp
+        viewport/SoQtViewerIntegration.cpp
         styles/Styles.qrc
     )
 endif()
@@ -65,6 +73,14 @@ if(CAD_USE_COIN3D)
     if(Coin_FOUND)
         target_link_libraries(cad_ui PUBLIC Coin::Coin)
         target_compile_definitions(cad_ui PUBLIC CAD_USE_COIN3D=1)
+        
+        find_package(SoQt QUIET)
+        if(SoQt_FOUND)
+            target_link_libraries(cad_ui PUBLIC SoQt::SoQt)
+            target_compile_definitions(cad_ui PUBLIC CAD_USE_SOQT=1)
+        else()
+            message(WARNING "SoQt not found. SoQtExaminerViewer will not be available. Install via vcpkg: vcpkg install soqt")
+        endif()
     else()
         message(WARNING "Coin3D not found. Install via vcpkg: vcpkg install coin3d")
     endif()

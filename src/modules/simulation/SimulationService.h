@@ -61,6 +61,7 @@ public:
     SimulationResult runMotionAnalysis(const SimulationRequest& request) const;
     SimulationResult runDeflectionAnalysis(const SimulationRequest& request) const;
     SimulationResult runOptimization(const SimulationRequest& request) const;
+    SimulationResult runThermalAnalysis(const SimulationRequest& request) const;
     
     // Material properties
     std::map<std::string, double> getDefaultMaterialProperties(const std::string& material_name) const;

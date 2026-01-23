@@ -280,6 +280,108 @@ void RenderEngine3D::applyTransform(const double* transform) {
     (void)transform;
 }
 
+bool RenderEngine3D::isInFrustum(const SceneNode& node) const {
+    // Frustum culling: Check if node's bounding box is within camera frustum
+    const double* transform = node.transform;
+    
+    // Extract position from transform matrix (last column)
+    double node_x = transform[12];
+    double node_y = transform[13];
+    double node_z = transform[14];
+    
+    // Calculate distance from camera
+    double dx = node_x - camera_pos_[0];
+    double dy = node_y - camera_pos_[1];
+    double dz = node_z - camera_pos_[2];
+    double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+    
+    // Calculate direction from camera to node
+    double dir_x = dx / dist;
+    double dir_y = dy / dist;
+    double dir_z = dz / dist;
+    
+    // Calculate camera forward direction
+    double cam_dx = camera_target_[0] - camera_pos_[0];
+    double cam_dy = camera_target_[1] - camera_pos_[1];
+    double cam_dz = camera_target_[2] - camera_pos_[2];
+    double cam_dist = std::sqrt(cam_dx*cam_dx + cam_dy*cam_dy + cam_dz*cam_dz);
+    
+    if (cam_dist < 0.001) {
+        return true;
+    }
+    
+    double cam_forward_x = cam_dx / cam_dist;
+    double cam_forward_y = cam_dy / cam_dist;
+    double cam_forward_z = cam_dz / cam_dist;
+    
+    // Check if node is in front of camera
+    double dot = dir_x*cam_forward_x + dir_y*cam_forward_y + dir_z*cam_forward_z;
+    double fov_rad = camera_fov_ * M_PI / 180.0;
+    double cos_fov = std::cos(fov_rad / 2.0);
+    
+    return dot > cos_fov && dist < 1000.0;  // Within FOV and reasonable distance
+}
+
+bool RenderEngine3D::isOccluded(const SceneNode& node, const std::vector<SceneNode>& visible_nodes) const {
+    // Simple occlusion culling: Check if node is behind other nodes
+    const double* transform = node.transform;
+    double node_x = transform[12];
+    double node_y = transform[13];
+    double node_z = transform[14];
+    
+    double node_dist = std::sqrt(
+        (node_x - camera_pos_[0]) * (node_x - camera_pos_[0]) +
+        (node_y - camera_pos_[1]) * (node_y - camera_pos_[1]) +
+        (node_z - camera_pos_[2]) * (node_z - camera_pos_[2])
+    );
+    
+    for (const auto& other : visible_nodes) {
+        if (&other == &node) {
+            continue;
+        }
+        
+        const double* other_transform = other.transform;
+        double other_x = other_transform[12];
+        double other_y = other_transform[13];
+        double other_z = other_transform[14];
+        
+        double other_dist = std::sqrt(
+            (other_x - camera_pos_[0]) * (other_x - camera_pos_[0]) +
+            (other_y - camera_pos_[1]) * (other_y - camera_pos_[1]) +
+            (other_z - camera_pos_[2]) * (other_z - camera_pos_[2])
+        );
+        
+        // If other node is closer and overlaps, this node might be occluded
+        if (other_dist < node_dist) {
+            double dx = node_x - other_x;
+            double dy = node_y - other_y;
+            double dz = node_z - other_z;
+            double overlap_dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+            
+            if (overlap_dist < 5.0) {  // Threshold for occlusion
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+void RenderEngine3D::reduceGeometryForLod(const std::string& geometry_id, double lod_factor) const {
+    auto it = scene_nodes_.find(geometry_id);
+    if (it == scene_nodes_.end()) {
+        return;
+    }
+    
+    // In real implementation, this would reduce mesh complexity
+    // For now, we just adjust visibility based on LOD factor
+    if (lod_factor < 0.3) {
+        it->second.visible = false;
+    } else {
+        it->second.visible = true;
+    }
+}
+
 std::string RenderEngine3D::raycastPick(int x, int y) const {
     double normalized_x = (2.0 * x / viewport_width_) - 1.0;
     double normalized_y = 1.0 - (2.0 * y / viewport_height_);

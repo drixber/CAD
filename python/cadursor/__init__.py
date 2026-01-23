@@ -1,4 +1,4 @@
-"""CADursor Python package."""
+"""Hydra CAD Python package."""
 
 from cadursor.rules import RuleSet, load_rules
 from cadursor.workflow import WorkflowEngine

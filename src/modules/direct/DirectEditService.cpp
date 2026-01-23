@@ -93,12 +93,44 @@ DirectEditResult DirectEditService::offsetFace(const DirectEditRequest& request)
     result.message = "Face offset successfully";
     result.modified_feature_id = request.targetFeature + "_offset";
     
-    // Calculate volume and surface area changes
-    result.volume_change = calculateVolumeChange(request);
-    result.surface_area_change = calculateSurfaceAreaChange(request);
+    double offset_dist = request.offset_params.offset_distance;
+    if (request.offset_params.offset_inward) {
+        offset_dist = -offset_dist;
+    }
     
-    // Update face positions
     result.modified_faces = request.selected_faces;
+    double total_area = 0.0;
+    
+    for (auto& face : result.modified_faces) {
+        total_area += face.area;
+        
+        if (face.normal.size() >= 3) {
+            double normal_x = face.normal[0];
+            double normal_y = face.normal[1];
+            double normal_z = face.normal[2];
+            
+            double normal_len = std::sqrt(normal_x*normal_x + normal_y*normal_y + normal_z*normal_z);
+            if (normal_len > 0.001) {
+                normal_x /= normal_len;
+                normal_y /= normal_len;
+                normal_z /= normal_len;
+            }
+            
+            face.normal[0] = normal_x;
+            face.normal[1] = normal_y;
+            face.normal[2] = normal_z;
+            
+            face.area += offset_dist * 0.1;
+            if (face.area < 0.0) {
+                face.area = 0.0;
+            }
+        }
+    }
+    
+    result.volume_change = total_area * offset_dist * 0.01;
+    result.surface_area_change = total_area * std::abs(offset_dist) * 0.02;
+    
+    const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
     
     return result;
 }
@@ -109,10 +141,27 @@ DirectEditResult DirectEditService::deleteFace(const DirectEditRequest& request)
     result.message = "Face deleted successfully";
     result.modified_feature_id = request.targetFeature + "_deleted";
     
-    // Calculate volume and surface area changes
-    result.volume_change = calculateVolumeChange(request);
-    result.surface_area_change = calculateSurfaceAreaChange(request);
+    double total_area = 0.0;
+    double estimated_volume = 0.0;
     
+    for (const auto& face : request.selected_faces) {
+        total_area += face.area;
+        
+        if (face.normal.size() >= 3) {
+            double normal_len = std::sqrt(
+                face.normal[0]*face.normal[0] +
+                face.normal[1]*face.normal[1] +
+                face.normal[2]*face.normal[2]
+            );
+            if (normal_len > 0.001) {
+                double depth_estimate = std::sqrt(face.area) * 0.5;
+                estimated_volume += face.area * depth_estimate;
+            }
+        }
+    }
+    
+    result.volume_change = -estimated_volume;
+    result.surface_area_change = -total_area;
     result.modified_faces.clear();
     
     const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
@@ -126,15 +175,20 @@ DirectEditResult DirectEditService::freeformEdit(const DirectEditRequest& reques
     result.message = "Freeform edit applied successfully";
     result.modified_feature_id = request.targetFeature + "_freeform";
     
-    // Calculate volume and surface area changes
-    result.volume_change = calculateVolumeChange(request);
-    result.surface_area_change = calculateSurfaceAreaChange(request);
-    
     result.modified_faces = request.selected_faces;
     
     if (request.freeform_params.control_points.empty()) {
+        result.volume_change = 0.0;
+        result.surface_area_change = 0.0;
         return result;
     }
+    
+    double tension = request.freeform_params.tension;
+    tension = std::max(0.0, std::min(1.0, tension));
+    bool smooth = request.freeform_params.smooth;
+    
+    double total_deformation = 0.0;
+    double total_area = 0.0;
     
     for (auto& face : result.modified_faces) {
         if (face.normal.size() < 3) {
@@ -142,12 +196,60 @@ DirectEditResult DirectEditService::freeformEdit(const DirectEditRequest& reques
             face.normal[2] = 1.0;
         }
         
+        total_area += face.area;
+        
+        double base_normal_x = face.normal[0];
+        double base_normal_y = face.normal[1];
+        double base_normal_z = face.normal[2];
+        
         double total_weight = 0.0;
-        double new_normal_x = face.normal[0];
-        double new_normal_y = face.normal[1];
-        double new_normal_z = face.normal[2];
+        double new_normal_x = base_normal_x;
+        double new_normal_y = base_normal_y;
+        double new_normal_z = base_normal_z;
         
         for (const auto& cp : request.freeform_params.control_points) {
+            double cp_x = cp.first;
+            double cp_y = cp.second;
+            
+            double dist = std::sqrt(cp_x*cp_x + cp_y*cp_y);
+            double weight = 1.0 / (1.0 + dist * dist * (1.0 + tension));
+            
+            if (smooth) {
+                weight = std::exp(-dist * dist / (2.0 * (1.0 - tension + 0.1)));
+            }
+            
+            double influence = cp_x * 0.1 + cp_y * 0.1;
+            new_normal_x += influence * weight * 0.1;
+            new_normal_y += influence * weight * 0.1;
+            new_normal_z += influence * weight * 0.1;
+            
+            total_weight += weight;
+            total_deformation += std::abs(influence) * weight;
+        }
+        
+        if (total_weight > 0.001) {
+            new_normal_x /= (1.0 + total_weight * 0.1);
+            new_normal_y /= (1.0 + total_weight * 0.1);
+            new_normal_z /= (1.0 + total_weight * 0.1);
+        }
+        
+        double normal_len = std::sqrt(new_normal_x*new_normal_x + new_normal_y*new_normal_y + new_normal_z*new_normal_z);
+        if (normal_len > 0.001) {
+            face.normal[0] = new_normal_x / normal_len;
+            face.normal[1] = new_normal_y / normal_len;
+            face.normal[2] = new_normal_z / normal_len;
+        }
+        
+        double area_change_factor = 1.0 + total_deformation * 0.05;
+        face.area *= area_change_factor;
+    }
+    
+    result.volume_change = total_area * total_deformation * 0.01;
+    result.surface_area_change = total_area * total_deformation * 0.02;
+    
+    const_cast<DirectEditService*>(this)->updateFeatureHistory(request.targetFeature, result);
+    
+    return result;
             double u = cp.first;
             double v = cp.second;
             

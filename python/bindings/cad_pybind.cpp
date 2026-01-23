@@ -14,6 +14,11 @@
 #include "modules/simplify/SimplifyService.h"
 #include "modules/visualization/VisualizationService.h"
 #include "modules/mbd/MbdService.h"
+#include "modules/sheetmetal/SheetMetalService.h"
+#include "modules/routing/RoutingService.h"
+#include "modules/direct/DirectEditService.h"
+#include "app/UpdateService.h"
+#include "app/HttpClient.h"
 
 namespace py = pybind11;
 using namespace cad::core;
@@ -21,7 +26,7 @@ using namespace cad::modules;
 using namespace cad::interop;
 
 PYBIND11_MODULE(cadursor, module) {
-    module.doc() = "CADursor Python bindings - Complete CAD application API";
+    module.doc() = "Hydra CAD Python bindings - Complete CAD application API";
     module.attr("__version__") = "1.0.0";
     
     py::class_<Modeler>(module, "Modeler")
@@ -195,6 +200,66 @@ PYBIND11_MODULE(cadursor, module) {
         .value("Shell", cad::core::FeatureType::Shell)
         .value("Pattern", cad::core::FeatureType::Pattern);
     
+    py::class_<cad::modules::SheetMetalService>(module, "SheetMetalService")
+        .def(py::init<>())
+        .def("applyOperation", &cad::modules::SheetMetalService::applyOperation)
+        .def("createFlange", &cad::modules::SheetMetalService::createFlange)
+        .def("createBend", &cad::modules::SheetMetalService::createBend)
+        .def("unfoldSheet", &cad::modules::SheetMetalService::unfoldSheet)
+        .def("refoldSheet", &cad::modules::SheetMetalService::refoldSheet)
+        .def("generateFlatPattern", &cad::modules::SheetMetalService::generateFlatPattern)
+        .def("calculateBendAllowance", &cad::modules::SheetMetalService::calculateBendAllowance)
+        .def("calculateBendDeduction", &cad::modules::SheetMetalService::calculateBendDeduction)
+        .def("setMaterialThickness", &cad::modules::SheetMetalService::setMaterialThickness)
+        .def("getMaterialThickness", &cad::modules::SheetMetalService::getMaterialThickness)
+        .def("setKFactor", &cad::modules::SheetMetalService::setKFactor)
+        .def("getKFactor", &cad::modules::SheetMetalService::getKFactor);
+    
+    py::class_<cad::modules::RoutingService>(module, "RoutingService")
+        .def(py::init<>())
+        .def("createRoute", &cad::modules::RoutingService::createRoute)
+        .def("createRigidPipe", &cad::modules::RoutingService::createRigidPipe)
+        .def("createFlexibleHose", &cad::modules::RoutingService::createFlexibleHose)
+        .def("createBentTube", &cad::modules::RoutingService::createBentTube)
+        .def("editRoute", &cad::modules::RoutingService::editRoute)
+        .def("addWaypoint", &cad::modules::RoutingService::addWaypoint)
+        .def("removeWaypoint", &cad::modules::RoutingService::removeWaypoint)
+        .def("optimizeRoute", &cad::modules::RoutingService::optimizeRoute)
+        .def("autoRoute", &cad::modules::RoutingService::autoRoute)
+        .def("getRouteSegments", &cad::modules::RoutingService::getRouteSegments)
+        .def("getRouteLength", &cad::modules::RoutingService::getRouteLength)
+        .def("getRouteWaypoints", &cad::modules::RoutingService::getRouteWaypoints);
+    
+    py::class_<cad::modules::DirectEditService>(module, "DirectEditService")
+        .def(py::init<>())
+        .def("applyEdit", &cad::modules::DirectEditService::applyEdit)
+        .def("moveFace", &cad::modules::DirectEditService::moveFace)
+        .def("offsetFace", &cad::modules::DirectEditService::offsetFace)
+        .def("deleteFace", &cad::modules::DirectEditService::deleteFace)
+        .def("freeformEdit", &cad::modules::DirectEditService::freeformEdit)
+        .def("previewEdit", &cad::modules::DirectEditService::previewEdit)
+        .def("undoLastEdit", &cad::modules::DirectEditService::undoLastEdit)
+        .def("redoLastEdit", &cad::modules::DirectEditService::redoLastEdit)
+        .def("canUndo", &cad::modules::DirectEditService::canUndo)
+        .def("canRedo", &cad::modules::DirectEditService::canRedo)
+        .def("getFeatureHistory", &cad::modules::DirectEditService::getFeatureHistory);
+    
+    py::class_<cad::app::UpdateService>(module, "UpdateService")
+        .def(py::init<>())
+        .def("checkForUpdates", &cad::app::UpdateService::checkForUpdates)
+        .def("getLatestUpdateInfo", &cad::app::UpdateService::getLatestUpdateInfo)
+        .def("isUpdateAvailable", &cad::app::UpdateService::isUpdateAvailable)
+        .def("downloadUpdate", &cad::app::UpdateService::downloadUpdate)
+        .def("installUpdate", &cad::app::UpdateService::installUpdate)
+        .def("getCurrentVersion", &cad::app::UpdateService::getCurrentVersion)
+        .def("setCurrentVersion", &cad::app::UpdateService::setCurrentVersion)
+        .def("setUpdateServerUrl", &cad::app::UpdateService::setUpdateServerUrl)
+        .def("getUpdateServerUrl", &cad::app::UpdateService::getUpdateServerUrl)
+        .def("enableAutoUpdate", &cad::app::UpdateService::enableAutoUpdate)
+        .def("isAutoUpdateEnabled", &cad::app::UpdateService::isAutoUpdateEnabled)
+        .def("setAutoUpdateCheckInterval", &cad::app::UpdateService::setAutoUpdateCheckInterval)
+        .def("performManualUpdate", &cad::app::UpdateService::performManualUpdate);
+    
     py::enum_<cad::core::MateType>(module, "MateType")
         .value("Mate", cad::core::MateType::Mate)
         .value("Flush", cad::core::MateType::Flush)
@@ -204,4 +269,8 @@ PYBIND11_MODULE(cadursor, module) {
     module.def("create_modeler", []() { return std::make_unique<Modeler>(); });
     module.def("create_undo_stack", []() { return std::make_unique<UndoStack>(); });
     module.def("create_import_export_service", []() { return std::make_unique<ImportExportService>(); });
+    module.def("create_sheetmetal_service", []() { return std::make_unique<cad::modules::SheetMetalService>(); });
+    module.def("create_routing_service", []() { return std::make_unique<cad::modules::RoutingService>(); });
+    module.def("create_direct_edit_service", []() { return std::make_unique<cad::modules::DirectEditService>(); });
+    module.def("create_update_service", []() { return std::make_unique<cad::app::UpdateService>(); });
 }

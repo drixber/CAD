@@ -13,8 +13,13 @@
 #include "QtViewport.h"
 #include "QtLogPanel.h"
 #include "QtPerformancePanel.h"
+#include "QtAIChatPanel.h"
 #include "viewport/Viewport3D.h"
 #include "core/Modeler/Sketch.h"
+#include <QTimer>
+#include <QMenuBar>
+#include <QFileDialog>
+#include <QCloseEvent>
 
 namespace cad {
 namespace ui {
@@ -51,6 +56,13 @@ public:
     QtPropertyPanel* propertyPanel();
     QtCommandLine* commandLine();
     Viewport3D* viewport3D();
+    QtAIChatPanel* aiChatPanel() { return ai_chat_panel_; }
+    
+    // Project file operations
+    void setSaveProjectHandler(const std::function<void(const std::string&)>& handler);
+    void setLoadProjectHandler(const std::function<void(const std::string&)>& handler);
+    void setAutoSaveTriggerHandler(const std::function<void()>& handler);
+    void setAutoSaveStatusHandler(const std::function<void(const std::string&)>& handler);
 
 private:
     QtRibbon* ribbon_{nullptr};
@@ -65,6 +77,20 @@ private:
     QLabel* mode_label_{nullptr};
     QLabel* document_label_{nullptr};
     QLabel* fps_status_label_{nullptr};
+    QLabel* autosave_status_label_{nullptr};
+    QTimer* autosave_timer_{nullptr};
+    QMenu* recent_projects_menu_{nullptr};
+    QLabel* user_label_{nullptr};
+    QMenu* user_menu_{nullptr};
+    
+    std::function<void()> logout_handler_;
+    
+    std::function<void(const std::string&)> save_project_handler_;
+    std::function<void(const std::string&)> load_project_handler_;
+    std::function<void()> autosave_trigger_handler_;
+    std::function<void(const std::string&)> autosave_status_handler_;
+    
+    void updateRecentProjectsMenu(const std::vector<std::string>& projects);
 
     void restoreUiState();
     void saveUiState();

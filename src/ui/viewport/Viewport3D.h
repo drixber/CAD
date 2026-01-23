@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "RenderEngine3D.h"
+#include "SoQtViewerIntegration.h"
 
 namespace cad {
 namespace ui {
@@ -85,6 +86,7 @@ protected:
 
 private:
     std::unique_ptr<RenderEngine3D> render_engine_;
+    std::unique_ptr<SoQtViewerIntegration> soqt_viewer_;
     ViewportCamera camera_;
     ViewportSettings settings_;
     bool selection_enabled_{true};
@@ -113,6 +115,7 @@ private:
     std::string pickObjectAt(int x, int y) const;
     void updateDisplayMode();
     void convertGeometryHandleToData(void* handle, GeometryData& data) const;
+    bool useSoQtViewer() const;
 };
 
 }  // namespace ui

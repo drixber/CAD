@@ -1,4 +1,9 @@
 #include "QtMainWindow.h"
+#include "theme/ThemeManager.h"
+#include "theme/DockLayoutManager.h"
+#include "QtAIChatPanel.h"
+#include <QSettings>
+#include <QCloseEvent>
 
 #include <QDockWidget>
 #include <QSet>
@@ -6,6 +11,11 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QFileDialog>
+#include <QKeySequence>
 
 namespace cad {
 namespace ui {
@@ -147,6 +157,16 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     addDockWidget(Qt::RightDockWidgetArea, agentDock);
     agentDock->setMinimumWidth(280);
     agentDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    
+    // AI Chat Panel (new modern chat interface)
+    ai_chat_panel_ = new QtAIChatPanel(this);
+    QDockWidget* aiChatDock = new QDockWidget(tr("AI Chat"), this);
+    aiChatDock->setWidget(ai_chat_panel_);
+    addDockWidget(Qt::RightDockWidgetArea, aiChatDock);
+    aiChatDock->setMinimumWidth(320);
+    aiChatDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    tabifyDockWidget(agentDock, aiChatDock);
+    aiChatDock->raise(); // Show AI Chat by default
 
     QDockWidget* thoughtsDock = new QDockWidget(tr("Agent Thoughts"), this);
     thoughtsDock->setWidget(agent_thoughts_);
@@ -162,6 +182,39 @@ QtMainWindow::QtMainWindow(QWidget* parent)
 
     tabifyDockWidget(propertyDock, agentDock);
     propertyDock->raise();
+    
+    // Enable dock widget features for modular arrangement
+    browserDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                             QDockWidget::DockWidgetFloatable | 
+                             QDockWidget::DockWidgetClosable);
+    propertyDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                             QDockWidget::DockWidgetFloatable | 
+                             QDockWidget::DockWidgetClosable);
+    agentDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                          QDockWidget::DockWidgetFloatable | 
+                          QDockWidget::DockWidgetClosable);
+    thoughtsDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                             QDockWidget::DockWidgetFloatable | 
+                             QDockWidget::DockWidgetClosable);
+    logDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                        QDockWidget::DockWidgetFloatable | 
+                        QDockWidget::DockWidgetClosable);
+    perfDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                         QDockWidget::DockWidgetFloatable | 
+                         QDockWidget::DockWidgetClosable);
+    
+    // Initialize layout manager and restore saved layout
+    static cad::ui::DockLayoutManager layoutManager;
+    QSettings settings("HydraCAD", "HydraCAD");
+    layoutManager.loadFromSettings(settings);
+    
+    // Try to restore default layout, otherwise use current
+    if (!layoutManager.restoreDefaultLayout(this)) {
+        // Save current layout as default
+        layoutManager.saveDefaultLayout(this);
+    }
+    
+    // Layout will be saved in closeEvent
 
     QDockWidget* perfDock = new QDockWidget(tr("Performance"), this);
     perfDock->setWidget(perf_panel_);
@@ -173,9 +226,96 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     mode_label_ = new QLabel(tr("Mode: None"), this);
     document_label_ = new QLabel(tr("Document: Untitled"), this);
     fps_status_label_ = new QLabel(tr("FPS: --"), this);
+    autosave_status_label_ = new QLabel(tr("Auto-save: Off"), this);
     statusBar()->addPermanentWidget(mode_label_);
     statusBar()->addPermanentWidget(document_label_);
     statusBar()->addPermanentWidget(fps_status_label_);
+    statusBar()->addPermanentWidget(autosave_status_label_);
+    
+    user_label_ = new QLabel(tr("User: Not logged in"), this);
+    statusBar()->addPermanentWidget(user_label_);
+    
+    // Create menu bar with File menu
+    QMenuBar* menu_bar = menuBar();
+    // User menu
+    user_menu_ = menu_bar->addMenu(tr("&User"));
+    QAction* profile_action = user_menu_->addAction(tr("&Profile"));
+    QAction* logout_action = user_menu_->addAction(tr("&Logout"));
+    connect(logout_action, &QAction::triggered, this, [this]() {
+        if (logout_handler_) {
+            logout_handler_();
+        }
+    });
+    
+    QMenu* file_menu = menu_bar->addMenu(tr("&File"));
+    
+    QAction* new_action = file_menu->addAction(tr("&New Project"), this, [this]() {
+        log_panel_->appendLog(tr("New Project"));
+        setDocumentLabel("Untitled");
+    });
+    new_action->setShortcut(QKeySequence::New);
+    
+    QAction* open_action = file_menu->addAction(tr("&Open Project..."), this, [this]() {
+        QString file_path = QFileDialog::getOpenFileName(this, tr("Open Project"), 
+                                                       "", tr("CAD Project (*.cad)"));
+        if (!file_path.isEmpty() && load_project_handler_) {
+            load_project_handler_(file_path.toStdString());
+        }
+    });
+    open_action->setShortcut(QKeySequence::Open);
+    
+    file_menu->addSeparator();
+    
+    QAction* save_action = file_menu->addAction(tr("&Save Project"), this, [this]() {
+        QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project"), 
+                                                        "", tr("CAD Project (*.cad)"));
+        if (!file_path.isEmpty() && save_project_handler_) {
+            save_project_handler_(file_path.toStdString());
+        }
+    });
+    save_action->setShortcut(QKeySequence::Save);
+    
+    QAction* save_as_action = file_menu->addAction(tr("Save Project &As..."), this, [this]() {
+        QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project As"), 
+                                                        "", tr("CAD Project (*.cad)"));
+        if (!file_path.isEmpty() && save_project_handler_) {
+            save_project_handler_(file_path.toStdString());
+        }
+    });
+    save_as_action->setShortcut(QKeySequence::SaveAs);
+    
+    file_menu->addSeparator();
+    
+    recent_projects_menu_ = file_menu->addMenu(tr("Recent Projects"));
+    // Recent projects will be populated dynamically
+    
+    file_menu->addSeparator();
+    QAction* exit_action = file_menu->addAction(tr("E&xit"), this, &QMainWindow::close);
+    exit_action->setShortcut(QKeySequence::Quit);
+    
+    // Setup auto-save timer
+    autosave_timer_ = new QTimer(this);
+    autosave_timer_->setInterval(300000);  // 5 minutes in milliseconds
+    connect(autosave_timer_, &QTimer::timeout, this, [this]() {
+        if (autosave_trigger_handler_) {
+            autosave_trigger_handler_();
+            if (autosave_status_handler_) {
+                autosave_status_handler_("Auto-saved");
+            }
+            if (autosave_status_label_) {
+                autosave_status_label_->setText(tr("Auto-save: Saved"));
+                QTimer::singleShot(3000, this, [this]() {
+                    if (autosave_status_label_) {
+                        autosave_status_label_->setText(tr("Auto-save: On"));
+                    }
+                });
+            }
+        }
+    });
+    autosave_timer_->start();
+    if (autosave_status_label_) {
+        autosave_status_label_->setText(tr("Auto-save: On"));
+    }
 
     connect(viewport_, &QtViewport::fpsUpdated, this, [this](double fps) {
         if (fps_status_label_) {
@@ -343,7 +483,7 @@ void QtMainWindow::setBackgroundLoadingHandler(const std::function<void(bool)>& 
 }
 
 void QtMainWindow::restoreUiState() {
-    QSettings settings("CADursor", "CADursor");
+    QSettings settings("HydraCAD", "HydraCAD");
     const QByteArray geometry = settings.value("mainWindow/geometry").toByteArray();
     if (!geometry.isEmpty()) {
         restoreGeometry(geometry);
@@ -355,7 +495,7 @@ void QtMainWindow::restoreUiState() {
 }
 
 void QtMainWindow::saveUiState() {
-    QSettings settings("CADursor", "CADursor");
+    QSettings settings("HydraCAD", "HydraCAD");
     settings.setValue("mainWindow/geometry", saveGeometry());
     settings.setValue("mainWindow/state", saveState());
 }
@@ -373,6 +513,76 @@ Viewport3D* QtMainWindow::viewport3D() {
         return viewport_->viewport3D();
     }
     return nullptr;
+}
+
+void QtMainWindow::setSaveProjectHandler(const std::function<void(const std::string&)>& handler) {
+    save_project_handler_ = handler;
+}
+
+void QtMainWindow::setLoadProjectHandler(const std::function<void(const std::string&)>& handler) {
+    load_project_handler_ = handler;
+}
+
+void QtMainWindow::setAutoSaveTriggerHandler(const std::function<void()>& handler) {
+    autosave_trigger_handler_ = handler;
+    if (autosave_timer_ && handler) {
+        autosave_timer_->start();
+        if (autosave_status_label_) {
+            autosave_status_label_->setText(tr("Auto-save: On"));
+        }
+    } else if (autosave_timer_) {
+        autosave_timer_->stop();
+        if (autosave_status_label_) {
+            autosave_status_label_->setText(tr("Auto-save: Off"));
+        }
+    }
+}
+
+void QtMainWindow::setAutoSaveStatusHandler(const std::function<void(const std::string&)>& handler) {
+    autosave_status_handler_ = handler;
+}
+
+void QtMainWindow::setCurrentUser(const std::string& username, const std::string& email) {
+    if (user_label_) {
+        QString user_text = tr("User: %1").arg(QString::fromStdString(username));
+        if (!email.empty()) {
+            user_text += tr(" (%1)").arg(QString::fromStdString(email));
+        }
+        user_label_->setText(user_text);
+    }
+}
+
+void QtMainWindow::setLogoutHandler(const std::function<void()>& handler) {
+    logout_handler_ = handler;
+}
+
+void QtMainWindow::updateRecentProjectsMenu(const std::vector<std::string>& projects) {
+    if (!recent_projects_menu_) {
+        return;
+    }
+    recent_projects_menu_->clear();
+    for (const auto& project : projects) {
+        QAction* action = recent_projects_menu_->addAction(QString::fromStdString(project));
+        connect(action, &QAction::triggered, this, [this, project]() {
+            if (load_project_handler_) {
+                load_project_handler_(project);
+            }
+        });
+    }
+    if (projects.empty()) {
+        QAction* no_projects = recent_projects_menu_->addAction(tr("No recent projects"));
+        no_projects->setEnabled(false);
+    }
+}
+
+void QtMainWindow::closeEvent(QCloseEvent* event) {
+    // Save layout before closing
+    static cad::ui::DockLayoutManager layoutManager;
+    layoutManager.saveDefaultLayout(this);
+    QSettings settings("HydraCAD", "HydraCAD");
+    layoutManager.saveToSettings(settings);
+    
+    QMainWindow::closeEvent(event);
 }
 
 }  // namespace ui

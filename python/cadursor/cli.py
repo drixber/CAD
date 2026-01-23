@@ -5,7 +5,7 @@ from cadursor.workflow import WorkflowEngine
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="CADursor agent workflow runner")
+    parser = argparse.ArgumentParser(description="Hydra CAD agent workflow runner")
     parser.add_argument("--goal", required=True, help="Goal to execute")
     parser.add_argument("--rules", default=".cursorcad", help="Rules file path")
     parser.add_argument("--state", default="workflow_state.md", help="Workflow state path")

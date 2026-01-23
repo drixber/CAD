@@ -1,0 +1,20 @@
+# Doxygen configuration template for Hydra CAD
+
+@CMAKE_PROJECT_NAME@ Doxygen Configuration
+PROJECT_NAME           = "@CMAKE_PROJECT_NAME@"
+PROJECT_NUMBER         = "@PROJECT_VERSION@"
+PROJECT_BRIEF          = "Professional CAD Application"
+OUTPUT_DIRECTORY       = ${CMAKE_BINARY_DIR}/docs/api
+INPUT                  = ${CMAKE_SOURCE_DIR}/src
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.cpp *.hpp
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+HTML_OUTPUT            = html
+USE_MDFILE_AS_MAINPAGE = ${CMAKE_SOURCE_DIR}/README.md
+HAVE_DOT               = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES

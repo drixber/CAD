@@ -14,7 +14,12 @@ enum class FileFormat {
     Dwg,
     Dxf,
     Sat,
-    Rfa
+    Rfa,
+    Obj,
+    Ply,
+    ThreeMf,
+    Gltf,
+    Glb
 };
 
 struct ImportRequest {
@@ -53,6 +58,14 @@ public:
     IoResult exportStl(const std::string& path, bool ascii_mode) const;
     IoResult exportDwg(const std::string& path) const;
     IoResult exportDxf(const std::string& path) const;
+    IoResult importObj(const std::string& path) const;
+    IoResult exportObj(const std::string& path) const;
+    IoResult importPly(const std::string& path) const;
+    IoResult exportPly(const std::string& path) const;
+    IoResult import3mf(const std::string& path) const;
+    IoResult export3mf(const std::string& path) const;
+    IoResult importGltf(const std::string& path) const;
+    IoResult exportGltf(const std::string& path, bool binary = false) const;
     
     // Batch operations
     IoResult importMultiple(const std::vector<ImportRequest>& requests) const;

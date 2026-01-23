@@ -1,4 +1,4 @@
-# CADursor Installation Guide
+# Hydra CAD Installation Guide
 
 ## Voraussetzungen
 
@@ -60,7 +60,7 @@ Die ausführbare Datei wird in `build/Release/cad_desktop.exe` erstellt.
 - Installation durchführen
 
 ### 2. Installer-Skript anpassen
-Öffnen Sie `installer/cadursor.nsi` und passen Sie die Pfade an:
+Öffnen Sie `installer/hydracad.nsi` und passen Sie die Pfade an:
 
 ```nsis
 ; Pfade anpassen
@@ -75,21 +75,21 @@ cd installer
 
 # NSIS ausführen (GUI)
 # Oder über Kommandozeile:
-"C:\Program Files (x86)\NSIS\makensis.exe" cadursor.nsi
+"C:\Program Files (x86)\NSIS\makensis.exe" hydracad.nsi
 ```
 
-Der Installer wird als `CADursorSetup.exe` im `installer`-Verzeichnis erstellt.
+Der Installer wird als `HydraCADSetup.exe` im `installer`-Verzeichnis erstellt.
 
 ## Installation
 
 ### Automatische Installation
-1. Doppelklicken Sie auf `CADursorSetup.exe`
+1. Doppelklicken Sie auf `HydraCADSetup.exe`
 2. Folgen Sie dem Installationsassistenten
 3. Wählen Sie die gewünschten Komponenten:
    - **Core Application** (immer erforderlich)
    - **Python Bindings** (optional)
    - **Example Files** (optional)
-4. Wählen Sie das Installationsverzeichnis (Standard: `C:\Program Files\CADursor`)
+4. Wählen Sie das Installationsverzeichnis (Standard: `C:\Program Files\Hydra CAD`)
 5. Klicken Sie auf "Install"
 
 ### Manuelle Installation
@@ -112,7 +112,7 @@ Die Anwendung prüft automatisch auf Updates:
 
 ### Deinstallation
 1. Öffnen Sie "Systemsteuerung" > "Programme und Funktionen"
-2. Wählen Sie "CADursor"
+2. Wählen Sie "Hydra CAD"
 3. Klicken Sie auf "Deinstallieren"
 4. Oder verwenden Sie `Uninstall.exe` im Installationsverzeichnis
 
@@ -154,7 +154,7 @@ cmake --build . --target cad_desktop
 
 ## Weitere Informationen
 
-- Build-Dokumentation: `docs/build_windows.md`
-- Entwickler-Dokumentation: Siehe `docs/` Verzeichnis
-- Support: Siehe Projekt-Repository
+- **Vollständige Dokumentation**: [PROJECT_FINAL.md](PROJECT_FINAL.md)
+- **Release Notes**: [FINAL_RELEASE_NOTES.md](FINAL_RELEASE_NOTES.md)
+- **Dokumentations-Übersicht**: [README.md](README.md)
 

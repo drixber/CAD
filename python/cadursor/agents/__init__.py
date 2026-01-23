@@ -1,1 +1,1 @@
-"""Agent modules for CADursor."""
+"""Agent modules for Hydra CAD."""

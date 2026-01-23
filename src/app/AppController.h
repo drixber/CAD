@@ -23,6 +23,12 @@
 #include "interop/ImportExportService.h"
 #include "interop/IoPipeline.h"
 #include "UpdateService.h"
+#include "ProjectFileService.h"
+#include "UserAuthService.h"
+#include "ai/AIService.h"
+#include <vector>
+#include <filesystem>
+#include <algorithm>
 
 namespace cad {
 namespace app {
@@ -32,10 +38,26 @@ public:
     AppController();
 
     void initialize();
+    bool initializeWithLogin();
     void setActiveSketch(const cad::core::Sketch& sketch);
     cad::ui::MainWindow& mainWindow();
     cad::core::Modeler& modeler();
     cad::core::FreeCADAdapter& freecad();
+    
+    // User management
+    bool isUserLoggedIn() const;
+    cad::app::User getCurrentUser() const;
+    void logout();
+    
+    // Project file operations
+    bool saveProject(const std::string& file_path);
+    bool loadProject(const std::string& file_path);
+    bool saveCheckpoint(const std::string& checkpoint_path);
+    bool loadCheckpoint(const std::string& checkpoint_path);
+    void triggerAutoSave();
+    std::vector<std::string> getRecentProjects() const;
+    bool hasUnsavedChanges() const { return has_unsaved_changes_; }
+    std::string getCurrentProjectPath() const { return current_project_path_; }
 
 private:
     std::string buildParameterSummary(const cad::core::Sketch& sketch) const;
@@ -64,9 +86,25 @@ private:
     cad::interop::ImportExportService io_service_;
     cad::interop::IoPipeline io_pipeline_;
     cad::app::UpdateService update_service_;
+    cad::app::UpdateInstaller update_installer_;
+    cad::app::ProjectFileService project_file_service_;
+    cad::app::UserAuthService user_auth_service_;
+    cad::app::ai::AIService ai_service_;
     cad::core::Sketch active_sketch_{"Sketch"};
     cad::core::Assembly active_assembly_;
-};
+    std::vector<std::string> recent_projects_;
+    bool has_unsaved_changes_{false};
+    std::string current_project_path_;
+    
+    void saveRecentProjectsToSettings() const;
+    void markProjectModified();
+    void setupAIService(cad::ui::QtMainWindow* qt_window);
+    void showAISettingsDialog(cad::ui::QtMainWindow* qt_window);
+    void setupAutoUpdate(cad::ui::QtMainWindow* qt_window);
+    void checkForUpdates(cad::ui::QtMainWindow* qt_window, bool auto_install = false);
+    void installUpdate(cad::ui::QtMainWindow* qt_window, 
+                      const cad::app::UpdateInfo& update_info, 
+                      bool create_backup = true);
 
 }  // namespace app
 }  // namespace cad

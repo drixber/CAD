@@ -1,8 +1,9 @@
-# CADursor - Automatischer Build und Installer-Erstellung (PowerShell)
+# Hydra CAD - Automatischer Build und Installer-Erstellung (PowerShell)
 # Führen Sie aus mit: .\build_installer.ps1
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "CADursor - Automatischer Build und Installer-Erstellung" -ForegroundColor Cyan
+Write-Host "Hydra CAD - Automatischer Build und Installer-Erstellung" -ForegroundColor Cyan
+Write-Host "Version 2.0.0 - Phase 20-22 Complete" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -233,7 +234,7 @@ if ($useMinGW -or $foundGenerator -eq "Ninja") {
 }
 
 Push-Location installer
-& $nsisPath cadursor.nsi
+& $nsisPath hydracad.nsi
 $installerSuccess = $LASTEXITCODE -eq 0
 Pop-Location
 
@@ -243,25 +244,25 @@ if (-not $installerSuccess) {
     exit 1
 }
 
-if (Test-Path "installer\CADursorSetup.exe") {
+if (Test-Path "installer\HydraCADSetup.exe") {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host "ERFOLG!" -ForegroundColor Green
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "Der Installer wurde erfolgreich erstellt:" -ForegroundColor Cyan
-    Write-Host "installer\CADursorSetup.exe" -ForegroundColor Yellow
+    Write-Host "installer\HydraCADSetup.exe" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Sie können diese Datei jetzt doppelklicken, um CADursor zu installieren!" -ForegroundColor Green
+    Write-Host "Sie können diese Datei jetzt doppelklicken, um Hydra CAD zu installieren!" -ForegroundColor Green
     Write-Host ""
     
     # Frage ob Installer geöffnet werden soll
     $open = Read-Host "Möchten Sie den Installer jetzt öffnen? (j/n)"
     if ($open -eq "j" -or $open -eq "J" -or $open -eq "y" -or $open -eq "Y") {
-        Start-Process "installer\CADursorSetup.exe"
+        Start-Process "installer\HydraCADSetup.exe"
     }
 } else {
-    Write-Host "WARNUNG: CADursorSetup.exe wurde nicht gefunden!" -ForegroundColor Yellow
+    Write-Host "WARNUNG: HydraCADSetup.exe wurde nicht gefunden!" -ForegroundColor Yellow
     Write-Host "Bitte prüfen Sie die NSIS-Ausgabe auf Fehler." -ForegroundColor Yellow
 }
 

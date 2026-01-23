@@ -367,10 +367,26 @@ void AssemblyManager::setThreadPoolSize(std::size_t thread_count) {
 }
 
 std::future<AssemblyLoadStats> AssemblyManager::loadAssemblyAsync(const std::string& path) {
-    return std::async(std::launch::async, [this, path]() {
+    if (!multi_threaded_loading_) {
+        std::promise<AssemblyLoadStats> promise;
+        auto future = promise.get_future();
+        promise.set_value(loadAssembly(path));
+        return future;
+    }
+    
+    auto future = std::async(std::launch::async, [this, path]() {
         std::lock_guard<std::mutex> lock(load_mutex_);
         return loadAssembly(path);
     });
+    
+    active_loads_.push_back(future);
+    
+    if (active_loads_.size() > thread_pool_size_) {
+        active_loads_.front().wait();
+        active_loads_.erase(active_loads_.begin());
+    }
+    
+    return future;
 }
 
 void AssemblyManager::waitForLoadCompletion() {
@@ -399,6 +415,13 @@ std::size_t AssemblyManager::estimateAssemblyMemory(const Assembly& assembly) co
     std::size_t base_size = 1024;  // Base assembly structure
     std::size_t component_size = 256;  // Per component overhead
     return base_size + (assembly.components().size() * component_size);
+}
+
+void AssemblyManager::reduceGeometryComplexity(const std::string& part_id, double reduction_factor) const {
+    // In real implementation, this would reduce mesh vertex/face count
+    // For now, we just mark it for LOD reduction
+    (void)part_id;
+    (void)reduction_factor;
 }
 
 double AssemblyManager::calculatePriorityScore(const CachedAssembly& cached) const {

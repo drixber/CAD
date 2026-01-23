@@ -29,7 +29,7 @@ bool TechDrawBridge::syncDrawing(const cad::drawings::DrawingDocument& document)
         return false;
     }
     
-    App::DocumentObject* page = doc->addObject("TechDraw::DrawPage", document.title().c_str());
+    App::DocumentObject* page = doc->addObject("TechDraw::DrawPage", document.title.c_str());
     if (!page) {
         return false;
     }
@@ -42,9 +42,9 @@ bool TechDrawBridge::syncDrawing(const cad::drawings::DrawingDocument& document)
     page->setPropertyByName("Height", &page_params["Height"]);
     page->setPropertyByName("Scale", &page_params["Scale"]);
     
-    for (const auto& sheet : document.sheets()) {
-        for (const auto& view : sheet.views()) {
-            App::DocumentObject* view_obj = doc->addObject("TechDraw::DrawViewPart", view.name().c_str());
+    for (const auto& sheet : document.sheets) {
+        for (const auto& view : sheet.views) {
+            App::DocumentObject* view_obj = doc->addObject("TechDraw::DrawViewPart", view.name.c_str());
             if (!view_obj) {
                 continue;
             }
@@ -100,7 +100,7 @@ bool TechDrawBridge::syncAssociativeLinks(const cad::drawings::DrawingDocument& 
     for (const auto& sheet : document.sheets()) {
         for (const auto& view : sheet.views()) {
             if (view.associative && !view.source_model_id.empty()) {
-                App::DocumentObject* view_obj = doc->getObject(view.name().c_str());
+                App::DocumentObject* view_obj = doc->getObject(view.name.c_str());
                 if (!view_obj) {
                     continue;
                 }
@@ -149,7 +149,7 @@ bool TechDrawBridge::syncDimensions(const cad::drawings::DrawingDocument& docume
             
             std::vector<App::DocumentObject*> view_dimensions;
             
-            for (const auto& dimension : document.dimensions()) {
+            for (const auto& dimension : document.dimensions) {
                 App::DocumentObject* dim_obj = doc->addObject("TechDraw::DrawViewDimension", dimension.label.c_str());
                 if (!dim_obj) {
                     continue;

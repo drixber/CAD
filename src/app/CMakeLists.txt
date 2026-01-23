@@ -3,6 +3,14 @@ add_library(cad_app
     AppController.cpp
     UpdateService.cpp
     UpdateChecker.cpp
+    HttpClient.cpp
+    ProjectFileService.cpp
+    UserAuthService.cpp
+    ai/AIService.cpp
+    ai/OpenAIProvider.cpp
+    ai/ContextManager.cpp
+    ai/PromptBuilder.cpp
+    UpdateInstaller.cpp
 )
 
 target_include_directories(cad_app

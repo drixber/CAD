@@ -101,6 +101,7 @@ private:
     LodMode adaptiveLodRecommendation() const;
     std::size_t reduceGeometryForLod(const Assembly& assembly, LodMode lod) const;
     void optimizeCache();
+    void reduceGeometryComplexity(const std::string& part_id, double reduction_factor) const;
     
     LodMode lod_mode_{LodMode::Full};
     double target_fps_{30.0};
