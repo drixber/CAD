@@ -27,8 +27,7 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.5.0'
-        modules: 'qtbase qttools'
-        cached: 'true'
+        arch: 'win64_msvc2022_64'
     
     - name: Configure CMake
       run: |
@@ -75,11 +74,27 @@ jobs:
         Write-Host "Code Coverage Analysis"
         Write-Host "Note: Full coverage analysis requires gcov/lcov setup"
     
-    - name: Create Installer
-      if: matrix.config == 'Release' && github.event_name == 'release'
+    - name: Install NSIS
+      if: matrix.config == 'Release'
       run: |
-        cd installer
-        "C:\Program Files (x86)\NSIS\makensis.exe" hydracad.nsi
+        choco install nsis -y
+      continue-on-error: true
+    
+    - name: Create Installer
+      if: matrix.config == 'Release'
+      run: |
+        $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+        if (-not (Test-Path $nsisPath)) {
+          $nsisPath = "C:\Program Files\NSIS\makensis.exe"
+        }
+        if (Test-Path $nsisPath) {
+          & $nsisPath installer\hydracad.nsi
+        } else {
+          Write-Host "NSIS not found, trying alternative method"
+          choco install nsis -y
+          Start-Sleep -Seconds 10
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer\hydracad.nsi
+        }
       continue-on-error: true
     
     - name: Upload Artifacts
