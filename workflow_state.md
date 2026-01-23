@@ -343,5 +343,9 @@ decisions_made:
 - Phase 14: AssemblyManager::loadAssembly() erweitert (verwendet jetzt importStepToAssembly() für STEP-Dateien, echte Datei-Ladung mit Progress-Tracking).
 - Phase 14: Transform.h erweitert (rx, ry, rz Felder für Euler-Winkel hinzugefügt).
 - Phase 14: Constraint Solver erweitert (doppelten Code entfernt, Assembly Mate Validierung: validateMates(), getDegreesOfFreedom(), isOverConstrained(), isUnderConstrained() implementiert).
+- Phase 15: STL Import/Export vollständig implementiert (importStlToPart, exportPartToStl, echte Mesh-Daten-Verarbeitung).
+- Phase 15: DWG/DXF Import/Export vollständig implementiert (DWG Header-Erkennung, DXF vollständige Sektionen).
+- Phase 15: Simulation Service FEA erweitert (realistische Mesh-Generierung, adaptive Node-Count-Berechnung).
+- Phase 15: Sheet Metal Service erweitert (erweiterte Flat Pattern Generation, Multi-Bend-Unterstützung).
 
 estimated_remaining_time: 40-60 weeks
