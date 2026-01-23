@@ -347,5 +347,9 @@ decisions_made:
 - Phase 15: DWG/DXF Import/Export vollständig implementiert (DWG Header-Erkennung, DXF vollständige Sektionen).
 - Phase 15: Simulation Service FEA erweitert (realistische Mesh-Generierung, adaptive Node-Count-Berechnung).
 - Phase 15: Sheet Metal Service erweitert (erweiterte Flat Pattern Generation, Multi-Bend-Unterstützung).
+- Phase 16: TechDrawBridge vollständig erweitert (createBaseView, createSectionView, createDetailView, addDimension, addBomTable, applySheetTemplate).
+- Phase 16: Sheet Templates implementiert (ISO, ANSI, JIS Template-Unterstützung).
+- Phase 16: Routing Service erweitert (findPath mit Obstacle-Avoidance, optimierte Pfadfindung).
+- Phase 16: Performance Optimierung (Frustum Culling, Occlusion Culling in RenderEngine3D).
 
 estimated_remaining_time: 40-60 weeks
