@@ -351,5 +351,7 @@ decisions_made:
 - Phase 16: Sheet Templates implementiert (ISO, ANSI, JIS Template-Unterstützung).
 - Phase 16: Routing Service erweitert (findPath mit Obstacle-Avoidance, optimierte Pfadfindung).
 - Phase 16: Performance Optimierung (Frustum Culling, Occlusion Culling in RenderEngine3D).
+- Phase 17: DirectEditService erweitert (Feature-History-Update, updateFeatureHistory, getFeatureHistory).
+- Phase 17: Alle Services vollständig implementiert (Pattern, Simplify, Visualization, MBD).
 
 estimated_remaining_time: 40-60 weeks
