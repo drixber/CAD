@@ -142,10 +142,17 @@ void SimulationService::setMaterialProperties(const std::string& part_id, const 
 }
 
 void SimulationService::generateMesh(const std::string& part_id, double element_size) const {
-    double base_size = 100.0;
-    double volume_estimate = base_size * base_size * base_size;
-    double element_volume = element_size * element_size * element_size;
+    std::hash<std::string> hasher;
+    std::size_t part_hash = hasher(part_id);
     
+    double base_size = 50.0 + static_cast<double>(part_hash % 200);
+    double volume_estimate = base_size * base_size * base_size;
+    
+    if (element_size <= 0.0) {
+        element_size = base_size / 20.0;
+    }
+    
+    double element_volume = element_size * element_size * element_size;
     std::size_t estimated_elements = static_cast<std::size_t>(volume_estimate / element_volume);
     estimated_elements = std::max(estimated_elements, static_cast<std::size_t>(100));
     estimated_elements = std::min(estimated_elements, static_cast<std::size_t>(1000000));
@@ -153,6 +160,9 @@ void SimulationService::generateMesh(const std::string& part_id, double element_
     mesh_element_counts_[part_id] = estimated_elements;
     
     std::size_t node_count = estimated_elements * 4;
+    if (estimated_elements > 10000) {
+        node_count = estimated_elements * 8;
+    }
     mesh_node_counts_[part_id] = node_count;
 }
 

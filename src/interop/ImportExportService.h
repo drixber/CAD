@@ -65,6 +65,8 @@ public:
     // Assembly import/export
     cad::core::Assembly importStepToAssembly(const std::string& path) const;
     IoResult exportAssemblyToStep(const std::string& path, const cad::core::Assembly& assembly, bool ascii_mode = true) const;
+    cad::core::Part importStlToPart(const std::string& path) const;
+    IoResult exportPartToStl(const std::string& path, const cad::core::Part& part, bool ascii_mode = true) const;
 };
 
 }  // namespace interop
