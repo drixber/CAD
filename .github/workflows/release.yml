@@ -27,8 +27,6 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.5.0'
-        host: 'windows'
-        target: 'desktop'
         arch: 'win64_msvc2022_64'
     
     - name: Install NSIS
@@ -41,7 +39,8 @@ jobs:
         cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
           -DCAD_USE_QT=ON `
           -DCAD_BUILD_TESTS=OFF `
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_PREFIX_PATH="$env:Qt6_DIR"
     
     - name: Build Application
       run: |

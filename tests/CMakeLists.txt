@@ -219,23 +219,26 @@ if(CAD_BUILD_TESTS)
     )
     
     if(CAD_USE_QT)
-        add_executable(viewport_integration_test
-            integration/ViewportIntegrationTest.cpp
-        )
-        
-        target_link_libraries(viewport_integration_test
-            PRIVATE
-                cad_ui
-                GTest::gtest
-                GTest::gtest_main
-                Qt6::Core
-                Qt6::Widgets
-        )
-        
-        target_include_directories(viewport_integration_test
-            PRIVATE
-                ${CMAKE_SOURCE_DIR}/src
-        )
+        find_package(Qt6 QUIET COMPONENTS Core Widgets)
+        if(Qt6_FOUND)
+            add_executable(viewport_integration_test
+                integration/ViewportIntegrationTest.cpp
+            )
+            
+            target_link_libraries(viewport_integration_test
+                PRIVATE
+                    cad_ui
+                    GTest::gtest
+                    GTest::gtest_main
+                    Qt6::Core
+                    Qt6::Widgets
+            )
+            
+            target_include_directories(viewport_integration_test
+                PRIVATE
+                    ${CMAKE_SOURCE_DIR}/src
+            )
+        endif()
     endif()
     
     add_executable(end_to_end_test
@@ -251,11 +254,14 @@ if(CAD_BUILD_TESTS)
     )
     
     if(CAD_USE_QT)
-        target_link_libraries(end_to_end_test
-            PRIVATE
-                Qt6::Core
-                Qt6::Widgets
-        )
+        find_package(Qt6 QUIET COMPONENTS Core Widgets)
+        if(Qt6_FOUND)
+            target_link_libraries(end_to_end_test
+                PRIVATE
+                    Qt6::Core
+                    Qt6::Widgets
+            )
+        endif()
     endif()
     
     target_include_directories(end_to_end_test

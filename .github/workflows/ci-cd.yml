@@ -27,8 +27,6 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.5.0'
-        host: 'windows'
-        target: 'desktop'
         arch: 'win64_msvc2022_64'
     
     - name: Configure CMake
@@ -36,7 +34,8 @@ jobs:
         cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
           -DCAD_USE_QT=ON `
           -DCAD_BUILD_TESTS=ON `
-          -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
+          -DCMAKE_PREFIX_PATH="$env:Qt6_DIR"
     
     - name: Build
       run: |
@@ -123,7 +122,7 @@ jobs:
     
     - name: Configure CMake
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON -DQt6_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt6
     
     - name: Build
       run: |
@@ -176,7 +175,8 @@ jobs:
         Qt6_DIR: /opt/homebrew/opt/qt@6/lib/cmake/Qt6
       run: |
         cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON \
-          -DQt6_DIR="$Qt6_DIR"
+          -DQt6_DIR="$Qt6_DIR" \
+          -DCMAKE_PREFIX_PATH="$Qt6_DIR"
     
     - name: Build
       run: |
