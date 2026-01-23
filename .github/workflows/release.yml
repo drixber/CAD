@@ -1,0 +1,151 @@
+name: Create Release with Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v2.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.26'
+    
+    - name: Setup Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.5.0'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2022_64'
+    
+    - name: Install NSIS
+      run: |
+        choco install nsis -y
+      continue-on-error: true
+    
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+          -DCAD_USE_QT=ON `
+          -DCAD_BUILD_TESTS=OFF `
+          -DCMAKE_BUILD_TYPE=Release
+    
+    - name: Build Application
+      run: |
+        cmake --build build --config Release --parallel
+    
+    - name: Extract Version
+      id: version
+      run: |
+        if ("${{ github.ref_type }}" -eq "tag") {
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+        } else {
+          $version = "${{ github.event.inputs.version }}" -replace '^v', ''
+        }
+        if ([string]::IsNullOrEmpty($version)) {
+          $version = "2.0.0"
+        }
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        Write-Host "Release version: $version"
+    
+    - name: Copy DLLs
+      run: |
+        $qtDir = "$env:Qt6_DIR"
+        if ([string]::IsNullOrEmpty($qtDir)) {
+          $qtDir = "$env:Qt6_DIR"
+        }
+        if (Test-Path "$qtDir\..\..\bin") {
+          $binPath = Resolve-Path "$qtDir\..\..\bin"
+          Copy-Item "$binPath\*.dll" -Destination "build\Release\" -Force -ErrorAction SilentlyContinue
+        }
+        Write-Host "DLLs copied (if available)"
+      continue-on-error: true
+    
+    - name: Create Installer
+      run: |
+        $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+        if (-not (Test-Path $nsisPath)) {
+          $nsisPath = "C:\Program Files\NSIS\makensis.exe"
+        }
+        if (-not (Test-Path $nsisPath)) {
+          Write-Host "Installing NSIS via Chocolatey..."
+          choco install nsis -y --no-progress
+          Start-Sleep -Seconds 15
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+        }
+        
+        if (Test-Path $nsisPath) {
+          Write-Host "Building installer with NSIS: $nsisPath"
+          $version = "${{ steps.version.outputs.version }}"
+          $projectRoot = $PWD
+          & $nsisPath /DINSTALLER_VERSION="$version" /DPROJECT_ROOT="$projectRoot" installer\hydracad.nsi
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS build failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+        } else {
+          Write-Error "NSIS not found after installation attempt"
+          exit 1
+        }
+    
+    - name: Verify Installer
+      run: |
+        Start-Sleep -Seconds 2
+        if (Test-Path "installer\HydraCADSetup.exe") {
+          $file = Get-Item "installer\HydraCADSetup.exe"
+          Write-Host "Installer created successfully: $($file.Length) bytes"
+        } else {
+          Write-Error "Installer not found after build!"
+          exit 1
+        }
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name != '' && github.ref_name || format('v{0}', github.event.inputs.version) }}
+        name: Hydra CAD ${{ steps.version.outputs.version }}
+        body: |
+          ## 🚀 Hydra CAD ${{ steps.version.outputs.version }}
+          
+          ### 📥 Installation
+          1. **Download**: Klicken Sie auf `HydraCADSetup.exe` unten
+          2. **Installation**: Doppelklick auf die Datei
+          3. **Fertig**: Installationsassistenten folgen - fertig!
+          
+          ### ✨ Features
+          - ✅ Vollständige CAD-Funktionalität
+          - ✅ Modern UI (Inventor-Style)
+          - ✅ AI-Integration
+          - ✅ Auto-Update System
+          - ✅ Projekt-Management
+          - ✅ User Authentication
+          
+          ### 💻 Systemanforderungen
+          - Windows 10/11 (64-bit)
+          - 4 GB RAM (8 GB empfohlen)
+          - 500 MB Festplattenspeicher
+          - OpenGL 3.3+ kompatible Grafikkarte
+          
+          ### 📚 Weitere Informationen
+          - [CHANGELOG.md](CHANGELOG.md) - Änderungsprotokoll
+          - [docs/INSTALLATION.md](docs/INSTALLATION.md) - Installations-Anleitung
+          - [docs/PROJECT_FINAL.md](docs/PROJECT_FINAL.md) - Vollständige Dokumentation
+        files: |
+          installer/HydraCADSetup.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

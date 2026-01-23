@@ -8,25 +8,30 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 
 ## 🚀 Schnellstart
 
-### Windows Installation
+### Windows Installation (Empfohlen)
 
-1. **Build & Installer erstellen**:
-   ```powershell
-   .\build_installer.ps1
-   ```
-   Oder direkt: `installer\HydraCADSetup.exe` (nach Build)
+**Einfachste Methode - Fertiger Installer:**
 
-2. **Installation**:
+1. **Download**: Gehen Sie zu [GitHub Releases](https://github.com/drixber/CAD/releases)
+2. **Download**: Laden Sie `HydraCADSetup.exe` herunter
+3. **Installation**: Doppelklick auf `HydraCADSetup.exe`
    - Installer führt Sie durch den Installationsprozess
    - Desktop-Shortcut wird automatisch erstellt
    - Startmenü-Eintrag wird erstellt
    - File-Association für `.cad` Dateien wird erstellt
-
-3. **Erste Schritte**:
+4. **Erste Schritte**:
    - Beim ersten Start: Account registrieren
    - Nach Login: App ist bereit für die Verwendung
    - Projekte speichern: File → Save Project (Strg+S)
    - Projekte öffnen: File → Open Project (Strg+O)
+
+### Eigenen Build erstellen (Optional)
+
+Falls Sie den Installer selbst erstellen möchten:
+```powershell
+.\build_installer.ps1
+```
+Der Installer wird dann in `installer\HydraCADSetup.exe` erstellt.
 
 ## Features
 

@@ -5,6 +5,11 @@
 !include "FileFunc.nsh"
 !include "LogicLib.nsh"
 
+; Project root (can be overridden via /DPROJECT_ROOT)
+!ifndef PROJECT_ROOT
+  !define PROJECT_ROOT ".."
+!endif
+
 ; Installer Information
 Name "Hydra CAD"
 OutFile "HydraCADSetup.exe"
@@ -56,7 +61,7 @@ Section "Core Application" SecCore
     SetOutPath "$INSTDIR"
     
     ; Main executable (with icon embedded if available)
-    File "..\build\Release\cad_desktop.exe"
+    File "${PROJECT_ROOT}\build\Release\cad_desktop.exe"
     
     ; Set application icon for shortcuts
     !ifdef APP_ICON
@@ -66,25 +71,25 @@ Section "Core Application" SecCore
     !endif
     
     ; DLLs and dependencies (Qt, etc.)
-    File /nonfatal "..\build\Release\*.dll"
+    File /nonfatal "${PROJECT_ROOT}\build\Release\*.dll"
     
     ; Create data directory for user files
     CreateDirectory "$INSTDIR\data"
     
     ; Configuration files (if exist)
     SetOutPath "$INSTDIR\config"
-    File /nonfatal "..\config\*.json"
-    File /nonfatal "..\config\*.xml"
+    File /nonfatal "${PROJECT_ROOT}\config\*.json"
+    File /nonfatal "${PROJECT_ROOT}\config\*.xml"
     
     ; Resources (if exist)
     SetOutPath "$INSTDIR\resources"
-    File /r /nonfatal "..\resources\*.*"
+    File /r /nonfatal "${PROJECT_ROOT}\resources\*.*"
     
     ; Documentation (essential docs only)
     SetOutPath "$INSTDIR\docs"
-    File /nonfatal "..\docs\PROJECT_FINAL.md"
-    File /nonfatal "..\docs\INSTALLATION.md"
-    File /nonfatal "..\README.md"
+    File /nonfatal "${PROJECT_ROOT}\docs\PROJECT_FINAL.md"
+    File /nonfatal "${PROJECT_ROOT}\docs\INSTALLATION.md"
+    File /nonfatal "${PROJECT_ROOT}\README.md"
     
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -125,7 +130,7 @@ SectionEnd
 
 Section "Python Bindings" SecPython
     SetOutPath "$INSTDIR\python"
-    File /r /nonfatal "..\build\Release\python\*.*"
+    File /r /nonfatal "${PROJECT_ROOT}\build\Release\python\*.*"
     
     ; Python package installation
     ExecWait 'python -m pip install "$INSTDIR\python\cadursor" --quiet'
@@ -133,7 +138,7 @@ SectionEnd
 
 Section "Example Files" SecExamples
     SetOutPath "$INSTDIR\examples"
-    File /r /nonfatal "..\examples\*.*"
+    File /r /nonfatal "${PROJECT_ROOT}\examples\*.*"
 SectionEnd
 
 ; Uninstaller
@@ -150,18 +155,18 @@ Section "Uninstall"
     RMDir "$INSTDIR"
     
     ; Remove shortcuts
-    Delete "$SMPROGRAMS\CADursor\CADursor.lnk"
-    Delete "$SMPROGRAMS\CADursor\Uninstall.lnk"
-    RMDir "$SMPROGRAMS\CADursor"
-    Delete "$DESKTOP\CADursor.lnk"
+    Delete "$SMPROGRAMS\Hydra CAD\Hydra CAD.lnk"
+    Delete "$SMPROGRAMS\Hydra CAD\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\Hydra CAD"
+    Delete "$DESKTOP\Hydra CAD.lnk"
     
     ; Remove registry entries
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CADursor"
-    DeleteRegKey HKCU "Software\CADursor"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HydraCAD"
+    DeleteRegKey HKCU "Software\HydraCAD"
     
     ; Remove file associations
     DeleteRegKey HKCR ".cad"
-    DeleteRegKey HKCR "CADursor.Document"
+    DeleteRegKey HKCR "HydraCAD.Document"
 SectionEnd
 
 ; Section Descriptions
