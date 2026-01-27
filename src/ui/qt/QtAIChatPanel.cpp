@@ -4,7 +4,7 @@
 #include <QTextCharFormat>
 #include <QTextCursor>
 #include <QDateTime>
-#include <QRegExp>
+#include <QRegularExpression>
 
 namespace cad {
 namespace ui {
@@ -249,10 +249,10 @@ QString QtAIChatPanel::formatMarkdown(const QString& text) const {
     QString result = text;
     
     // Bold: **text**
-    result.replace(QRegExp("\\*\\*(.+?)\\*\\*"), "<b>\\1</b>");
+    result.replace(QRegularExpression("\\*\\*(.+?)\\*\\*"), "<b>\\1</b>");
     
     // Code: `code`
-    result.replace(QRegExp("`(.+?)`"), "<code style='background: #F5F5F5; padding: 2px 4px; border-radius: 3px;'>\\1</code>");
+    result.replace(QRegularExpression("`(.+?)`"), "<code style='background: #F5F5F5; padding: 2px 4px; border-radius: 3px;'>\\1</code>");
     
     // Line breaks
     result.replace("\n", "<br>");

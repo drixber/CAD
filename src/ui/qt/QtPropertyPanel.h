@@ -92,11 +92,13 @@ private:
     QTableWidget* text_styles_table_{nullptr};
     QTableWidget* dimension_styles_table_{nullptr};
     QTableWidget* hatch_styles_table_{nullptr};
-    QWidget* style_preview_widget_{nullptr};
+    QLabel* style_preview_widget_{nullptr};
     QPushButton* edit_style_button_{nullptr};
     QLineEdit* bom_filter_{nullptr};
     QComboBox* bom_sort_column_{nullptr};
     QComboBox* bom_filter_column_{nullptr};
+    QComboBox* bom_filter_operator_{nullptr};
+    QLineEdit* bom_filter_value_{nullptr};
     QPushButton* bom_sort_ascending_{nullptr};
     QPushButton* bom_sort_descending_{nullptr};
     QPushButton* bom_export_button_{nullptr};
@@ -121,6 +123,7 @@ private:
     void updateStylePreview();
     void setupStyleTableEditing(QTableWidget* table);
     void filterBomTable();
+    void applyBomFilter();
     void sortBomTable();
     void exportBomTable();
     void applyMultiColumnSort();

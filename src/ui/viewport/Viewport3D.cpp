@@ -283,18 +283,18 @@ void Viewport3D::fitToView() {
         double min_z = std::numeric_limits<double>::max();
         double max_z = std::numeric_limits<double>::lowest();
     
-    for (const auto& geom_id : rendered_geometry_ids_) {
-        auto it = geometry_data_.find(geom_id);
-        if (it != geometry_data_.end()) {
-            const GeometryData& data = it->second;
-            min_x = std::min(min_x, data.params[4] - 1.0);
-            max_x = std::max(max_x, data.params[4] + 1.0);
-            min_y = std::min(min_y, data.params[5] - 1.0);
-            max_y = std::max(max_y, data.params[5] + 1.0);
-            min_z = std::min(min_z, data.params[6] - 1.0);
-            max_z = std::max(max_z, data.params[6] + 1.0);
+        for (const auto& geom_id : rendered_geometry_ids_) {
+            auto it = geometry_data_.find(geom_id);
+            if (it != geometry_data_.end()) {
+                const GeometryData& data = it->second;
+                min_x = std::min(min_x, data.params[4] - 1.0);
+                max_x = std::max(max_x, data.params[4] + 1.0);
+                min_y = std::min(min_y, data.params[5] - 1.0);
+                max_y = std::max(max_y, data.params[5] + 1.0);
+                min_z = std::min(min_z, data.params[6] - 1.0);
+                max_z = std::max(max_z, data.params[6] + 1.0);
+            }
         }
-    }
     
     double center_x = (min_x + max_x) * 0.5;
     double center_y = (min_y + max_y) * 0.5;
@@ -310,8 +310,9 @@ void Viewport3D::fitToView() {
     camera_.position_y = center_y;
     camera_.position_z = center_z + distance;
     
-    setCamera(camera_);
-    updateView();
+        setCamera(camera_);
+        updateView();
+    }
 }
 
 void Viewport3D::setSettings(const ViewportSettings& settings) {

@@ -104,6 +104,11 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     bom_filter_column_ = new QComboBox(drawing_panel);
     bom_filter_column_->addItems({tr("All Columns"), tr("Part Name"), tr("Quantity"), tr("Part Number")});
     bom_controls->addWidget(bom_filter_column_);
+
+    bom_filter_operator_ = new QComboBox(drawing_panel);
+    bom_filter_operator_->addItems({tr("Contains"), tr("Equals")});
+    bom_controls->addWidget(bom_filter_operator_);
+    bom_filter_value_ = bom_filter_;
     
     bom_clear_filters_ = new QPushButton(tr("Clear"), drawing_panel);
     bom_controls->addWidget(bom_clear_filters_);
@@ -327,8 +332,9 @@ QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
     QLabel* preview_label = new QLabel(tr("Style Preview:"), manage_panel);
     manage_layout->addWidget(preview_label);
     
-    style_preview_widget_ = new QWidget(manage_panel);
+    style_preview_widget_ = new QLabel(manage_panel);
     style_preview_widget_->setMinimumHeight(100);
+    style_preview_widget_->setAlignment(Qt::AlignCenter);
     style_preview_widget_->setStyleSheet("background-color: white; border: 1px solid gray;");
     manage_layout->addWidget(style_preview_widget_);
     
@@ -454,6 +460,13 @@ void QtPropertyPanel::filterBomTable() {
     
     bom_table_->resizeColumnsToContents();
     applyMultiColumnSort();
+}
+
+void QtPropertyPanel::applyBomFilter() {
+    if (bom_filter_ && bom_filter_value_ && bom_filter_value_ != bom_filter_) {
+        bom_filter_->setText(bom_filter_value_->text());
+    }
+    filterBomTable();
 }
 
 bool QtPropertyPanel::matchesFilter(const BomItem& item, const QString& filter_text, int filter_column) const {

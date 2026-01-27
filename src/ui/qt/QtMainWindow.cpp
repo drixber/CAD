@@ -201,9 +201,6 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     logDock->setFeatures(QDockWidget::DockWidgetMovable | 
                         QDockWidget::DockWidgetFloatable | 
                         QDockWidget::DockWidgetClosable);
-    perfDock->setFeatures(QDockWidget::DockWidgetMovable | 
-                         QDockWidget::DockWidgetFloatable | 
-                         QDockWidget::DockWidgetClosable);
     
     // Initialize layout manager and restore saved layout
     static cad::ui::DockLayoutManager layoutManager;
@@ -222,6 +219,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     perfDock->setWidget(perf_panel_);
     addDockWidget(Qt::BottomDockWidgetArea, perfDock);
     perfDock->setAllowedAreas(Qt::BottomDockWidgetArea);
+    perfDock->setFeatures(QDockWidget::DockWidgetMovable | 
+                          QDockWidget::DockWidgetFloatable | 
+                          QDockWidget::DockWidgetClosable);
     tabifyDockWidget(logDock, perfDock);
 
     statusBar()->addPermanentWidget(command_line_);
@@ -264,7 +264,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     
     // Layout menu
     QMenu* layout_menu = menu_bar->addMenu(tr("&Layout"));
-    DockLayoutManager* layout_manager = new DockLayoutManager(this);
+    DockLayoutManager* layout_manager = new DockLayoutManager();
     
     QAction* save_layout_action = layout_menu->addAction(tr("&Save Current Layout..."), this, [this, layout_manager]() {
         bool ok;

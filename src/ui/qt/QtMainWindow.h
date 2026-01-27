@@ -57,6 +57,8 @@ public:
     QtCommandLine* commandLine();
     Viewport3D* viewport3D();
     QtAIChatPanel* aiChatPanel() { return ai_chat_panel_; }
+    void setCurrentUser(const std::string& username, const std::string& email);
+    void setLogoutHandler(const std::function<void()>& handler);
     
     // Project file operations
     void setSaveProjectHandler(const std::function<void(const std::string&)>& handler);
@@ -74,6 +76,7 @@ private:
     QtViewport* viewport_{nullptr};
     QtLogPanel* log_panel_{nullptr};
     QtPerformancePanel* perf_panel_{nullptr};
+    QtAIChatPanel* ai_chat_panel_{nullptr};
     QLabel* mode_label_{nullptr};
     QLabel* document_label_{nullptr};
     QLabel* fps_status_label_{nullptr};
@@ -94,6 +97,9 @@ private:
 
     void restoreUiState();
     void saveUiState();
+
+protected:
+    void closeEvent(QCloseEvent* event) override;
 };
 
 }  // namespace ui

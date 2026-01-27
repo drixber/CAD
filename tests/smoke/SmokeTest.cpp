@@ -48,8 +48,8 @@ int main() {
         return 1;
     }
     manager.enqueueLoad("AssemblyA");
-    cad::core::AssemblyLoadJob job = manager.pollLoadProgress();
-    if (job.path.empty()) {
+    cad::core::AssemblyLoadJob load_job = manager.pollLoadProgress();
+    if (load_job.path.empty()) {
         return 1;
     }
     if (manager.recommendedLod() == cad::core::LodMode::Full) {

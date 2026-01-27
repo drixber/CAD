@@ -21,6 +21,8 @@
 namespace cad {
 namespace ui {
 
+class QWidget;
+
 class SoQtViewerIntegration {
 public:
     SoQtViewerIntegration();
@@ -101,11 +103,6 @@ private:
     SoSeparator* axes_node_{nullptr};
     bool grid_visible_{false};
     bool axes_visible_{false};
-            
-            SoSeparator* grid_node_{nullptr};
-            SoSeparator* axes_node_{nullptr};
-            bool grid_visible_{false};
-            bool axes_visible_{false};
 #endif
 #endif
 };

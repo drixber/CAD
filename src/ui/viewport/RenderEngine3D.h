@@ -65,7 +65,7 @@ public:
 private:
     bool isInFrustum(const SceneNode& node) const;
     bool isOccluded(const SceneNode& node, const std::vector<SceneNode>& other_nodes) const;
-    void reduceGeometryForLod(const std::string& geometry_id, double lod_factor) const;
+    void reduceGeometryForLod(const std::string& geometry_id, double lod_factor);
     bool initialized_{false};
     void* render_context_{nullptr};
     std::map<std::string, SceneNode> scene_nodes_;
@@ -81,9 +81,6 @@ private:
     bool occlusion_culling_enabled_{false};
     
     std::unique_ptr<Coin3DIntegration> coin3d_integration_;
-    
-    bool isInFrustum(const SceneNode& node) const;
-    bool isOccluded(const SceneNode& node, const std::vector<SceneNode>& other_nodes) const;
     
     void initializeOpenGL();
     void renderGeometry(const SceneNode& node);
