@@ -34,8 +34,8 @@ bool AppController::initializeWithLogin() {
             login_dialog.setRememberedUsername(remembered_username);
             
             bool login_success = false;
-            connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested,
-                   [this, &login_success](const QString& username, const QString& password, bool remember) {
+            QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested, &login_dialog,
+                   [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
                 cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString());
                 if (result.success) {
                     login_success = true;
@@ -43,20 +43,20 @@ bool AppController::initializeWithLogin() {
                         user_auth_service_.saveSession(username.toStdString(), true);
                     }
                 } else {
-                    QMessageBox::warning(&login_dialog, tr("Login Failed"), 
+                    QMessageBox::warning(&login_dialog, QObject::tr("Login Failed"), 
                                        QString::fromStdString(result.error_message));
                 }
             });
             
-            connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, [this, &login_dialog]() {
+            QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, &login_dialog, [this, &login_dialog]() {
                 login_dialog.hide();
                 cad::ui::QtRegisterDialog register_dialog;
                 
-                connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested,
+                QObject::connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested, &register_dialog,
                        [this, &register_dialog](const QString& username, const QString& email,
                                                const QString& password, const QString& confirm) {
                     if (password != confirm) {
-                        register_dialog.setError(tr("Passwords do not match"));
+                        register_dialog.setError(QObject::tr("Passwords do not match"));
                         return;
                     }
                     
@@ -64,8 +64,8 @@ bool AppController::initializeWithLogin() {
                         username.toStdString(), email.toStdString(), password.toStdString());
                     
                     if (result.success) {
-                        QMessageBox::information(&register_dialog, tr("Registration Successful"),
-                                               tr("Account created successfully. You can now login."));
+                        QMessageBox::information(&register_dialog, QObject::tr("Registration Successful"),
+                                               QObject::tr("Account created successfully. You can now login."));
                         register_dialog.accept();
                     } else {
                         register_dialog.setError(QString::fromStdString(result.error_message));
@@ -101,7 +101,7 @@ bool AppController::requireLogin() {
     cad::ui::QtLoginDialog login_dialog;
     bool login_success = false;
     
-    connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested,
+    QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested, &login_dialog,
            [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
         cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString());
         if (result.success) {
@@ -115,15 +115,15 @@ bool AppController::requireLogin() {
         }
     });
     
-    connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, [this, &login_dialog]() {
+    QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, &login_dialog, [this, &login_dialog]() {
         login_dialog.hide();
         cad::ui::QtRegisterDialog register_dialog;
         
-        connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested,
+        QObject::connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested, &register_dialog,
                [this, &register_dialog](const QString& username, const QString& email,
                                        const QString& password, const QString& confirm) {
             if (password != confirm) {
-                register_dialog.setError(tr("Passwords do not match"));
+                register_dialog.setError(QObject::tr("Passwords do not match"));
                 return;
             }
             
@@ -131,8 +131,8 @@ bool AppController::requireLogin() {
                 username.toStdString(), email.toStdString(), password.toStdString());
             
             if (result.success) {
-                QMessageBox::information(&register_dialog, tr("Registration Successful"),
-                                       tr("Account created successfully. You can now login."));
+                QMessageBox::information(&register_dialog, QObject::tr("Registration Successful"),
+                                       QObject::tr("Account created successfully. You can now login."));
                 register_dialog.accept();
             } else {
                 register_dialog.setError(QString::fromStdString(result.error_message));
@@ -1048,10 +1048,6 @@ std::vector<std::string> AppController::getRecentProjects() const {
     return recent_projects_;
 }
 
-std::string AppController::getCurrentProjectPath() const {
-    return current_project_path_;
-}
-
 void AppController::saveRecentProjectsToSettings() const {
     #ifdef CAD_USE_QT
     QSettings settings("HydraCAD", "HydraCAD");
@@ -1125,7 +1121,7 @@ void AppController::setupAIService(cad::ui::QtMainWindow* qt_window) {
     if (ai_chat) {
         ai_chat->setModelName(model);
         
-        connect(ai_chat, &cad::ui::QtAIChatPanel::messageSent, this, [this, ai_chat](const QString& message) {
+        QObject::connect(ai_chat, &cad::ui::QtAIChatPanel::messageSent, ai_chat, [this, ai_chat](const QString& message) {
             ai_chat->setThinking(true);
             
             // Get context
@@ -1144,14 +1140,14 @@ void AppController::setupAIService(cad::ui::QtMainWindow* qt_window) {
                 if (response.success) {
                     ai_chat->addAIMessage(QString::fromStdString(response.content));
                 } else {
-                    ai_chat->addAIMessage(tr("Error: %1").arg(QString::fromStdString(response.error_message)));
+                    ai_chat->addAIMessage(QObject::tr("Error: %1").arg(QString::fromStdString(response.error_message)));
                 }
             }
             
             ai_chat->setThinking(false);
         });
         
-        connect(ai_chat, &cad::ui::QtAIChatPanel::settingsRequested, this, [this, qt_window]() {
+        QObject::connect(ai_chat, &cad::ui::QtAIChatPanel::settingsRequested, ai_chat, [this, qt_window]() {
             showAISettingsDialog(qt_window);
         });
     }
@@ -1176,7 +1172,7 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
     dialog.setStreamingEnabled(settings.value("ai/streaming", true).toBool());
     
     // Test connection
-    connect(&dialog, &cad::ui::QtAISettingsDialog::testConnectionRequested, this, [&dialog, this](const QString& provider) {
+    QObject::connect(&dialog, &cad::ui::QtAISettingsDialog::testConnectionRequested, &dialog, [&dialog, this](const QString& provider) {
         if (provider == "openai") {
             QString key = dialog.getOpenAIKey();
             if (!key.isEmpty()) {
@@ -1185,7 +1181,7 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
                     success = ai_service_.getActiveProvider()->testConnection();
                 }
                 dialog.setTestResult(
-                    success ? tr("Connection successful!") : tr("Connection failed. Please check your API key."),
+                    success ? QObject::tr("Connection successful!") : QObject::tr("Connection failed. Please check your API key."),
                     success
                 );
             }
@@ -1197,7 +1193,7 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
                     success = ai_service_.getActiveProvider()->testConnection();
                 }
                 dialog.setTestResult(
-                    success ? tr("Connection successful!") : tr("Connection failed. Please check your API key."),
+                    success ? QObject::tr("Connection successful!") : QObject::tr("Connection failed. Please check your API key."),
                     success
                 );
             }
@@ -1205,7 +1201,7 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
     });
     
     // Save settings
-    connect(&dialog, &cad::ui::QtAISettingsDialog::saveRequested, this, [&dialog, this, qt_window]() {
+    QObject::connect(&dialog, &cad::ui::QtAISettingsDialog::saveRequested, &dialog, [&dialog, this, qt_window]() {
         QSettings settings("HydraCAD", "HydraCAD");
         settings.setValue("ai/openai_key", dialog.getOpenAIKey());
         settings.setValue("ai/anthropic_key", dialog.getAnthropicKey());
@@ -1259,14 +1255,14 @@ void AppController::setupAutoUpdate(cad::ui::QtMainWindow* qt_window) {
     
     // Check for updates on startup (if enabled)
     if (auto_update_enabled) {
-        QTimer::singleShot(5000, this, [this, qt_window, auto_install]() {
+        QTimer::singleShot(5000, qt_window, [this, qt_window, auto_install]() {
             checkForUpdates(qt_window, auto_install);
         });
     }
     
     // Periodic check timer
-    QTimer* update_check_timer = new QTimer(this);
-    connect(update_check_timer, &QTimer::timeout, this, [this, qt_window, auto_install]() {
+    QTimer* update_check_timer = new QTimer(qt_window);
+    QObject::connect(update_check_timer, &QTimer::timeout, update_check_timer, [this, qt_window, auto_install]() {
         checkForUpdates(qt_window, auto_install);
     });
     
@@ -1296,7 +1292,7 @@ void AppController::checkForUpdates(cad::ui::QtMainWindow* qt_window, bool auto_
                         update_info.mandatory);
     
     // Connect install handler
-    connect(&dialog, &cad::ui::QtUpdateDialog::installRequested, this, [this, &dialog, update_info, qt_window]() {
+    QObject::connect(&dialog, &cad::ui::QtUpdateDialog::installRequested, &dialog, [this, &dialog, update_info, qt_window]() {
         installUpdate(qt_window, update_info, dialog.getCreateBackup());
     });
     
@@ -1321,7 +1317,7 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
     progress_dialog.setUpdateInfo(QString::fromStdString(update_info.version),
                                  QString::fromStdString(update_info.changelog),
                                  update_info.mandatory);
-    progress_dialog.setProgress(0, tr("Downloading update..."));
+    progress_dialog.setProgress(0, QObject::tr("Downloading update..."));
     progress_dialog.show();
     
     // Download update
@@ -1334,7 +1330,7 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
         });
     
     if (!download_success) {
-        progress_dialog.setCompleted(false, tr("Download failed"));
+        progress_dialog.setCompleted(false, QObject::tr("Download failed"));
         return;
     }
     
@@ -1342,7 +1338,7 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
     download_path = "update_" + update_info.version + ".zip";
     
     // Install update in-place
-    progress_dialog.setProgress(50, tr("Installing update..."));
+    progress_dialog.setProgress(50, QObject::tr("Installing update..."));
     QApplication::processEvents();
     
     bool install_success = update_service_.installInPlaceUpdate(download_path,
@@ -1362,12 +1358,12 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
         });
     
     if (install_success) {
-        progress_dialog.setCompleted(true, tr("Update installed successfully!"));
+        progress_dialog.setCompleted(true, QObject::tr("Update installed successfully!"));
         progress_dialog.exec(); // Show completion message
         
         // Restart application
-        QMessageBox::information(qt_window, tr("Update Complete"),
-                                tr("Update installed successfully. The application will restart."));
+        QMessageBox::information(qt_window, QObject::tr("Update Complete"),
+                                QObject::tr("Update installed successfully. The application will restart."));
         
         // Restart application
         #ifdef _WIN32
@@ -1387,7 +1383,7 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
         QApplication::quit();
         #endif
     } else {
-        progress_dialog.setCompleted(false, tr("Installation failed"));
+        progress_dialog.setCompleted(false, QObject::tr("Installation failed"));
     }
     #endif
 }

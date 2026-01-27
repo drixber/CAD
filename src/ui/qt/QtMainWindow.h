@@ -65,6 +65,7 @@ public:
     void setLoadProjectHandler(const std::function<void(const std::string&)>& handler);
     void setAutoSaveTriggerHandler(const std::function<void()>& handler);
     void setAutoSaveStatusHandler(const std::function<void(const std::string&)>& handler);
+    void updateRecentProjectsMenu(const std::vector<std::string>& projects);
 
 private:
     QtRibbon* ribbon_{nullptr};
@@ -93,8 +94,6 @@ private:
     std::function<void()> autosave_trigger_handler_;
     std::function<void(const std::string&)> autosave_status_handler_;
     
-    void updateRecentProjectsMenu(const std::vector<std::string>& projects);
-
     void restoreUiState();
     void saveUiState();
 
