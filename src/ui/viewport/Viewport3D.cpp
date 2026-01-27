@@ -415,7 +415,7 @@ void Viewport3D::resizeEvent(QResizeEvent* event) {
     
     if (useSoQtViewer()) {
         if (soqt_viewer_) {
-            QWidget* viewer_widget = soqt_viewer_->getWidget();
+            ::QWidget* viewer_widget = static_cast<::QWidget*>(soqt_viewer_->getWidget());
             if (viewer_widget) {
                 viewer_widget->setGeometry(0, 0, width(), height());
             }
