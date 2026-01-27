@@ -1,38 +1,24 @@
-# Hydra CAD 2.0.0 - Professional CAD Application
+# Hydra CAD - Professional CAD Application
 
 ## Overview
 
 Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with C++ and Qt, featuring advanced 3D modeling, simulation, and drawing generation capabilities.
 
-**Status**: ✅ **Produktionsbereit** - Alle Kern-Features implementiert
+**Status**: ✅ **Release-Builds via GitHub Tags**
 
 ## 🚀 Schnellstart
 
-### Installation (Empfohlen - Fertiger Installer)
+### Installation (Empfohlen - Windows Release ZIP)
 
-**Alle Plattformen - Einfachste Methode:**
+**Windows (Release ZIP):**
 
 1. **Download**: Gehen Sie zu [GitHub Releases](https://github.com/drixber/CAD/releases)
-2. **Download**: Laden Sie den Installer für Ihre Plattform herunter:
-   - **Windows**: `HydraCADSetup.exe`
-   - **Linux**: `HydraCAD-*-x86_64.AppImage`
-   - **macOS**: `HydraCAD-*-macOS.dmg`
+2. **Asset**: Laden Sie `app-windows.zip` herunter
+3. **Entpacken**: ZIP in einen Ordner entpacken
+4. **Starten**: `CAD.exe` ausführen
 
-**Windows:**
-- Doppelklick auf `HydraCADSetup.exe`
-- Installationsassistenten folgen
-- Desktop-Shortcut wird automatisch erstellt
-
-**Linux:**
-```bash
-chmod +x HydraCAD-*-x86_64.AppImage
-./HydraCAD-*-x86_64.AppImage
-```
-
-**macOS:**
-- DMG öffnen
-- App in Applications-Ordner ziehen
-- App aus Applications starten
+**Linux/macOS:**
+- Aktuell bitte aus dem Quellcode bauen (siehe [docs/INSTALLATION.md](docs/INSTALLATION.md)).
 
 **Erste Schritte:**
 - Beim ersten Start: Account registrieren
@@ -64,8 +50,8 @@ Siehe [docs/INSTALLATION.md](docs/INSTALLATION.md) für detaillierte Anleitung.
 - ✅ **Drawing Generation**: TechDraw Integration mit ISO/ANSI/JIS Templates
 - ✅ **Project Management**: Save/Load, Checkpoints, Auto-Save
 - ✅ **User Authentication**: Login, Registration, Session Management
-- ✅ **AI Integration**: OpenAI/Anthropic Support für CAD-Assistenz
-- ✅ **Auto-Updates**: In-Place Updates ohne Neuinstallation
+- ✅ **AI Integration**: OpenAI/Grok Support für CAD-Assistenz (Anthropic geplant)
+- ✅ **Update-Check**: Prüft GitHub Releases und öffnet bei Update die Release-Seite
 
 ## Installation & Build
 
@@ -74,7 +60,7 @@ Siehe [docs/INSTALLATION.md](docs/INSTALLATION.md) für detaillierte Anleitung.
 - **Visual Studio 2019+** oder **MinGW-w64**
 - **CMake 3.26+**
 - **Qt 5.15+** oder **Qt 6.x** (für UI)
-- **NSIS 3.0+** (für Installer-Erstellung)
+- **NSIS 3.0+** (optional, nur falls Installer gebaut werden)
 
 ### Automatischer Build & Installer (Empfohlen)
 
@@ -104,26 +90,16 @@ cd installer
 
 ### Installation
 
-1. Doppelklick auf `HydraCADSetup.exe`
-2. Installationspfad wählen (Standard: `C:\Program Files\Hydra CAD`)
-3. Komponenten auswählen:
-   - **Core Application** (immer installiert)
-   - **Python Bindings** (optional)
-   - **Example Files** (optional)
-4. Installation durchführen
-
-**Nach der Installation**:
-- Desktop-Shortcut: `Hydra CAD.lnk`
-- Startmenü: `Hydra CAD → Hydra CAD`
-- File-Association: `.cad` Dateien öffnen mit Hydra CAD
-- Uninstaller: `C:\Program Files\Hydra CAD\Uninstall.exe`
+Windows Release-ZIP ist lauffähig ohne Installer:
+1. `app-windows.zip` entpacken
+2. `CAD.exe` starten
 
 ## 📚 Dokumentation
 
 Detaillierte Dokumentation finden Sie im `docs/` Verzeichnis:
 - **[PROJECT_FINAL.md](docs/PROJECT_FINAL.md)** - Vollständige Projekt-Dokumentation
 - **[INSTALLATION.md](docs/INSTALLATION.md)** - Installations-Anleitung
-- **[FINAL_RELEASE_NOTES.md](docs/FINAL_RELEASE_NOTES.md)** - Release Notes 2.0.0
+- **[FINAL_RELEASE_NOTES.md](docs/FINAL_RELEASE_NOTES.md)** - Release Notes (falls vorhanden)
 
 Siehe auch: [docs/README.md](docs/README.md) für eine vollständige Übersicht.
 
@@ -163,6 +139,5 @@ Für Fragen und Support siehe die Dokumentation im `docs/` Verzeichnis.
 
 ---
 
-**Version**: 2.0.0  
-**Release Date**: 23. Januar 2026  
-**Status**: ✅ **Produktionsbereit**
+**Version**: kommt aus dem Git-Tag (z.B. `v1.0.0`)  
+**Status**: ✅ **Release-Builds via GitHub Tags**

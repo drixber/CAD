@@ -23,12 +23,22 @@ jobs:
       with:
         cmake-version: '3.26'
     
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Disable Windows Python store aliases
+      shell: powershell
+      run: |
+        Remove-Item "C:\Users\runneradmin\AppData\Local\Microsoft\WindowsApps\python.exe" -ErrorAction SilentlyContinue
+        Remove-Item "C:\Users\runneradmin\AppData\Local\Microsoft\WindowsApps\python3.exe" -ErrorAction SilentlyContinue
+    
     - name: Setup Qt
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.6.0'
         arch: 'win64_msvc2022_64'
-        modules: 'qtbase qttools'
     
     - name: Configure CMake
       run: |
