@@ -23,6 +23,7 @@ void QtAISettingsDialog::setupUI() {
     provider_combo_ = new QComboBox(this);
     provider_combo_->addItem(tr("OpenAI"), "openai");
     provider_combo_->addItem(tr("Anthropic"), "anthropic");
+    provider_combo_->addItem(tr("Grok"), "grok");
     provider_combo_->setCurrentIndex(0);
     provider_layout->addRow(tr("Provider:"), provider_combo_);
     
@@ -48,6 +49,12 @@ void QtAISettingsDialog::setupUI() {
     anthropic_key_edit_->setEchoMode(QLineEdit::Password);
     anthropic_key_edit_->hide();
     keys_layout->addRow(tr("Anthropic Key:"), anthropic_key_edit_);
+    
+    grok_key_edit_ = new QLineEdit(this);
+    grok_key_edit_->setPlaceholderText(tr("xai-..."));
+    grok_key_edit_->setEchoMode(QLineEdit::Password);
+    grok_key_edit_->hide();
+    keys_layout->addRow(tr("Grok Key:"), grok_key_edit_);
     
     main_layout->addWidget(keys_group);
     
@@ -145,6 +152,7 @@ void QtAISettingsDialog::setupUI() {
     connect(cancel_button_, &QPushButton::clicked, this, &QtAISettingsDialog::onCancelClicked);
     connect(openai_key_edit_, &QLineEdit::textChanged, this, &QtAISettingsDialog::validateInputs);
     connect(anthropic_key_edit_, &QLineEdit::textChanged, this, &QtAISettingsDialog::validateInputs);
+    connect(grok_key_edit_, &QLineEdit::textChanged, this, &QtAISettingsDialog::validateInputs);
     
     updateProviderVisibility();
     validateInputs();
@@ -156,6 +164,10 @@ QString QtAISettingsDialog::getOpenAIKey() const {
 
 QString QtAISettingsDialog::getAnthropicKey() const {
     return anthropic_key_edit_->text().trimmed();
+}
+
+QString QtAISettingsDialog::getGrokKey() const {
+    return grok_key_edit_->text().trimmed();
 }
 
 QString QtAISettingsDialog::getSelectedProvider() const {
@@ -184,6 +196,10 @@ void QtAISettingsDialog::setOpenAIKey(const QString& key) {
 
 void QtAISettingsDialog::setAnthropicKey(const QString& key) {
     anthropic_key_edit_->setText(key);
+}
+
+void QtAISettingsDialog::setGrokKey(const QString& key) {
+    grok_key_edit_->setText(key);
 }
 
 void QtAISettingsDialog::setSelectedProvider(const QString& provider) {
@@ -251,6 +267,8 @@ void QtAISettingsDialog::validateInputs() {
         has_key = !getOpenAIKey().isEmpty();
     } else if (provider == "anthropic") {
         has_key = !getAnthropicKey().isEmpty();
+    } else if (provider == "grok") {
+        has_key = !getGrokKey().isEmpty();
     }
     
     save_button_->setEnabled(has_key);
@@ -270,6 +288,9 @@ void QtAISettingsDialog::updateModelList(const QString& provider) {
         model_combo_->addItem("claude-3-opus-20240229", "claude-3-opus-20240229");
         model_combo_->addItem("claude-3-sonnet-20240229", "claude-3-sonnet-20240229");
         model_combo_->addItem("claude-3-haiku-20240307", "claude-3-haiku-20240307");
+    } else if (provider == "grok") {
+        model_combo_->addItem("grok-2-latest", "grok-2-latest");
+        model_combo_->addItem("grok-2-mini", "grok-2-mini");
     }
 }
 
@@ -279,9 +300,15 @@ void QtAISettingsDialog::updateProviderVisibility() {
     if (provider == "openai") {
         openai_key_edit_->show();
         anthropic_key_edit_->hide();
+        grok_key_edit_->hide();
     } else if (provider == "anthropic") {
         openai_key_edit_->hide();
         anthropic_key_edit_->show();
+        grok_key_edit_->hide();
+    } else if (provider == "grok") {
+        openai_key_edit_->hide();
+        anthropic_key_edit_->hide();
+        grok_key_edit_->show();
     }
 }
 

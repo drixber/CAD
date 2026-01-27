@@ -1,6 +1,7 @@
 #include "AppController.h"
 #include "ai/AIService.h"
 #include "UpdateInstaller.h"
+#include "core/updates/UpdateChecker.h"
 #include <sstream>
 #ifdef CAD_USE_QT
 #include <QSettings>
@@ -238,6 +239,19 @@ void AppController::initialize() {
         setupAutoUpdate(qt_window);
     }
     #endif
+
+    // Simple GitHub release check on startup (opens release page if newer).
+    #ifndef CAD_APP_VERSION
+    #define CAD_APP_VERSION "v0.0.0"
+    #endif
+    static constexpr const char* kCurrentVersionTag = CAD_APP_VERSION;  // TODO: replace with build-defined version tag.
+    const std::string owner = "drixber";
+    const std::string repo = "CAD";
+    cad::core::updates::UpdateInfo update_info =
+        cad::core::updates::checkGithubLatestRelease(owner, repo, kCurrentVersionTag);
+    if (update_info.updateAvailable) {
+        cad::core::updates::openUrlInBrowser(update_info.releaseUrl);
+    }
 }
 
 void AppController::setActiveSketch(const cad::core::Sketch& sketch) {
@@ -1086,6 +1100,7 @@ void AppController::setupAIService(cad::ui::QtMainWindow* qt_window) {
     QString provider = settings.value("ai/provider", "openai").toString();
     QString openai_key = settings.value("ai/openai_key").toString();
     QString anthropic_key = settings.value("ai/anthropic_key").toString();
+    QString grok_key = settings.value("ai/grok_key").toString();
     QString model = settings.value("ai/model", "gpt-4").toString();
     double temperature = settings.value("ai/temperature", 0.7).toDouble();
     int max_tokens = settings.value("ai/max_tokens", 2000).toInt();
@@ -1093,6 +1108,9 @@ void AppController::setupAIService(cad::ui::QtMainWindow* qt_window) {
     // Configure provider
     if (provider == "openai" && !openai_key.isEmpty()) {
         ai_service_.configureProvider(cad::app::ai::ModelProviderType::OpenAI, openai_key.toStdString());
+        ai_service_.setModel(model.toStdString());
+    } else if (provider == "grok" && !grok_key.isEmpty()) {
+        ai_service_.configureProvider(cad::app::ai::ModelProviderType::Grok, grok_key.toStdString());
         ai_service_.setModel(model.toStdString());
     } else if (provider == "anthropic" && !anthropic_key.isEmpty()) {
         // Anthropic provider will be implemented later
@@ -1150,6 +1168,7 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
     QSettings settings("HydraCAD", "HydraCAD");
     dialog.setOpenAIKey(settings.value("ai/openai_key").toString());
     dialog.setAnthropicKey(settings.value("ai/anthropic_key").toString());
+    dialog.setGrokKey(settings.value("ai/grok_key").toString());
     dialog.setSelectedProvider(settings.value("ai/provider", "openai").toString());
     dialog.setSelectedModel(settings.value("ai/model", "gpt-4").toString());
     dialog.setTemperature(settings.value("ai/temperature", 0.7).toDouble());
@@ -1170,6 +1189,18 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
                     success
                 );
             }
+        } else if (provider == "grok") {
+            QString key = dialog.getGrokKey();
+            if (!key.isEmpty()) {
+                bool success = ai_service_.configureProvider(cad::app::ai::ModelProviderType::Grok, key.toStdString());
+                if (success) {
+                    success = ai_service_.getActiveProvider()->testConnection();
+                }
+                dialog.setTestResult(
+                    success ? tr("Connection successful!") : tr("Connection failed. Please check your API key."),
+                    success
+                );
+            }
         }
     });
     
@@ -1178,6 +1209,7 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
         QSettings settings("HydraCAD", "HydraCAD");
         settings.setValue("ai/openai_key", dialog.getOpenAIKey());
         settings.setValue("ai/anthropic_key", dialog.getAnthropicKey());
+        settings.setValue("ai/grok_key", dialog.getGrokKey());
         settings.setValue("ai/provider", dialog.getSelectedProvider());
         settings.setValue("ai/model", dialog.getSelectedModel());
         settings.setValue("ai/temperature", dialog.getTemperature());
@@ -1188,6 +1220,8 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
         QString provider = dialog.getSelectedProvider();
         if (provider == "openai") {
             ai_service_.configureProvider(cad::app::ai::ModelProviderType::OpenAI, dialog.getOpenAIKey().toStdString());
+        } else if (provider == "grok") {
+            ai_service_.configureProvider(cad::app::ai::ModelProviderType::Grok, dialog.getGrokKey().toStdString());
         }
         ai_service_.setModel(dialog.getSelectedModel().toStdString());
         ai_service_.setTemperature(dialog.getTemperature());

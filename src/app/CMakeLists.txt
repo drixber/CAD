@@ -8,6 +8,7 @@ add_library(cad_app
     UserAuthService.cpp
     ai/AIService.cpp
     ai/OpenAIProvider.cpp
+    ai/GrokProvider.cpp
     ai/ContextManager.cpp
     ai/PromptBuilder.cpp
     UpdateInstaller.cpp
@@ -26,6 +27,12 @@ target_link_libraries(cad_app
         cad_modules
         cad_interop
 )
+
+if(DEFINED APP_VERSION)
+    target_compile_definitions(cad_app PRIVATE CAD_APP_VERSION="${APP_VERSION}")
+else()
+    target_compile_definitions(cad_app PRIVATE CAD_APP_VERSION="v0.0.0")
+endif()
 
 if(CAD_USE_QT)
     find_package(Qt6 QUIET COMPONENTS Network)

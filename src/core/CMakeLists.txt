@@ -10,6 +10,7 @@ add_library(cad_core
     assembly/AssemblyManager.cpp
     analysis/InterferenceChecker.cpp
     geometry/OCCTIntegration.cpp
+    updates/UpdateChecker.cpp
 )
 
 target_include_directories(cad_core

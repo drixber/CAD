@@ -1,4 +1,4 @@
-#include "OpenAIProvider.h"
+#include "GrokProvider.h"
 #include "../HttpClient.h"
 #include <sstream>
 #include <stdexcept>
@@ -35,20 +35,16 @@ bool writeTempBodyFile(const std::string& body, std::string& path_out) {
 
 }  // namespace
 
-OpenAIProvider::OpenAIProvider() {
-}
+GrokProvider::GrokProvider() = default;
 
-std::vector<std::string> OpenAIProvider::getAvailableModels() const {
+std::vector<std::string> GrokProvider::getAvailableModels() const {
     return {
-        "gpt-4",
-        "gpt-4-turbo-preview",
-        "gpt-4-0125-preview",
-        "gpt-3.5-turbo",
-        "gpt-3.5-turbo-16k"
+        "grok-2-latest",
+        "grok-2-mini"
     };
 }
 
-bool OpenAIProvider::setApiKey(const std::string& api_key) {
+bool GrokProvider::setApiKey(const std::string& api_key) {
     if (api_key.empty()) {
         return false;
     }
@@ -57,18 +53,18 @@ bool OpenAIProvider::setApiKey(const std::string& api_key) {
     return true;
 }
 
-AIResponse OpenAIProvider::sendRequest(const AIRequest& request) {
+AIResponse GrokProvider::sendRequest(const AIRequest& request) {
     AIResponse response;
     
     if (!isConfigured()) {
         response.success = false;
-        response.error_message = "OpenAI provider not configured. Please set API key.";
+        response.error_message = "Grok provider not configured. Please set API key.";
         return response;
     }
     
     try {
         HttpClient http_client;
-        http_client.setTimeout(60); // Longer timeout for AI requests
+        http_client.setTimeout(60);
         
         std::string url = base_url_ + "/chat/completions";
         std::string request_body = buildRequestBody(request);
@@ -98,12 +94,12 @@ AIResponse OpenAIProvider::sendRequest(const AIRequest& request) {
     return response;
 }
 
-bool OpenAIProvider::sendStreamingRequest(const AIRequest& request,
-                                         std::function<void(const StreamChunk&)> callback) {
+bool GrokProvider::sendStreamingRequest(const AIRequest& request,
+                                        std::function<void(const StreamChunk&)> callback) {
     if (!isConfigured()) {
         StreamChunk error_chunk;
         error_chunk.done = true;
-        error_chunk.error = "OpenAI provider not configured";
+        error_chunk.error = "Grok provider not configured";
         callback(error_chunk);
         return false;
     }
@@ -184,14 +180,13 @@ bool OpenAIProvider::sendStreamingRequest(const AIRequest& request,
     return true;
 }
 
-bool OpenAIProvider::testConnection() {
+bool GrokProvider::testConnection() {
     if (!isConfigured()) {
         return false;
     }
     
-    // Send a minimal test request
     AIRequest test_request;
-    test_request.model = "gpt-3.5-turbo";
+    test_request.model = "grok-2-latest";
     test_request.messages.push_back({{"user", "test"}});
     test_request.max_tokens = 5;
     
@@ -199,7 +194,7 @@ bool OpenAIProvider::testConnection() {
     return response.success;
 }
 
-std::string OpenAIProvider::buildRequestBody(const AIRequest& request) const {
+std::string GrokProvider::buildRequestBody(const AIRequest& request) const {
     #ifdef CAD_USE_QT
     QJsonObject json;
     json["model"] = QString::fromStdString(request.model);
@@ -219,7 +214,6 @@ std::string OpenAIProvider::buildRequestBody(const AIRequest& request) const {
     QJsonDocument doc(json);
     return doc.toJson(QJsonDocument::Compact).toStdString();
     #else
-    // Fallback for non-Qt builds (simplified JSON)
     std::ostringstream oss;
     oss << "{\"model\":\"" << request.model << "\",";
     oss << "\"temperature\":" << request.temperature << ",";
@@ -236,7 +230,7 @@ std::string OpenAIProvider::buildRequestBody(const AIRequest& request) const {
     #endif
 }
 
-AIResponse OpenAIProvider::parseResponse(const std::string& json_response) const {
+AIResponse GrokProvider::parseResponse(const std::string& json_response) const {
     AIResponse response;
     
     #ifdef CAD_USE_QT
@@ -275,11 +269,9 @@ AIResponse OpenAIProvider::parseResponse(const std::string& json_response) const
         response.model_used = root["model"].toString().toStdString();
     }
     #else
-    // Simplified parsing for non-Qt builds
-    // In a real implementation, use a JSON library
     size_t content_pos = json_response.find("\"content\":\"");
     if (content_pos != std::string::npos) {
-        content_pos += 11; // Skip "content":"
+        content_pos += 11;
         size_t content_end = json_response.find("\"", content_pos);
         if (content_end != std::string::npos) {
             response.content = json_response.substr(content_pos, content_end - content_pos);
@@ -291,13 +283,12 @@ AIResponse OpenAIProvider::parseResponse(const std::string& json_response) const
     return response;
 }
 
-StreamChunk OpenAIProvider::parseStreamChunk(const std::string& chunk_data) const {
+StreamChunk GrokProvider::parseStreamChunk(const std::string& chunk_data) const {
     StreamChunk chunk;
     
     #ifdef CAD_USE_QT
-    // Parse SSE format: "data: {...}\n\n"
     if (chunk_data.find("data: ") == 0) {
-        std::string json_str = chunk_data.substr(6); // Skip "data: "
+        std::string json_str = chunk_data.substr(6);
         if (json_str == "[DONE]") {
             chunk.done = true;
             return chunk;
@@ -319,7 +310,6 @@ StreamChunk OpenAIProvider::parseStreamChunk(const std::string& chunk_data) cons
         }
     }
     #else
-    // Simplified parsing
     size_t content_pos = chunk_data.find("\"content\":\"");
     if (content_pos != std::string::npos) {
         content_pos += 11;
@@ -333,7 +323,7 @@ StreamChunk OpenAIProvider::parseStreamChunk(const std::string& chunk_data) cons
     return chunk;
 }
 
-std::map<std::string, std::string> OpenAIProvider::buildHeaders() const {
+std::map<std::string, std::string> GrokProvider::buildHeaders() const {
     std::map<std::string, std::string> headers;
     headers["Authorization"] = "Bearer " + api_key_;
     headers["User-Agent"] = "HydraCAD/2.0.0";

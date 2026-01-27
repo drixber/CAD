@@ -39,6 +39,7 @@ struct StreamChunk {
 enum class ModelProviderType {
     OpenAI,
     Anthropic,
+    Grok,
     LocalLLM
 };
 

@@ -25,6 +25,7 @@ public:
     // Getters
     QString getOpenAIKey() const;
     QString getAnthropicKey() const;
+    QString getGrokKey() const;
     QString getSelectedProvider() const;
     QString getSelectedModel() const;
     double getTemperature() const;
@@ -34,6 +35,7 @@ public:
     // Setters
     void setOpenAIKey(const QString& key);
     void setAnthropicKey(const QString& key);
+    void setGrokKey(const QString& key);
     void setSelectedProvider(const QString& provider);
     void setSelectedModel(const QString& model);
     void setTemperature(double temp);
@@ -60,6 +62,7 @@ private:
     QComboBox* model_combo_{nullptr};
     QLineEdit* openai_key_edit_{nullptr};
     QLineEdit* anthropic_key_edit_{nullptr};
+    QLineEdit* grok_key_edit_{nullptr};
     QDoubleSpinBox* temperature_spin_{nullptr};
     QSpinBox* max_tokens_spin_{nullptr};
     QCheckBox* streaming_check_{nullptr};
