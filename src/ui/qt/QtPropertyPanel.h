@@ -34,11 +34,11 @@ struct AnnotationItem {
     QPointF attachment_point;
 };
 
-class QtPropertyPanel : public QWidget {
+class QtPropertyPanel : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit QtPropertyPanel(QWidget* parent = nullptr);
+    explicit QtPropertyPanel(::QWidget* parent = nullptr);
     void setConstraintCount(int count);
     void setParameterCount(int count);
     void setParameterSummary(const QString& summary);

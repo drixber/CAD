@@ -6,11 +6,11 @@
 namespace cad {
 namespace ui {
 
-class QtAgentThoughts : public QWidget {
+class QtAgentThoughts : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit QtAgentThoughts(QWidget* parent = nullptr);
+    explicit QtAgentThoughts(::QWidget* parent = nullptr);
     void appendThought(const QString& thought);
 
 private:

@@ -5,7 +5,7 @@
 namespace cad {
 namespace ui {
 
-QtAgentThoughts::QtAgentThoughts(QWidget* parent) : QWidget(parent) {
+QtAgentThoughts::QtAgentThoughts(::QWidget* parent) : ::QWidget(parent) {
     output_ = new QTextEdit(this);
     output_->setReadOnly(true);
     QVBoxLayout* layout = new QVBoxLayout(this);

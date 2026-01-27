@@ -21,7 +21,7 @@
 namespace cad {
 namespace ui {
 
-Viewport3D::Viewport3D(QWidget* parent) : QWidget(parent) {
+Viewport3D::Viewport3D(::QWidget* parent) : ::QWidget(parent) {
     setMinimumSize(400, 300);
     setFocusPolicy(Qt::StrongFocus);
     render_engine_ = std::make_unique<RenderEngine3D>();
@@ -29,7 +29,7 @@ Viewport3D::Viewport3D(QWidget* parent) : QWidget(parent) {
 #ifdef CAD_USE_QT
     soqt_viewer_ = std::make_unique<SoQtViewerIntegration>();
     if (soqt_viewer_->initialize(this)) {
-        QWidget* viewer_widget = soqt_viewer_->getWidget();
+        ::QWidget* viewer_widget = soqt_viewer_->getWidget();
         if (viewer_widget) {
             viewer_widget->setParent(this);
             viewer_widget->setGeometry(0, 0, width(), height());
@@ -748,9 +748,7 @@ std::string Viewport3D::pickObjectAt(int x, int y) const {
         }
     } else {
         if (render_engine_ && render_engine_->isInitialized()) {
-            return render_engine_->pickObject(x, y, width(), height(),
-                                              &camera_.position_x, &camera_.target_x, &camera_.up_x,
-                                              camera_.field_of_view);
+            return render_engine_->pickObject(x, y);
         }
     }
     return {};

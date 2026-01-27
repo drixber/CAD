@@ -12,11 +12,11 @@
 namespace cad {
 namespace ui {
 
-class QtAIChatPanel : public QWidget {
+class QtAIChatPanel : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit QtAIChatPanel(QWidget* parent = nullptr);
+    explicit QtAIChatPanel(::QWidget* parent = nullptr);
     ~QtAIChatPanel() override = default;
     
     // Message management

@@ -26,7 +26,7 @@
 namespace cad {
 namespace ui {
 
-QtPropertyPanel::QtPropertyPanel(QWidget* parent) : QWidget(parent) {
+QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(new QLabel(tr("Selection")));
     constraints_label_ = new QLabel(tr("Constraints: 0"));

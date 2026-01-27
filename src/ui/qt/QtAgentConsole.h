@@ -8,11 +8,11 @@
 namespace cad {
 namespace ui {
 
-class QtAgentConsole : public QWidget {
+class QtAgentConsole : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit QtAgentConsole(QWidget* parent = nullptr);
+    explicit QtAgentConsole(::QWidget* parent = nullptr);
     void appendMessage(const QString& message);
 
 signals:

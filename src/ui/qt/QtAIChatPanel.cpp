@@ -9,7 +9,7 @@
 namespace cad {
 namespace ui {
 
-QtAIChatPanel::QtAIChatPanel(QWidget* parent) : QWidget(parent) {
+QtAIChatPanel::QtAIChatPanel(::QWidget* parent) : ::QWidget(parent) {
     setupUI();
 }
 

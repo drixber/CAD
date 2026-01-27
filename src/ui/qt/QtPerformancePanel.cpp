@@ -5,7 +5,7 @@
 namespace cad {
 namespace ui {
 
-QtPerformancePanel::QtPerformancePanel(QWidget* parent) : QWidget(parent) {
+QtPerformancePanel::QtPerformancePanel(::QWidget* parent) : ::QWidget(parent) {
     fps_label_ = new QLabel(tr("FPS: --"), this);
     cache_label_ = new QLabel(tr("Cache: --/--"), this);
     lod_selector_ = new QComboBox(this);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QWidget>
+
 #ifdef CAD_USE_COIN3D
 #ifdef CAD_USE_QT
 #include <Inventor/Qt/SoQtExaminerViewer.h>
@@ -21,14 +23,12 @@
 namespace cad {
 namespace ui {
 
-class QWidget;
-
 class SoQtViewerIntegration {
 public:
     SoQtViewerIntegration();
     ~SoQtViewerIntegration();
     
-    bool initialize(QWidget* parent);
+    bool initialize(::QWidget* parent);
     void shutdown();
     
 #ifdef CAD_USE_COIN3D
@@ -54,7 +54,7 @@ public:
     void fitToView();
     void resetCamera();
     
-    QWidget* getWidget() const;
+    ::QWidget* getWidget() const;
 #else
     void* getViewer() const { return nullptr; }
     void* getSceneRoot() const { return nullptr; }

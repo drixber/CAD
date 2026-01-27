@@ -6,11 +6,11 @@
 namespace cad {
 namespace ui {
 
-class QtLogPanel : public QWidget {
+class QtLogPanel : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit QtLogPanel(QWidget* parent = nullptr);
+    explicit QtLogPanel(::QWidget* parent = nullptr);
     void appendLog(const QString& message);
 
 private:

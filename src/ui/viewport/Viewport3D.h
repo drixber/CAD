@@ -32,11 +32,11 @@ struct ViewportSettings {
     int grid_subdivisions{10};
 };
 
-class Viewport3D : public QWidget {
+class Viewport3D : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit Viewport3D(QWidget* parent = nullptr);
+    explicit Viewport3D(::QWidget* parent = nullptr);
     ~Viewport3D();
     
     // Rendering

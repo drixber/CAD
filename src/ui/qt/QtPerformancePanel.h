@@ -9,11 +9,11 @@
 namespace cad {
 namespace ui {
 
-class QtPerformancePanel : public QWidget {
+class QtPerformancePanel : public ::QWidget {
     Q_OBJECT
 
 public:
-    explicit QtPerformancePanel(QWidget* parent = nullptr);
+    explicit QtPerformancePanel(::QWidget* parent = nullptr);
     void setFps(double fps);
     void setCacheStats(int entries, int max_entries);
     void setBackgroundLoading(bool enabled);

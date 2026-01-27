@@ -6,7 +6,7 @@
 namespace cad {
 namespace ui {
 
-QtAgentConsole::QtAgentConsole(QWidget* parent) : QWidget(parent) {
+QtAgentConsole::QtAgentConsole(::QWidget* parent) : ::QWidget(parent) {
     output_ = new QTextEdit(this);
     output_->setReadOnly(true);
 

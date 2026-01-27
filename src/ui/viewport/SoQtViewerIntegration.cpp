@@ -32,7 +32,7 @@ SoQtViewerIntegration::~SoQtViewerIntegration() {
     shutdown();
 }
 
-bool SoQtViewerIntegration::initialize(QWidget* parent) {
+bool SoQtViewerIntegration::initialize(::QWidget* parent) {
 #ifdef CAD_USE_COIN3D
 #ifdef CAD_USE_QT
     if (initialized_) {
@@ -367,7 +367,7 @@ void SoQtViewerIntegration::resetCamera() {
     }
 }
 
-QWidget* SoQtViewerIntegration::getWidget() const {
+::QWidget* SoQtViewerIntegration::getWidget() const {
     if (viewer_) {
         return viewer_->getWidget();
     }

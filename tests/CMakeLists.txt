@@ -22,6 +22,7 @@ if(CAD_BUILD_TESTS)
             cad_core
             cad_kernel
             cad_simulation
+            cad_interop
     )
     
     # Core Modeler Tests
