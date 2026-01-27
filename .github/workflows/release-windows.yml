@@ -41,8 +41,13 @@ jobs:
           arch: "win64_msvc2019_64"
           cache: true
 
+      - name: Clean build directory
+        shell: cmd
+        run: |
+          if exist build rmdir /s /q build
+
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAPP_VERSION=${{ github.ref_name }}
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAPP_VERSION=${{ github.ref_name }} -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF -DQt6_DIR="%Qt6_DIR%" -DCMAKE_PREFIX_PATH="%Qt6_DIR%"
 
       - name: Build
         run: cmake --build build --config Release

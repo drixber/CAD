@@ -40,6 +40,13 @@ jobs:
         version: '6.5.3'
         arch: 'win64_msvc2019_64'
         cache: true
+
+    - name: Clean build directory
+      shell: powershell
+      run: |
+        if (Test-Path build) {
+          Remove-Item build -Recurse -Force
+        }
     
     - name: Install NSIS
       run: |
