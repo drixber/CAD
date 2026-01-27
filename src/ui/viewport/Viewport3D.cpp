@@ -787,6 +787,18 @@ void Viewport3D::convertGeometryHandleToData(void* handle, GeometryData& data) c
     data.params[6] = static_cast<double>((handle_val % 150) - 75);
 }
 
+bool Viewport3D::useSoQtViewer() const {
+#ifdef CAD_USE_COIN3D
+#ifdef CAD_USE_QT
+    return soqt_viewer_ != nullptr;
+#else
+    return false;
+#endif
+#else
+    return false;
+#endif
+}
+
 }  // namespace ui
 }  // namespace cad
 

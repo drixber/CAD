@@ -1,5 +1,6 @@
 #include "UpdateService.h"
 #include "UpdateInstaller.h"
+#include "HttpClient.h"
 
 #include <fstream>
 #include <sstream>

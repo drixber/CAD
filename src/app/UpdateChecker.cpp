@@ -74,7 +74,7 @@ void UpdateChecker::onUpdateInfoReceived() {
     
     std::string response_str = data.toStdString();
     
-    UpdateInfo info;
+    cad::app::UpdateInfo info;
     
     size_t version_pos = response_str.find("\"version\":");
     if (version_pos != std::string::npos) {
@@ -119,9 +119,10 @@ void UpdateChecker::onUpdateInfoReceived() {
 
 void UpdateChecker::onUpdateDownloaded() {
     // Handle downloaded update
-    QFileInfo file_info(QString::fromStdString(installer_path));
+    QString installer_path = QDir::tempPath() + "/HydraCADUpdate.exe";
+    QFileInfo file_info(installer_path);
     if (!file_info.exists()) {
-        emit updateError("Installer file not found: " + QString::fromStdString(installer_path));
+        emit updateError("Installer file not found: " + installer_path);
         return;
     }
     
@@ -130,16 +131,7 @@ void UpdateChecker::onUpdateDownloaded() {
         emit updateError("Installer file too small: " + QString::number(file_size) + " bytes");
         return;
     }
-    
-    QString checksum = QString::number(qHash(QString::fromStdString(installer_path)));
-    QFileInfo file_info(QString::fromStdString(installer_path));
-    if (file_info.exists() && file_info.size() > 1024) {
-        emit updateReady(QString::fromStdString(installer_path), checksum);
-    } else {
-        QString fallback_path = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + 
-                               "/HydraCAD_update_installer.exe";
-        emit updateReady(fallback_path, checksum);
-    }
+    emit updateReady(installer_path);
 }
 
 void UpdateChecker::onNetworkError(QNetworkReply::NetworkError error) {

@@ -23,6 +23,7 @@
 #include "interop/ImportExportService.h"
 #include "interop/IoPipeline.h"
 #include "UpdateService.h"
+#include "UpdateInstaller.h"
 #include "ProjectFileService.h"
 #include "UserAuthService.h"
 #include "ai/AIService.h"
@@ -105,6 +106,9 @@ private:
     void installUpdate(cad::ui::QtMainWindow* qt_window, 
                       const cad::app::UpdateInfo& update_info, 
                       bool create_backup = true);
+    bool requireLogin();
+
+};
 
 }  // namespace app
 }  // namespace cad
