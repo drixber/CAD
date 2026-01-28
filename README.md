@@ -4,29 +4,33 @@
 
 Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with C++ and Qt, featuring advanced 3D modeling, simulation, and drawing generation capabilities.
 
-**Status**: ✅ **Release-Builds via GitHub Tags**
+**Status**: ✅ Windows Releases via GitHub Tags
 
 ## 🚀 Schnellstart
 
-### Installation (Empfohlen - Windows Release ZIP)
+### Installation (Windows - empfohlen)
 
-**Windows (Release ZIP):**
+**Option A: Installer (empfohlen)**
 
-1. **Download**: Gehen Sie zu [GitHub Releases](https://github.com/drixber/CAD/releases)
-2. **Asset**: Laden Sie `app-windows.zip` herunter
-3. **Entpacken**: ZIP in einen Ordner entpacken
-4. **Starten**: `CAD.exe` ausführen
+1. **Download**: [GitHub Releases](https://github.com/drixber/CAD/releases)
+2. **Asset**: `HydraCADSetup.exe`
+3. **Starten**: Installer ausfuehren (Datenschutz bestaetigen, Zielpfad waehlen, Sprache waehlen)
+
+**Option B: Portable ZIP**
+1. **Download**: [GitHub Releases](https://github.com/drixber/CAD/releases)
+2. **Asset**: `app-windows.zip`
+3. **Entpacken** und `cad_desktop.exe` starten
 
 **Linux/macOS:**
-- Aktuell bitte aus dem Quellcode bauen (siehe [docs/INSTALLATION.md](docs/INSTALLATION.md)).
+- Aktuell bitte aus dem Quellcode bauen (siehe [docs/INSTALLATION.md](docs/INSTALLATION.md)). CI/CD fuer Linux/macOS ist derzeit pausiert.
 
-**Erste Schritte:**
+**Erste Schritte (Windows):**
 - Beim ersten Start: Account registrieren
 - Nach Login: App ist bereit für die Verwendung
 - Projekte speichern: File → Save Project (Strg+S / Cmd+S)
 - Projekte öffnen: File → Open Project (Strg+O / Cmd+O)
 
-### Eigenen Build erstellen (Optional)
+### Eigenen Build erstellen (optional)
 
 **Windows:**
 ```powershell
@@ -59,7 +63,7 @@ Siehe [docs/INSTALLATION.md](docs/INSTALLATION.md) für detaillierte Anleitung.
 - **Windows 10/11** (64-bit)
 - **Visual Studio 2019+** oder **MinGW-w64**
 - **CMake 3.26+**
-- **Qt 5.15+** oder **Qt 6.x** (für UI)
+- **Qt 6.x** (für UI)
 - **NSIS 3.0+** (optional, nur falls Installer gebaut werden)
 
 ### Automatischer Build & Installer (Empfohlen)
@@ -88,11 +92,11 @@ cd installer
 "C:\Program Files (x86)\NSIS\makensis.exe" hydracad.nsi
 ```
 
-### Installation
+### Installation (Portable)
 
-Windows Release-ZIP ist lauffähig ohne Installer:
+Windows Release-ZIP ist lauffaehig ohne Installer:
 1. `app-windows.zip` entpacken
-2. `CAD.exe` starten
+2. `cad_desktop.exe` starten
 
 ## 📚 Dokumentation
 
@@ -140,4 +144,4 @@ Für Fragen und Support siehe die Dokumentation im `docs/` Verzeichnis.
 ---
 
 **Version**: kommt aus dem Git-Tag (z.B. `v1.0.0`)  
-**Status**: ✅ **Release-Builds via GitHub Tags**
+**Status**: ✅ Windows Releases via GitHub Tags
