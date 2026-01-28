@@ -4,6 +4,7 @@
 #include "app/AppController.h"
 #include "app/CADApplication.h"
 #include "ui/qt/QtMainWindow.h"
+#include "ui/theme/ThemeManager.h"
 
 int main(int argc, char** argv) {
     QApplication qt_app(argc, argv);
