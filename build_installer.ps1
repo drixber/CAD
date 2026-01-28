@@ -233,6 +233,20 @@ if ($useMinGW -or $foundGenerator -eq "Ninja") {
     Write-Host "  .exe nach build\Release kopiert für Installer" -ForegroundColor Gray
 }
 
+# Qt deployment (if available)
+$windeployqt = Get-Command windeployqt -ErrorAction SilentlyContinue
+if ($windeployqt) {
+    $releaseExe = "build\Release\cad_desktop.exe"
+    if (Test-Path $releaseExe) {
+        Write-Host "  Qt deployment mit windeployqt..." -ForegroundColor Gray
+        & $windeployqt $releaseExe
+    } else {
+        Write-Host "  WARNUNG: $releaseExe nicht gefunden für windeployqt" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  WARNUNG: windeployqt nicht gefunden; Qt-DLLs werden evtl. fehlen" -ForegroundColor Yellow
+}
+
 Push-Location installer
 & $nsisPath hydracad.nsi
 $installerSuccess = $LASTEXITCODE -eq 0

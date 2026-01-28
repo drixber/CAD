@@ -98,7 +98,7 @@ Section "Core Application" SecCore
     !endif
     
     ; DLLs and dependencies (Qt, etc.)
-    File /nonfatal "${PROJECT_ROOT}\build\Release\*.dll"
+    File /nonfatal /r /x *.pdb /x *.ilk "${PROJECT_ROOT}\build\Release\*.*"
     
     ; Create data directory for user files
     CreateDirectory "$INSTDIR\data"

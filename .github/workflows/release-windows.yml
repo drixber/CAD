@@ -107,6 +107,20 @@ jobs:
 
           Compress-Archive -Path dist\* -DestinationPath app-windows.zip -Force
 
+      - name: Code Sign (optional)
+        if: ${{ secrets.WINDOWS_PFX_BASE64 != '' }}
+        shell: powershell
+        env:
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          $pfxPath = "$env:RUNNER_TEMP\codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found" }
+          & $signtool.FullName sign /f $pfxPath /p $env:WINDOWS_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "dist\cad_desktop.exe"
+          & $signtool.FullName sign /f $pfxPath /p $env:WINDOWS_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "dist\HydraCADSetup.exe"
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
