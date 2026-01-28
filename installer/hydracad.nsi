@@ -110,7 +110,7 @@ Section "Core Application" SecCore
     ; Resources (if exist)
     SetOutPath "$INSTDIR\resources"
     IfFileExists "${PROJECT_ROOT}\resources\*.*" 0 +2
-    File /r /nonfatal "${PROJECT_ROOT}\resources\*.*"
+    File /nonfatal /r "${PROJECT_ROOT}\resources\*.*"
     
     ; Documentation (essential docs only)
     SetOutPath "$INSTDIR\docs"
