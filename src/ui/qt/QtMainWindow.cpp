@@ -14,6 +14,8 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
+#include <QActionGroup>
+#include <QMessageBox>
 #include <QFileDialog>
 #include <QKeySequence>
 #include <QInputDialog>
@@ -349,6 +351,47 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     file_menu->addSeparator();
     QAction* exit_action = file_menu->addAction(tr("E&xit"), this, &QMainWindow::close);
     exit_action->setShortcut(QKeySequence::Quit);
+
+    // Settings menu (language selection)
+    QMenu* settings_menu = menu_bar->addMenu(tr("&Settings"));
+    QMenu* language_menu = settings_menu->addMenu(tr("&Language"));
+
+    QActionGroup* language_group = new QActionGroup(this);
+    language_group->setExclusive(true);
+
+    QSettings language_settings("HydraCAD", "HydraCAD");
+    QString current_language = language_settings.value("ui/language", "en").toString();
+
+    struct LanguageOption {
+        QString code;
+        QString label;
+    };
+    const std::vector<LanguageOption> languages = {
+        {"en", tr("English")},
+        {"de", tr("German")},
+        {"zh", tr("Chinese")},
+        {"ja", tr("Japanese")}
+    };
+
+    for (const auto& lang : languages) {
+        QAction* action = language_menu->addAction(lang.label);
+        action->setCheckable(true);
+        action->setData(lang.code);
+        if (lang.code == current_language) {
+            action->setChecked(true);
+        }
+        language_group->addAction(action);
+    }
+
+    connect(language_group, &QActionGroup::triggered, this, [this](QAction* action) {
+        if (!action) {
+            return;
+        }
+        QSettings settings("HydraCAD", "HydraCAD");
+        settings.setValue("ui/language", action->data().toString());
+        QMessageBox::information(this, tr("Language"),
+                                 tr("Language will be applied after restart."));
+    });
     
     // Setup auto-save timer
     autosave_timer_ = new QTimer(this);

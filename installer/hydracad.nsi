@@ -4,6 +4,7 @@
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 !include "LogicLib.nsh"
+!include "nsDialogs.nsh"
 
 ; Project root (can be overridden via /DPROJECT_ROOT)
 !ifndef PROJECT_ROOT
@@ -31,14 +32,15 @@ VIAddVersionKey "FileDescription" "Hydra CAD Application"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
-!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+!define MUI_ICON "${PROJECT_ROOT}\installer\hydracad.ico"
+!define MUI_UNICON "${PROJECT_ROOT}\installer\hydracad.ico"
 
 ; Application Icon (will use executable icon if available)
-!define APP_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
+!define APP_ICON "${PROJECT_ROOT}\installer\hydracad.ico"
 
 ; Installer Pages
 !insertmacro MUI_PAGE_WELCOME
+Page custom PrivacyPageCreate PrivacyPageLeave
 !insertmacro MUI_PAGE_LICENSE "license.txt"
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
@@ -53,6 +55,27 @@ VIAddVersionKey "FileDescription" "Hydra CAD Application"
 
 ; Language
 !insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "German"
+!insertmacro MUI_LANGUAGE "SimpChinese"
+!insertmacro MUI_LANGUAGE "Japanese"
+
+LangString PRIVACY_TITLE ${LANG_ENGLISH} "Privacy Consent"
+LangString PRIVACY_DESC ${LANG_ENGLISH} "Please accept the privacy policy to continue."
+LangString PRIVACY_CHECK ${LANG_ENGLISH} "I agree to the privacy policy."
+
+LangString PRIVACY_TITLE ${LANG_GERMAN} "Datenschutz"
+LangString PRIVACY_DESC ${LANG_GERMAN} "Bitte stimmen Sie der Datenschutzerklärung zu, um fortzufahren."
+LangString PRIVACY_CHECK ${LANG_GERMAN} "Ich stimme der Datenschutzerklärung zu."
+
+LangString PRIVACY_TITLE ${LANG_SIMPCHINESE} "隐私同意"
+LangString PRIVACY_DESC ${LANG_SIMPCHINESE} "请同意隐私政策以继续。"
+LangString PRIVACY_CHECK ${LANG_SIMPCHINESE} "我同意隐私政策。"
+
+LangString PRIVACY_TITLE ${LANG_JAPANESE} "プライバシー同意"
+LangString PRIVACY_DESC ${LANG_JAPANESE} "続行するにはプライバシーポリシーに同意してください。"
+LangString PRIVACY_CHECK ${LANG_JAPANESE} "プライバシーポリシーに同意します。"
+
+Var privacy_checkbox
 
 ; Installer Sections
 Section "Core Application" SecCore
@@ -62,6 +85,9 @@ Section "Core Application" SecCore
     
     ; Main executable (with icon embedded if available)
     File "${PROJECT_ROOT}\build\Release\cad_desktop.exe"
+
+    ; App icon for shortcuts and file associations
+    File "${PROJECT_ROOT}\installer\hydracad.ico"
     
     ; Set application icon for shortcuts
     !ifdef APP_ICON
@@ -83,7 +109,8 @@ Section "Core Application" SecCore
     
     ; Resources (if exist)
     SetOutPath "$INSTDIR\resources"
-    File /r /nonfatal "${PROJECT_ROOT}\resources\*.*"
+    IfFileExists "${PROJECT_ROOT}\resources\*.*" 0 +2
+    File /r "${PROJECT_ROOT}\resources\*.*"
     
     ; Documentation (essential docs only)
     SetOutPath "$INSTDIR\docs"
@@ -113,24 +140,64 @@ Section "Core Application" SecCore
     CreateShortcut "$SMPROGRAMS\Hydra CAD\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
     
     ; Desktop shortcut with icon
-    CreateShortcut "$DESKTOP\Hydra CAD.lnk" "$INSTDIR\cad_desktop.exe" "" "$INSTDIR\cad_desktop.exe" 0
+    CreateShortcut "$DESKTOP\Hydra CAD.lnk" "$INSTDIR\cad_desktop.exe" "" "$INSTDIR\hydracad.ico" 0
     
     ; Start Menu shortcuts with icons
-    CreateShortcut "$SMPROGRAMS\Hydra CAD\Hydra CAD.lnk" "$INSTDIR\cad_desktop.exe" "" "$INSTDIR\cad_desktop.exe" 0
+    CreateShortcut "$SMPROGRAMS\Hydra CAD\Hydra CAD.lnk" "$INSTDIR\cad_desktop.exe" "" "$INSTDIR\hydracad.ico" 0
     
     ; File associations
     WriteRegStr HKCR ".cad" "" "HydraCAD.Document"
     WriteRegStr HKCR "HydraCAD.Document" "" "Hydra CAD Document"
-    WriteRegStr HKCR "HydraCAD.Document\DefaultIcon" "" "$INSTDIR\cad_desktop.exe,0"
+    WriteRegStr HKCR "HydraCAD.Document\DefaultIcon" "" "$INSTDIR\hydracad.ico,0"
     WriteRegStr HKCR "HydraCAD.Document\shell\open\command" "" '"$INSTDIR\cad_desktop.exe" "%1"'
     
     ; Refresh shell to show file associations
     System::Call 'shell32::SHChangeNotify(i 0x8000000, i 0, i 0, i 0)'
 SectionEnd
 
+Function .onInit
+  !insertmacro MUI_LANGDLL_DISPLAY
+FunctionEnd
+
+Function PrivacyPageCreate
+  !insertmacro MUI_HEADER_TEXT $(PRIVACY_TITLE) $(PRIVACY_DESC)
+  nsDialogs::Create 1018
+  Pop $0
+
+  ${NSD_CreateLabel} 0 0 100% 30u "$(PRIVACY_DESC)"
+  Pop $1
+
+  ${NSD_CreateCheckbox} 0 40u 100% 12u "$(PRIVACY_CHECK)"
+  Pop $privacy_checkbox
+  ${NSD_OnClick} $privacy_checkbox PrivacyCheckboxChanged
+
+  GetDlgItem $2 $HWNDPARENT 1
+  EnableWindow $2 0
+  nsDialogs::Show
+FunctionEnd
+
+Function PrivacyCheckboxChanged
+  ${NSD_GetState} $privacy_checkbox $0
+  GetDlgItem $1 $HWNDPARENT 1
+  ${If} $0 == ${BST_CHECKED}
+    EnableWindow $1 1
+  ${Else}
+    EnableWindow $1 0
+  ${EndIf}
+FunctionEnd
+
+Function PrivacyPageLeave
+  ${NSD_GetState} $privacy_checkbox $0
+  ${If} $0 != ${BST_CHECKED}
+    MessageBox MB_ICONEXCLAMATION|MB_OK "$(PRIVACY_DESC)"
+    Abort
+  ${EndIf}
+FunctionEnd
+
 Section "Python Bindings" SecPython
     SetOutPath "$INSTDIR\python"
-    File /r /nonfatal "${PROJECT_ROOT}\build\Release\python\*.*"
+    IfFileExists "${PROJECT_ROOT}\build\Release\python\*.*" 0 +2
+    File /r "${PROJECT_ROOT}\build\Release\python\*.*"
     
     ; Python package installation
     ExecWait 'python -m pip install "$INSTDIR\python\cadursor" --quiet'
@@ -138,7 +205,8 @@ SectionEnd
 
 Section "Example Files" SecExamples
     SetOutPath "$INSTDIR\examples"
-    File /r /nonfatal "${PROJECT_ROOT}\examples\*.*"
+    IfFileExists "${PROJECT_ROOT}\examples\*.*" 0 +2
+    File /r "${PROJECT_ROOT}\examples\*.*"
 SectionEnd
 
 ; Uninstaller

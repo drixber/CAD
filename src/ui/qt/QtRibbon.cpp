@@ -150,9 +150,9 @@ QAction* QtRibbon::registerAction(const QString& id, const QString& label) {
     action->setShortcutVisibleInContextMenu(true);
     
     // Set icon if available
-    QString iconPath = getIconPath(id);
-    if (!iconPath.isEmpty() && QFile::exists(iconPath)) {
-        action->setIcon(QIcon(iconPath));
+    QIcon icon = getIcon(id);
+    if (!icon.isNull()) {
+        action->setIcon(icon);
     }
     
     // Enhanced tooltip with shortcut
@@ -169,6 +169,133 @@ QAction* QtRibbon::registerAction(const QString& id, const QString& label) {
     });
     actions_.insert({key, action});
     return action;
+}
+
+namespace {
+QIcon iconFromThemeNames(const QStringList& names) {
+    for (const auto& name : names) {
+        if (name.isEmpty()) {
+            continue;
+        }
+        QIcon icon = QIcon::fromTheme(name);
+        if (!icon.isNull()) {
+            return icon;
+        }
+    }
+    return QIcon();
+}
+}  // namespace
+
+QIcon QtRibbon::getIcon(const QString& commandId) {
+    const QMap<QString, QStringList> themeMap = {
+        // Sketch
+        {"Line", {"draw-line"}},
+        {"Rectangle", {"draw-rectangle"}},
+        {"Circle", {"draw-ellipse"}},
+        {"Arc", {"draw-arc", "draw-curve"}},
+        {"Spline", {"draw-path", "draw-freehand"}},
+        {"Text", {"draw-text"}},
+        {"Constraint", {"link", "insert-link"}},
+
+        // Part
+        {"Extrude", {"transform-move", "view-3d"}},
+        {"Revolve", {"object-rotate-right", "view-refresh"}},
+        {"Loft", {"transform-scale", "view-3d"}},
+        {"Sweep", {"transform-move", "view-3d"}},
+        {"Hole", {"insert-object", "edit-cut"}},
+        {"Fillet", {"format-line-spacing", "tools"}},
+        {"Chamfer", {"format-line-spacing", "tools"}},
+        {"Shell", {"object-flip-horizontal", "view-3d"}},
+        {"Mirror", {"object-flip-horizontal", "transform-mirror"}},
+        {"RectangularPattern", {"view-grid", "transform-duplicate"}},
+        {"CircularPattern", {"view-refresh", "transform-duplicate"}},
+        {"CurvePattern", {"draw-curve", "transform-duplicate"}},
+        {"DirectEdit", {"document-edit", "tools"}},
+        {"Freeform", {"draw-freehand", "tools"}},
+        {"Flange", {"tools", "view-3d"}},
+        {"Bend", {"view-refresh", "tools"}},
+        {"Unfold", {"view-refresh", "tools"}},
+        {"Refold", {"view-refresh", "tools"}},
+
+        // Assembly
+        {"LoadAssembly", {"document-open", "folder-open"}},
+        {"Place", {"object-position", "transform-move"}},
+        {"Mate", {"link", "insert-link"}},
+        {"Flush", {"align-horizontal-center", "align-vertical-center"}},
+        {"Angle", {"format-text-italic", "tools"}},
+        {"Pattern", {"view-grid", "transform-duplicate"}},
+        {"RigidPipe", {"network-wired", "view-3d"}},
+        {"FlexibleHose", {"network-wired", "view-3d"}},
+        {"BentTube", {"network-wired", "view-3d"}},
+        {"Simplify", {"edit-clear", "tools"}},
+
+        // Drawing
+        {"BaseView", {"document-preview", "x-office-document"}},
+        {"Section", {"document-properties", "view-split-left-right"}},
+        {"Dimension", {"format-indent-more", "draw-text"}},
+        {"PartsList", {"view-list-details", "x-office-spreadsheet"}},
+
+        // Inspect
+        {"Measure", {"measure", "zoom-original"}},
+        {"Interference", {"dialog-warning", "process-stop"}},
+        {"SectionAnalysis", {"document-properties", "view-split-left-right"}},
+        {"Simulation", {"media-playback-start", "system-run"}},
+        {"StressAnalysis", {"dialog-warning", "system-run"}},
+
+        // Manage
+        {"Parameters", {"preferences-other", "preferences-system"}},
+        {"Styles", {"preferences-desktop-theme", "preferences-system"}},
+        {"AddIns", {"application-x-addon", "preferences-system"}},
+        {"ExportRFA", {"document-export", "document-save"}},
+        {"MbdNote", {"insert-text", "draw-text"}},
+
+        // View
+        {"Visibility", {"view-visible", "view-refresh"}},
+        {"Appearance", {"preferences-desktop-theme", "preferences-system"}},
+        {"Environment", {"preferences-system", "applications-system"}},
+        {"Illustration", {"media-playback-start", "applications-graphics"}},
+        {"Rendering", {"applications-graphics", "view-preview"}},
+        {"Animation", {"media-playback-start", "applications-multimedia"}},
+
+        // File
+        {"New", {"document-new"}},
+        {"Open", {"document-open"}},
+        {"Save", {"document-save"}},
+        {"Export", {"document-export"}},
+        {"Import", {"document-import"}},
+
+        // General
+        {"Undo", {"edit-undo"}},
+        {"Redo", {"edit-redo"}},
+        {"ZoomFit", {"zoom-fit-best"}},
+        {"ZoomIn", {"zoom-in"}},
+        {"ZoomOut", {"zoom-out"}},
+
+        // View mode
+        {"Shaded", {"view-3d", "applications-graphics"}},
+        {"Wireframe", {"view-grid", "applications-graphics"}},
+        {"HiddenLine", {"view-filter", "applications-graphics"}},
+        {"SectionPlane", {"view-split-left-right", "applications-graphics"}}
+    };
+
+    const QStringList defaultThemeNames = {
+        "applications-graphics",
+        "applications-engineering",
+        "tools",
+        "preferences-system"
+    };
+
+    QIcon themeIcon = iconFromThemeNames(themeMap.value(commandId, defaultThemeNames));
+    if (!themeIcon.isNull()) {
+        return themeIcon;
+    }
+
+    QString iconPath = getIconPath(commandId);
+    if (!iconPath.isEmpty() && QFile::exists(iconPath)) {
+        return QIcon(iconPath);
+    }
+
+    return QIcon();
 }
 
 QString QtRibbon::getIconPath(const QString& commandId) {

@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include <QAction>
+#include <QIcon>
 #include <QTabWidget>
 
 namespace cad {
@@ -22,6 +23,7 @@ private:
     QWidget* buildCommandTab(const QString& title,
                              const QList<QPair<QString, QStringList>>& groups);
     QWidget* buildGroup(const QString& name, const QStringList& command_ids);
+    QIcon getIcon(const QString& commandId);
     QString getIconPath(const QString& commandId);
 
     std::function<void(const QString&)> command_handler_;

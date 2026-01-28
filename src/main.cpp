@@ -1,5 +1,9 @@
 #include <QApplication>
 #include <QFile>
+#include <QSettings>
+#include <QTranslator>
+#include <QCoreApplication>
+#include <QIcon>
 
 #include "app/AppController.h"
 #include "app/CADApplication.h"
@@ -8,6 +12,18 @@
 
 int main(int argc, char** argv) {
     QApplication qt_app(argc, argv);
+
+    QTranslator translator;
+    QSettings settings("HydraCAD", "HydraCAD");
+    const QString language_code = settings.value("ui/language", "en").toString();
+    if (language_code != "en") {
+        const QString resource_path = QString(":/i18n/hydracad_%1.qm").arg(language_code);
+        const QString file_path = QCoreApplication::applicationDirPath() + "/i18n/hydracad_" + language_code + ".qm";
+        if (translator.load(resource_path) || translator.load(file_path)) {
+            qt_app.installTranslator(&translator);
+        }
+    }
+    qt_app.setWindowIcon(QIcon(":/icons/app/app_icon.png"));
 
     cad::app::CADApplication application;
     cad::app::AppController controller;

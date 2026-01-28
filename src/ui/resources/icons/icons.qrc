@@ -1,6 +1,9 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/icons">
+        <!-- App Icon -->
+        <file alias="app/app_icon.png">app/app_icon.png</file>
+
         <!-- Sketch Icons -->
         <file alias="sketch/line.svg">sketch/line.svg</file>
         <file alias="sketch/rectangle.svg">sketch/rectangle.svg</file>
