@@ -201,7 +201,8 @@ Section "Python Bindings" SecPython
     File /nonfatal /r "${PROJECT_ROOT}\build\Release\python\*.*"
     
     ; Python package installation
-    ExecWait 'python -m pip install "$INSTDIR\python\cadursor" --quiet'
+    IfFileExists "$INSTDIR\python\cadursor\*.*" 0 +2
+    nsExec::ExecToLog 'python -m pip install "$INSTDIR\python\cadursor" --quiet'
 SectionEnd
 
 Section "Example Files" SecExamples
