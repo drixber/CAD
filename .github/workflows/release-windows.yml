@@ -81,7 +81,7 @@ jobs:
           if (-not $env:Qt6_DIR) {
             throw "Qt6_DIR not set by install-qt-action."
           }
-          $qtBin = Resolve-Path "$env:Qt6_DIR\..\..\bin"
+          $qtBin = Resolve-Path (Join-Path $env:Qt6_DIR "..\\..\\..\\bin")
           $windeployqt = Join-Path $qtBin "windeployqt.exe"
           if (-not (Test-Path $windeployqt)) {
             throw "windeployqt not found: $windeployqt"
