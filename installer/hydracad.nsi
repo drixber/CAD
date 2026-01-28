@@ -197,7 +197,7 @@ FunctionEnd
 Section "Python Bindings" SecPython
     SetOutPath "$INSTDIR\python"
     IfFileExists "${PROJECT_ROOT}\build\Release\python\*.*" 0 +2
-    File /r "${PROJECT_ROOT}\build\Release\python\*.*"
+    File /nonfatal /r "${PROJECT_ROOT}\build\Release\python\*.*"
     
     ; Python package installation
     ExecWait 'python -m pip install "$INSTDIR\python\cadursor" --quiet'
@@ -206,7 +206,7 @@ SectionEnd
 Section "Example Files" SecExamples
     SetOutPath "$INSTDIR\examples"
     IfFileExists "${PROJECT_ROOT}\examples\*.*" 0 +2
-    File /r "${PROJECT_ROOT}\examples\*.*"
+    File /nonfatal /r "${PROJECT_ROOT}\examples\*.*"
 SectionEnd
 
 ; Uninstaller
