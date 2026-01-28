@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
+    env:
+      WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+      WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,6 +91,9 @@ jobs:
           }
           & $windeployqt $exePath
 
+          # Include deployed Qt files in ZIP
+          Copy-Item -Path "build\Release\*" -Destination dist -Recurse -Force
+
           $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
           if (-not (Test-Path $nsisPath)) {
             $nsisPath = "C:\Program Files\NSIS\makensis.exe"
@@ -108,11 +114,11 @@ jobs:
           Compress-Archive -Path dist\* -DestinationPath app-windows.zip -Force
 
       - name: Code Sign (optional)
-        if: ${{ secrets.WINDOWS_PFX_BASE64 != '' }}
+        if: ${{ env.WINDOWS_PFX_BASE64 != '' }}
         shell: powershell
         env:
-          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
-          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+          WINDOWS_PFX_BASE64: ${{ env.WINDOWS_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ env.WINDOWS_PFX_PASSWORD }}
         run: |
           $pfxPath = "$env:RUNNER_TEMP\codesign.pfx"
           [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
