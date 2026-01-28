@@ -29,6 +29,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "CompanyName" "Hydra CAD"
 VIAddVersionKey "FileDescription" "Hydra CAD Application"
+VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 Hydra CAD"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
@@ -241,6 +242,18 @@ SectionEnd
 LangString DESC_SecCore ${LANG_ENGLISH} "Core Hydra CAD application files (required)"
 LangString DESC_SecPython ${LANG_ENGLISH} "Python bindings and API"
 LangString DESC_SecExamples ${LANG_ENGLISH} "Example CAD files and tutorials"
+
+LangString DESC_SecCore ${LANG_GERMAN} "Kernanwendung von Hydra CAD (erforderlich)"
+LangString DESC_SecPython ${LANG_GERMAN} "Python-Bindings und API"
+LangString DESC_SecExamples ${LANG_GERMAN} "Beispiel-CAD-Dateien und Tutorials"
+
+LangString DESC_SecCore ${LANG_SIMPCHINESE} "Hydra CAD 核心应用程序文件（必需）"
+LangString DESC_SecPython ${LANG_SIMPCHINESE} "Python 绑定与 API"
+LangString DESC_SecExamples ${LANG_SIMPCHINESE} "示例 CAD 文件与教程"
+
+LangString DESC_SecCore ${LANG_JAPANESE} "Hydra CAD のコアアプリケーション（必須）"
+LangString DESC_SecPython ${LANG_JAPANESE} "Python バインディングと API"
+LangString DESC_SecExamples ${LANG_JAPANESE} "サンプル CAD ファイルとチュートリアル"
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
     !insertmacro MUI_DESCRIPTION_TEXT ${SecCore} $(DESC_SecCore)
