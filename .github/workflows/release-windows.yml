@@ -52,11 +52,17 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
+      - name: Install NSIS
+        shell: powershell
+        run: |
+          choco install nsis -y
+
       - name: Package
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path dist | Out-Null
+          New-Item -ItemType Directory -Force -Path "build\Release" | Out-Null
 
           $exeCandidates = Get-ChildItem -Path build -Recurse -Filter *.exe -File
           if (-not $exeCandidates) {
@@ -68,18 +74,35 @@ jobs:
           $exe = if ($preferred) { $preferred } elseif ($nonTest) { $nonTest } else { $exeCandidates | Select-Object -First 1 }
           Write-Host ("Selected EXE: " + $exe.FullName)
 
-          Copy-Item -Path $exe.FullName -Destination dist
-          $exePath = Join-Path dist $exe.Name
+          Copy-Item -Path $exe.FullName -Destination "build\Release\cad_desktop.exe" -Force
+          Copy-Item -Path $exe.FullName -Destination dist -Force
+          $exePath = "build\Release\cad_desktop.exe"
 
-          $windeployqt = Get-Command windeployqt -ErrorAction SilentlyContinue
-          if ($windeployqt) {
-            try {
-              & $windeployqt $exePath
-            } catch {
-              Write-Host "windeployqt failed: $($_.Exception.Message)"
-            }
+          if (-not $env:Qt6_DIR) {
+            throw "Qt6_DIR not set by install-qt-action."
+          }
+          $qtBin = Resolve-Path "$env:Qt6_DIR\..\..\bin"
+          $windeployqt = Join-Path $qtBin "windeployqt.exe"
+          if (-not (Test-Path $windeployqt)) {
+            throw "windeployqt not found: $windeployqt"
+          }
+          & $windeployqt $exePath
+
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $nsisPath)) {
+            $nsisPath = "C:\Program Files\NSIS\makensis.exe"
+          }
+          if (-not (Test-Path $nsisPath)) {
+            throw "NSIS not found at $nsisPath"
+          }
+          & $nsisPath installer\hydracad.nsi
+          if ($LASTEXITCODE -ne 0) {
+            throw "NSIS build failed with exit code $LASTEXITCODE"
+          }
+          if (Test-Path "installer\HydraCADSetup.exe") {
+            Copy-Item "installer\HydraCADSetup.exe" -Destination dist -Force
           } else {
-            Write-Host "windeployqt not found in PATH"
+            throw "Installer not found at installer\HydraCADSetup.exe"
           }
 
           Compress-Archive -Path dist\* -DestinationPath app-windows.zip -Force
