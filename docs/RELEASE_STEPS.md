@@ -14,16 +14,24 @@ git push origin v3.0.6
 - **Push zu main** löst den Workflow „Build Windows (Push)“ aus → Installer und Portable-ZIP werden gebaut und als Artifacts hochgeladen (7 Tage).
 - **Push des Tags** markiert den Stand als Release-Version v3.0.6.
 
-## 2. GitHub Release anlegen (optional)
+## 2. GitHub Release anlegen – EXE/ZIP automatisch anhängen
 
-Wenn du auf GitHub eine **Release-Seite** mit Beschreibung und Dateien haben willst:
+Damit die **neueste Release-Seite** wieder **HydraCADSetup.exe** und **app-windows.zip** (wie bei v3.0.4) anzeigt:
 
-1. Auf GitHub: **Releases** → **Draft a new release**
-2. **Choose tag:** `v3.0.6` auswählen
-3. **Release title:** z. B. `v3.0.6`
-4. **Describe:** Changelog/Highlights eintragen (z. B. aus CHANGELOG.md)
-5. **Assets:** Aus dem abgeschlossenen Workflow-Lauf die Artifacts **HydraCAD-Windows-Installer** und **HydraCAD-Windows-Portable** herunterladen und hier anhängen (oder einen Workflow nutzen, der bei Tag-Push automatisch ein Release mit Assets erstellt)
-6. **Publish release**
+1. **Tag pushen** (falls noch nicht geschehen): `git push origin v3.0.7`
+2. Auf GitHub: **Releases** → **Draft a new release** (oder **Create release from tag** beim Tag)
+3. **Choose tag:** z. B. `v3.0.7` auswählen
+4. **Release title:** z. B. `Hydra CAD 3.0.7`
+5. **Describe:** Changelog/Highlights (z. B. aus CHANGELOG.md), Installation (Download `HydraCADSetup.exe`, Doppelklick, Assistent folgen), Features
+6. **Publish release** klicken
+
+**Danach:** Der Workflow **„Release – Assets anhängen“** (`release-attach-assets.yml`) startet automatisch. Er baut Windows (Installer + Portable-ZIP) und Linux (Tarball) und **hängt die Dateien an dieses Release** an. Nach wenigen Minuten erscheinen unter dem Release:
+
+- **HydraCADSetup.exe**
+- **app-windows.zip**
+- **hydracad-linux-portable.tar.gz**
+
+Du musst die EXE/ZIP nicht mehr manuell aus den Workflow-Artifacts holen – sie landen direkt auf der Release-Seite.
 
 ---
 

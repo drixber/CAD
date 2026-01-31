@@ -1,0 +1,168 @@
+# Bei jedem veröffentlichten Release: Windows (+ optional Linux) bauen und
+# HydraCADSetup.exe, app-windows.zip (und ggf. Linux) ans Release hängen.
+# So zeigt die neueste Release-Seite wieder EXE/ZIP wie bei v3.0.4.
+
+name: Release – Assets anhängen
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+      WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.26'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: |
+          Remove-Item "C:\Users\runneradmin\AppData\Local\Microsoft\WindowsApps\python.exe" -ErrorAction SilentlyContinue
+          Remove-Item "C:\Users\runneradmin\AppData\Local\Microsoft\WindowsApps\python3.exe" -ErrorAction SilentlyContinue
+        shell: powershell
+
+      - name: Setup Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          arch: 'win64_msvc2019_64'
+          cache: true
+
+      - name: Version aus Tag
+        id: version
+        shell: powershell
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          $ver = $tag -replace '^v', ''
+          if (-not $ver) { $ver = "2.0.0" }
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+          echo "vversion=v$ver" >> $env:GITHUB_OUTPUT
+
+      - run: |
+          if (Test-Path build) { Remove-Item build -Recurse -Force }
+        shell: powershell
+
+      - run: choco install nsis -y
+        continue-on-error: true
+
+      - name: Configure CMake
+        run: |
+          $QtDir = $env:Qt6_DIR
+          $appVer = "${{ steps.version.outputs.vversion }}"
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release `
+            -DAPP_VERSION="$appVer" -DQt6_DIR="$QtDir" -DCMAKE_PREFIX_PATH="$QtDir"
+        shell: powershell
+
+      - run: cmake --build build --config Release --parallel
+        shell: powershell
+
+      - name: windeployqt
+        run: |
+          $qtBin = (Join-Path $env:Qt6_DIR "bin")
+          & (Join-Path $qtBin "windeployqt.exe") build\Release\cad_desktop.exe
+        shell: powershell
+
+      - name: NSIS Installer
+        run: |
+          $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $nsis)) { $nsis = "C:\Program Files\NSIS\makensis.exe" }
+          $ver = "${{ steps.version.outputs.version }}"
+          & $nsis /DINSTALLER_VERSION="$ver" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
+        shell: powershell
+
+      - name: Code Sign (optional)
+        if: ${{ env.WINDOWS_PFX_BASE64 != '' }}
+        env:
+          WINDOWS_PFX_BASE64: ${{ env.WINDOWS_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ env.WINDOWS_PFX_PASSWORD }}
+        run: |
+          $pfx = "$env:RUNNER_TEMP\codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Select-Object -First 1
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "build\Release\cad_desktop.exe"
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "installer\HydraCADSetup.exe"
+        shell: powershell
+
+      - name: Portable ZIP
+        run: |
+          Compress-Archive -Path "build\Release\*" -DestinationPath app-windows.zip -Force
+        shell: powershell
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-installer
+          path: installer/HydraCADSetup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-portable
+          path: app-windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libxcb-cursor0 libgl1-mesa-dev libxkbcommon-dev
+        name: Install deps
+
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF
+          cmake --build build -j$(nproc)
+
+      - name: Portable Tarball
+        run: |
+          mkdir -p hydracad-linux-portable/usr/bin
+          cp build/cad_desktop hydracad-linux-portable/usr/bin/
+          cp packaging/linux/HydraCAD.desktop hydracad-linux-portable/
+          tar czvf hydracad-linux-portable.tar.gz -C hydracad-linux-portable .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-portable
+          path: hydracad-linux-portable.tar.gz
+
+  upload-release-assets:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Artifacts für Release sammeln
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Dateien für Upload vorbereiten
+        run: |
+          mkdir -p upload
+          find release-assets -name 'HydraCADSetup.exe' -exec cp {} upload/ \;
+          find release-assets -name 'app-windows.zip' -exec cp {} upload/ \;
+          find release-assets -name '*.tar.gz' -exec cp {} upload/ \;
+          ls -la upload/
+
+      - name: Assets ans Release hängen
+        run: |
+          for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz; do
+            [ -f "$f" ] && gh release upload "${{ github.event.release.tag_name }}" "$f" --clobber
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

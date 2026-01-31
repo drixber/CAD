@@ -202,3 +202,86 @@ jobs:
         name: HydraCAD-Windows-Portable
         path: app-windows.zip
         retention-days: 7
+
+  build-linux:
+    name: Build Linux (AppImage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt 6 and build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
+            libxcb-cursor0 libgl1-mesa-dev libxkbcommon-dev
+          sudo apt-get install -y qt6-network-dev || true
+
+      - name: Configure and build
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCAD_USE_QT=ON \
+            -DCAD_BUILD_TESTS=OFF
+          cmake --build build -j$(nproc)
+
+      - name: Prepare AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp build/cad_desktop AppDir/usr/bin/
+          cp packaging/linux/HydraCAD.desktop AppDir/
+          mkdir -p AppDir/usr/share/applications
+          cp packaging/linux/HydraCAD.desktop AppDir/usr/share/applications/
+
+      - name: Deploy Qt libs (linuxdeploy-plugin-qt)
+        run: |
+          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage" -O linuxdeploy-plugin-qt.AppImage
+          chmod +x linuxdeploy-plugin-qt.AppImage
+          export QMAKE=$(find /usr -name 'qmake6' -type f 2>/dev/null | head -1)
+          if [ -z "$QMAKE" ]; then export QMAKE=$(which qmake6 2>/dev/null || which qmake 2>/dev/null); fi
+          ./linuxdeploy-plugin-qt.AppImage --appdir AppDir || true
+
+      - name: Create AppImage (linuxdeploy)
+        run: |
+          wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -O linuxdeploy.AppImage
+          chmod +x linuxdeploy.AppImage
+          ./linuxdeploy.AppImage --appdir AppDir \
+            --executable AppDir/usr/bin/cad_desktop \
+            --desktop-file AppDir/HydraCAD.desktop \
+            --output appimage || true
+
+      - name: Create portable tarball (fallback)
+        run: |
+          mkdir -p hydracad-linux-portable/usr/bin
+          cp build/cad_desktop hydracad-linux-portable/usr/bin/
+          cp packaging/linux/HydraCAD.desktop hydracad-linux-portable/
+          echo '#!/bin/sh' > hydracad-linux-portable/run.sh
+          echo 'export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}/usr/lib/x86_64-linux-gnu"' >> hydracad-linux-portable/run.sh
+          echo 'exec "$(dirname "$0")/usr/bin/cad_desktop" "$@"' >> hydracad-linux-portable/run.sh
+          chmod +x hydracad-linux-portable/run.sh
+          tar czvf hydracad-linux-portable.tar.gz -C hydracad-linux-portable .
+
+      - name: Prepare AppImage for upload
+        id: appimage
+        run: |
+          if ls *.AppImage 1>/dev/null 2>&1; then
+            cp $(ls *.AppImage | head -1) HydraCAD-Linux.AppImage
+            echo "has=1" >> $GITHUB_OUTPUT
+          else
+            echo "has=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Linux AppImage
+        if: steps.appimage.outputs.has == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HydraCAD-Linux-AppImage
+          path: HydraCAD-Linux.AppImage
+          retention-days: 7
+
+      - name: Upload Linux portable tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: HydraCAD-Linux-Portable
+          path: hydracad-linux-portable.tar.gz
+          retention-days: 7

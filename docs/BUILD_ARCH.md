@@ -65,9 +65,15 @@ ctest --output-on-failure
 
 ---
 
+## Installation mit pacman / yay
+
+- **Lokal bauen und mit pacman installieren:** Siehe [INSTALL_ARCH_PACMAN_YAY.md](INSTALL_ARCH_PACMAN_YAY.md) (Abschnitt „Installation mit pacman (lokal bauen)“).
+- **Mit yay installieren:** Sobald ein AUR-Paket `hydracad` existiert: `yay -S hydracad`. Anleitung zum Anlegen des AUR-Pakets: [INSTALL_ARCH_PACMAN_YAY.md](INSTALL_ARCH_PACMAN_YAY.md).
+
 ## Verweise
 
 - Linux (Ubuntu/Debian/Fedora): [BUILD_LINUX.md](BUILD_LINUX.md)
+- pacman/yay und AUR: [INSTALL_ARCH_PACMAN_YAY.md](INSTALL_ARCH_PACMAN_YAY.md)
 - Allgemeine Installation: [INSTALLATION.md](INSTALLATION.md)
 - Linux-Status (im Hintergrund): [TODO_LINUX.md](TODO_LINUX.md)
 - Projekt-README: [../README.md](../README.md)

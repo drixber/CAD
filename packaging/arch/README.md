@@ -1,15 +1,19 @@
-# Arch Linux – Paketierung
+# Arch Linux – Paketierung (pacman / yay)
 
-Diese Verzeichnis enthält eine **Vorlage** für ein Arch-Linux-Paket (PKGBUILD). Sie dient dazu, Hydra CAD unter Arch zu bauen und ggf. für AUR oder lokale Nutzung zu paketieren.
+Dieses Verzeichnis enthält den **PKGBUILD** für Hydra CAD. Damit kannst du:
 
-- **Nicht Teil des automatischen Release-Prozesses** – die Vorlage wird bei Bedarf manuell angepasst.
-- **Weiterentwicklung auf Arch:** Siehe [docs/BUILD_ARCH.md](../../docs/BUILD_ARCH.md) für Build und Entwicklung aus dem Quellcode.
-- **PKGBUILD:** `pkgver` und `source` (Tag/Branch) bei Nutzung anpassen; `sha256sums=('SKIP')` bei Git-Sources üblich.
+- **Lokal mit pacman installieren:** `makepkg -si` (baut und installiert über pacman).
+- **Über yay installieren:** Dafür muss das Paket einmal auf der AUR liegen (siehe [docs/INSTALL_ARCH_PACMAN_YAY.md](../../docs/INSTALL_ARCH_PACMAN_YAY.md)).
 
-Build (im Repo-Root, mit dieser PKGBUILD im Unterordner):
+**Installation (lokal):**
 
 ```bash
-cd packaging/arch
-makepkg -sf
-# oder: makepkg -si  # baut und installiert
+sudo pacman -S --needed base-devel cmake qt6-base qt6-tools git
+git clone https://github.com/drixber/CAD.git
+cd CAD/packaging/arch
+makepkg -si
 ```
+
+- **Weiterentwicklung auf Arch:** [docs/BUILD_ARCH.md](../../docs/BUILD_ARCH.md)
+- **pacman/yay und AUR:** [docs/INSTALL_ARCH_PACMAN_YAY.md](../../docs/INSTALL_ARCH_PACMAN_YAY.md)
+- **PKGBUILD:** `pkgver` bei neuem Release anpassen (z. B. 3.0.7); `sha256sums=('SKIP')` bei Git-Source üblich.

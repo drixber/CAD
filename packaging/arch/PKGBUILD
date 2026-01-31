@@ -1,24 +1,19 @@
-# PKGBUILD – Vorlage für Hydra CAD unter Arch Linux
-# Nutzung: z. B. für AUR oder lokales Bauen mit makepkg -si
-# Dieses Paket wird nicht offiziell gepflegt; bei Weiterentwicklung auf Arch anpassen.
+# PKGBUILD – Hydra CAD für Arch Linux / AUR
+# Nutzung: makepkg -si (lokal) oder auf AUR legen → yay -S hydracad
+# pkgver bei neuem Release anpassen (z. B. 3.0.7).
 
 pkgname=hydracad
-pkgver=2.0.0
+pkgver=3.0.7
 pkgrel=1
 pkgdesc="Professional CAD application (C++/Qt6)"
 arch=('x86_64')
 url="https://github.com/drixber/CAD"
 license=('custom')
-depends=('qt6-base' 'qt6-tools')
+depends=('qt6-base' 'qt6-tools' 'qt6-translations')
+optdepends=('qt6-network: in-app updates without curl')
 makedepends=('cmake' 'git')
 source=("git+${url}.git#tag=v${pkgver}")
 sha256sums=('SKIP')
-
-prepare() {
-  cd CAD
-  # Optional: Unterverzeichnis für Out-of-Tree-Build
-  # mkdir -p build
-}
 
 build() {
   cd CAD
@@ -29,6 +24,6 @@ build() {
 package() {
   cd CAD
   install -Dm755 build/cad_desktop -t "$pkgdir/usr/bin"
-  # Optional: Übersetzungen, Desktop-Datei, Icon
-  # install -Dm644 installer/license.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 packaging/linux/HydraCAD.desktop -t "$pkgdir/usr/share/applications"
+  install -Dm644 installer/license.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

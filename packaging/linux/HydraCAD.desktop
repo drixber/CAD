@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hydra CAD
+Comment=Professional CAD Application
+Exec=cad_desktop
+Icon=HydraCAD
+Categories=Graphics;Engineering;
+Terminal=false
