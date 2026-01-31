@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <map>
 #include "core/Modeler/Assembly.h"
 #include "core/Modeler/Part.h"
 #include "core/Modeler/Sketch.h"
@@ -27,6 +28,12 @@ public:
     // Save/Load project
     bool saveProject(const std::string& file_path, const cad::core::Assembly& assembly) const;
     bool loadProject(const std::string& file_path, cad::core::Assembly& assembly) const;
+    /** Save with optional sketches (sketch_id -> Sketch). */
+    bool saveProject(const std::string& file_path, const cad::core::Assembly& assembly,
+                     const std::map<std::string, cad::core::Sketch>* sketches) const;
+    /** Load with optional sketches output. */
+    bool loadProject(const std::string& file_path, cad::core::Assembly& assembly,
+                     std::map<std::string, cad::core::Sketch>* sketches_out) const;
     
     // Save/Load checkpoint
     bool saveCheckpoint(const std::string& checkpoint_path, const cad::core::Assembly& assembly) const;
@@ -54,7 +61,15 @@ private:
     std::string auto_save_path_{"autosave"};
     
     std::string serializeAssembly(const cad::core::Assembly& assembly) const;
+    std::string serializeAssemblyWithSketches(const cad::core::Assembly& assembly,
+                                              const std::map<std::string, cad::core::Sketch>* sketches) const;
     bool deserializeAssembly(const std::string& data, cad::core::Assembly& assembly) const;
+    bool deserializeAssemblyWithSketches(const std::string& data, cad::core::Assembly& assembly,
+                                         std::map<std::string, cad::core::Sketch>* sketches_out) const;
+    std::string serializePart(const cad::core::Part& part) const;
+    bool deserializePart(const std::string& data, cad::core::Part& part) const;
+    std::string serializeSketch(const cad::core::Sketch& sketch) const;
+    bool deserializeSketch(const std::string& data, cad::core::Sketch& sketch) const;
     std::string getTimestamp() const;
 };
 

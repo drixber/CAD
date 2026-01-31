@@ -132,8 +132,9 @@ ctest --test-dir build -C Release
 
 Aktuell wird der automatische Release-Build nur für Windows ausgeführt. Für Linux/macOS aus dem Quellcode bauen:
 
-- **Linux:** Qt 6 installieren (Paketmanager oder Qt Online Installer), dann CMake mit `-DCAD_USE_QT=ON` und passendem `Qt6_DIR`
-- **macOS:** Qt 6 über den Qt Installer, dann CMake; optional `-DCAD_USE_QT=ON` und MACOSX_BUNDLE wird gesetzt
+- **Linux (allgemein):** Qt 6 installieren (Paketmanager oder Qt Online Installer), dann CMake mit `-DCAD_USE_QT=ON` und passendem `Qt6_DIR`.
+- **Arch Linux:** Ausführliche Anleitung inkl. Pacman-Abhängigkeiten, Build und Entwicklung: [docs/BUILD_ARCH.md](BUILD_ARCH.md). PKGBUILD-Vorlage für AUR/lokales Paket: `packaging/arch/PKGBUILD`.
+- **macOS:** Qt 6 über den Qt Installer, dann CMake; optional `-DCAD_USE_QT=ON` und MACOSX_BUNDLE wird gesetzt.
 
 ## Troubleshooting
 

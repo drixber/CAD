@@ -1058,7 +1058,9 @@ bool AppController::saveProject(const std::string& file_path) {
         }
     }
     
-    bool success = project_file_service_.saveProject(file_path, active_assembly_);
+    std::map<std::string, cad::core::Sketch> sketches;
+    sketches.emplace(active_sketch_.name(), active_sketch_);
+    bool success = project_file_service_.saveProject(file_path, active_assembly_, &sketches);
     if (success) {
         has_unsaved_changes_ = false;
         current_project_path_ = file_path;
@@ -1135,8 +1137,17 @@ bool AppController::loadProject(const std::string& file_path) {
         return false;
     }
     
-    bool success = project_file_service_.loadProject(file_path, active_assembly_);
+    std::map<std::string, cad::core::Sketch> loaded_sketches;
+    bool success = project_file_service_.loadProject(file_path, active_assembly_, &loaded_sketches);
     if (success) {
+        if (!loaded_sketches.empty()) {
+            auto it = loaded_sketches.find(active_sketch_.name());
+            active_sketch_ = (it != loaded_sketches.end()) ? it->second : loaded_sketches.begin()->second;
+            modeler_.evaluateParameters(active_sketch_);
+            main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+            main_window_.setParameterCount(static_cast<int>(active_sketch_.parameters().size()));
+            main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
+        }
         has_unsaved_changes_ = false;
         current_project_path_ = file_path;
         ProjectFileInfo info = project_file_service_.getProjectInfo(file_path);
@@ -1280,8 +1291,8 @@ void AppController::setupAIService(cad::ui::QtMainWindow* qt_window) {
         ai_service_.configureProvider(cad::app::ai::ModelProviderType::Grok, grok_key.toStdString());
         ai_service_.setModel(model.toStdString());
     } else if (provider == "anthropic" && !anthropic_key.isEmpty()) {
-        // Anthropic provider will be implemented later
-        // ai_service_.configureProvider(cad::app::ai::ModelProviderType::Anthropic, anthropic_key.toStdString());
+        ai_service_.configureProvider(cad::app::ai::ModelProviderType::Anthropic, anthropic_key.toStdString());
+        ai_service_.setModel(model.toStdString());
     }
     
     ai_service_.setTemperature(temperature);
@@ -1356,6 +1367,18 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
                     success
                 );
             }
+        } else if (provider == "anthropic") {
+            QString key = dialog.getAnthropicKey();
+            if (!key.isEmpty()) {
+                bool success = ai_service_.configureProvider(cad::app::ai::ModelProviderType::Anthropic, key.toStdString());
+                if (success) {
+                    success = ai_service_.getActiveProvider()->testConnection();
+                }
+                dialog.setTestResult(
+                    success ? QObject::tr("Connection successful!") : QObject::tr("Connection failed. Please check your API key."),
+                    success
+                );
+            }
         } else if (provider == "grok") {
             QString key = dialog.getGrokKey();
             if (!key.isEmpty()) {
@@ -1387,6 +1410,8 @@ void AppController::showAISettingsDialog(cad::ui::QtMainWindow* qt_window) {
         QString provider = dialog.getSelectedProvider();
         if (provider == "openai") {
             ai_service_.configureProvider(cad::app::ai::ModelProviderType::OpenAI, dialog.getOpenAIKey().toStdString());
+        } else if (provider == "anthropic") {
+            ai_service_.configureProvider(cad::app::ai::ModelProviderType::Anthropic, dialog.getAnthropicKey().toStdString());
         } else if (provider == "grok") {
             ai_service_.configureProvider(cad::app::ai::ModelProviderType::Grok, dialog.getGrokKey().toStdString());
         }

@@ -1,4 +1,5 @@
 add_library(cad_app
+    AuthConfig.cpp
     CADApplication.cpp
     AppController.cpp
     UpdateService.cpp
@@ -8,6 +9,7 @@ add_library(cad_app
     ai/AIService.cpp
     ai/OpenAIProvider.cpp
     ai/GrokProvider.cpp
+    ai/AnthropicProvider.cpp
     ai/ContextManager.cpp
     ai/PromptBuilder.cpp
     UpdateInstaller.cpp

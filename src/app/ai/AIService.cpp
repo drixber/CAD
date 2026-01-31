@@ -3,6 +3,7 @@
 #include "ai/PromptBuilder.h"
 #include "ai/OpenAIProvider.h"
 #include "ai/GrokProvider.h"
+#include "ai/AnthropicProvider.h"
 #include <algorithm>
 #include <memory>
 
@@ -16,6 +17,7 @@ AIService::AIService()
     // Register default providers
     registerProvider(std::make_shared<OpenAIProvider>());
     registerProvider(std::make_shared<GrokProvider>());
+    registerProvider(std::make_shared<AnthropicProvider>());
     // Set OpenAI as default active provider
     if (!providers_.empty()) {
         active_provider_ = providers_[0];

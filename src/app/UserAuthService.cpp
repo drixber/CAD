@@ -170,12 +170,46 @@ bool UserAuthService::saveUsers(const std::vector<User>& users) const {
     }
 }
 
+std::string UserAuthService::getApiBaseUrl() const {
+    return auth_config_.getApiBaseUrl();
+}
+
+void UserAuthService::setApiBaseUrl(const std::string& url) {
+    auth_config_.setApiBaseUrl(url);
+}
+
+RegisterResult UserAuthService::registerViaApi(const std::string& username,
+                                               const std::string& email,
+                                               const std::string& password) const {
+    (void)username;
+    (void)email;
+    (void)password;
+    RegisterResult result;
+    result.success = false;
+    result.error_message = "Backend API not yet implemented. Unset CAD_API_BASE_URL for local mode.";
+    return result;
+}
+
+LoginResult UserAuthService::loginViaApi(const std::string& username,
+                                        const std::string& password) const {
+    (void)username;
+    (void)password;
+    LoginResult result;
+    result.success = false;
+    result.error_message = "Backend API not yet implemented. Unset CAD_API_BASE_URL for local mode.";
+    return result;
+}
+
 RegisterResult UserAuthService::registerUser(const std::string& username, 
                                             const std::string& email, 
                                             const std::string& password) {
     RegisterResult result;
+
+    if (auth_config_.isApiMode()) {
+        return registerViaApi(username, email, password);
+    }
     
-    // Validate input
+    // Validate input (local mode)
     if (username.empty() || username.length() < 3) {
         result.error_message = "Username must be at least 3 characters long";
         return result;
@@ -227,6 +261,10 @@ RegisterResult UserAuthService::registerUser(const std::string& username,
 
 LoginResult UserAuthService::login(const std::string& username, const std::string& password) {
     LoginResult result;
+
+    if (auth_config_.isApiMode()) {
+        return loginViaApi(username, password);
+    }
     
     if (username.empty() || password.empty()) {
         result.error_message = "Username and password are required";

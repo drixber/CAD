@@ -20,7 +20,8 @@ Basis: `docs/PLAN_USER_AND_LICENSING.md`.
 
 ## Phase 2 – App an API (ca. 3–4 Tage)
 
-- [ ] **2.1** App: Konfiguration für API-Basis-URL (z. B. Umgebungsvariable oder Config-Datei).
+- [x] **2.1** App: Konfiguration für API-Basis-URL (z. B. Umgebungsvariable oder Config-Datei).
+  - **Vorbereitet:** `AuthConfig` liest API-Basis-URL aus Umgebungsvariable `CAD_API_BASE_URL` oder `HYDRACAD_API_URL`; mit Qt zusätzlich aus QSettings `auth/api_base_url`. `UserAuthService::getApiBaseUrl()` / `setApiBaseUrl()`. Wenn gesetzt, nutzen Registrierung/Login Platzhalter `registerViaApi` / `loginViaApi` (noch „nicht implementiert“); sonst lokale Datei.
 - [ ] **2.2** App: `UserAuthService`: Registrierung → `POST /api/auth/register` aufrufen statt lokale Datei; Fehlerbehandlung (z. B. „Email bereits vergeben“).
 - [ ] **2.3** App: `UserAuthService`: Login → `POST /api/auth/login` aufrufen; Access- und Refresh-Token speichern (sicher, z. B. QSettings oder OS Keychain).
 - [ ] **2.4** App: Beim Start: wenn Token vorhanden → `GET /api/auth/me` (mit Bearer-Token); bei Erfolg User als eingeloggt setzen.

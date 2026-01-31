@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <ctime>
+#include "AuthConfig.h"
 
 namespace cad {
 namespace app {
@@ -59,12 +60,20 @@ public:
     void saveSession(const std::string& username, bool remember);
     bool loadSavedSession();
     void clearSavedSession();
-    
+
+    // Backend API config (Phase 2): when set, register/login use API instead of local file
+    std::string getApiBaseUrl() const;
+    void setApiBaseUrl(const std::string& url);
+
 private:
+    AuthConfig auth_config_;
     std::string users_file_path_;
     User current_user_;
     bool is_logged_in_{false};
-    
+
+    RegisterResult registerViaApi(const std::string& username, const std::string& email, const std::string& password) const;
+    LoginResult loginViaApi(const std::string& username, const std::string& password) const;
+
     std::string hashPassword(const std::string& password) const;
     bool verifyPassword(const std::string& password, const std::string& hash) const;
     std::vector<User> loadUsers() const;
