@@ -90,6 +90,44 @@ Anschließend alle Dateien aus `build\Release\` (inkl. `platforms\`, Qt-DLLs etc
   2. Für den **bereits gepushten** Tag v3.0.10 einmal manuell ein Release anlegen: GitHub → **Releases** → **Draft a new release** → Tag **v3.0.10** auswählen → **Publish release**. Danach baut der CI und hängt die Assets an.  
 - **Ab dem nächsten Tag:** Nach dem Push von `main` mit dem Workflow reicht für neue Versionen wieder: `git tag v3.0.11 && git push origin v3.0.11` – dann wird das Release automatisch erstellt.
 
+### Release ohne EXE/ZIP (nur Source code)
+
+Wenn ein Release nur **Source code (zip/tar.gz)** hat und **keine** HydraCADSetup.exe oder app-windows.zip:
+
+1. **Actions prüfen:** GitHub → **Actions** → Workflow **„Release – Assets anhängen“** öffnen → nach dem Lauf suchen, der beim Veröffentlichen des Releases gestartet wurde. Wenn der Lauf **fehlgeschlagen** ist: **Re-run all jobs** ausführen (kann bei temporären Fehlern helfen).
+2. **Manuell nachziehen:** Workflow **„Release – Assets anhängen“** hat einen **manuellen Trigger**. GitHub → **Actions** → **Release – Assets anhängen** → **Run workflow** → Branch **main**, Eingabe **tag_name** z. B. `v3.0.11` → **Run workflow**. Der Lauf baut Windows + Linux und hängt EXE/ZIP/Tarball am angegebenen Release an.
+3. **Änderung pushen:** Die Workflow-Datei muss mit dem manuellen Trigger auf **main** liegen; danach unter Actions den Lauf wie unter 2. starten.
+
+## Checkliste: Was du jetzt machen musst
+
+Damit **Releases** und **AUR** stimmen, reicht diese Reihenfolge:
+
+1. **Änderungen nach GitHub pushen**  
+   ```bash
+   git add -A
+   git status   # prüfen
+   git commit -m "Doku: Checkliste, AUR-SSH, Release-Workflow"
+   git push origin main
+   ```
+   So ist u. a. der Workflow **Release bei Tag-Push erstellen** (mit Checkout) auf GitHub.
+
+2. **GitHub Releases**  
+   - Wenn ein Tag (z. B. v3.0.10 oder v3.0.11) schon existiert, aber **kein** Release:  
+     **Releases** → **Draft a new release** → Tag auswählen → **Publish release**.  
+   - Für **neue** Versionen danach: `git tag vX.Y.Z && git push origin vX.Y.Z` – Release wird automatisch erstellt.
+
+3. **AUR (Arch)**  
+   - Einmalig: Auf [aur.archlinux.org](https://aur.archlinux.org) Account anlegen, SSH-Key hinterlegen, Paket **hydracad** anlegen (Submit Package).  
+   - Auf **Arch Linux**: Zuerst ins **Projektroot** (dort, wo z. B. `README.md` und der Ordner `packaging` liegen), dann:
+     ```bash
+     cd packaging/arch
+     # ggf. PKGVER in aur-upload.sh anpassen
+     ./aur-upload.sh
+     ```
+   - Beim ersten SSH-Kontakt Fingerabdruck mit der Tabelle in `packaging/arch/README.md` abgleichen.
+
+Danach stimmen Releases (Tag-Push → automatisches Release + Assets) und AUR (Paket hydracad, Updates per `./aur-upload.sh`).
+
 ## Installer erstellen
 
 ### NSIS installieren

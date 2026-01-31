@@ -1,12 +1,18 @@
 # Bei jedem veröffentlichten Release: Windows (+ optional Linux) bauen und
 # HydraCADSetup.exe, app-windows.zip (und ggf. Linux) ans Release hängen.
-# So zeigt die neueste Release-Seite wieder EXE/ZIP wie bei v3.0.4.
+# workflow_dispatch: manuell ausführen, wenn ein Release keine EXE/ZIP hat (Tag angeben).
 
 name: Release – Assets anhängen
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag (z. B. v3.0.11) – nur bei manueller Ausführung'
+        required: true
+        default: 'v3.0.11'
 
 jobs:
   build-windows:
@@ -17,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
 
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
@@ -45,7 +51,7 @@ jobs:
         id: version
         shell: powershell
         run: |
-          $tag = "${{ github.event.release.tag_name }}"
+          $tag = "${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
           $ver = $tag -replace '^v', ''
           if (-not $ver) { $ver = "2.0.0" }
           echo "version=$ver" >> $env:GITHUB_OUTPUT
@@ -116,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
 
       - run: |
           sudo apt-get update
@@ -133,6 +139,9 @@ jobs:
           mkdir -p hydracad-linux-portable/usr/bin
           cp build/cad_desktop hydracad-linux-portable/usr/bin/
           cp packaging/linux/HydraCAD.desktop hydracad-linux-portable/
+          ( echo '#!/bin/sh'; echo 'SELF="$(dirname "$0")"'; echo 'for d in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do [ -d "$d" ] && export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$d"; done'; echo 'exec "$SELF/usr/bin/cad_desktop" "$@"' ) > hydracad-linux-portable/run.sh
+          chmod +x hydracad-linux-portable/run.sh
+          echo "Hydra CAD – Portable Linux. Voraussetzung: Qt6 (qt6-base / libqt6) installieren. Start: ./run.sh" > hydracad-linux-portable/README.txt
           tar czvf hydracad-linux-portable.tar.gz -C hydracad-linux-portable .
 
       - uses: actions/upload-artifact@v4
@@ -161,8 +170,9 @@ jobs:
 
       - name: Assets ans Release hängen
         run: |
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
           for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz; do
-            [ -f "$f" ] && gh release upload "${{ github.event.release.tag_name }}" "$f" --clobber
+            [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
