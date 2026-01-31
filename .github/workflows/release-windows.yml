@@ -99,6 +99,9 @@ jobs:
             throw "windeployqt not found: $windeployqt"
           }
           & $windeployqt $exePath
+          if (-not (Test-Path "build\Release\Qt6Gui.dll")) {
+            throw "Qt6Gui.dll not found after windeployqt. Packaging would be broken."
+          }
 
           # Include deployed Qt files in ZIP
           Copy-Item -Path "build\Release\*" -Destination dist -Recurse -Force

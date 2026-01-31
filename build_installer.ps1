@@ -240,6 +240,11 @@ if ($windeployqt) {
     if (Test-Path $releaseExe) {
         Write-Host "  Qt deployment mit windeployqt..." -ForegroundColor Gray
         & $windeployqt $releaseExe
+        if (-not (Test-Path "build\Release\Qt6Gui.dll")) {
+            Write-Host "FEHLER: Qt6Gui.dll wurde nicht gefunden. Installer waere defekt." -ForegroundColor Red
+            Read-Host "Druecken Sie Enter zum Beenden"
+            exit 1
+        }
     } else {
         Write-Host "  WARNUNG: $releaseExe nicht gefunden für windeployqt" -ForegroundColor Yellow
     }

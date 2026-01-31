@@ -108,6 +108,10 @@ jobs:
           Write-Error "windeployqt failed with exit code $LASTEXITCODE"
           exit 1
         }
+        if (-not (Test-Path "build\Release\Qt6Gui.dll")) {
+          Write-Error "Qt6Gui.dll not found after windeployqt. Packaging would be broken."
+          exit 1
+        }
 
     - name: Extract Version
       id: version
