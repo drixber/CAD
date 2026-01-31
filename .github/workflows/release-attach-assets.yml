@@ -1,5 +1,5 @@
-# Bei jedem veröffentlichten Release: Windows (+ optional Linux) bauen und
-# HydraCADSetup.exe, app-windows.zip (und ggf. Linux) ans Release hängen.
+# Bei jedem veröffentlichten Release: Windows, Linux und macOS bauen und
+# HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz, HydraCAD-macos.zip ans Release hängen.
 # workflow_dispatch: manuell ausführen, wenn ein Release keine EXE/ZIP hat (Tag angeben).
 
 name: Release – Assets anhängen
@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag (z. B. v3.0.11) – nur bei manueller Ausführung'
+        description: 'Tag (z. B. v3.0.12) – nur bei manueller Ausführung'
         required: true
-        default: 'v3.0.11'
+        default: 'v3.0.12'
 
 jobs:
   build-windows:
@@ -138,7 +138,7 @@ jobs:
         run: |
           mkdir -p hydracad-linux-portable/usr/bin
           cp build/cad_desktop hydracad-linux-portable/usr/bin/
-          cp packaging/linux/HydraCAD.desktop hydracad-linux-portable/
+          cp packaging/linux/HydraCAD.desktop packaging/linux/HydraCAD.png hydracad-linux-portable/
           ( echo '#!/bin/sh'; echo 'SELF="$(dirname "$0")"'; echo 'for d in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do [ -d "$d" ] && export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$d"; done'; echo 'exec "$SELF/usr/bin/cad_desktop" "$@"' ) > hydracad-linux-portable/run.sh
           chmod +x hydracad-linux-portable/run.sh
           echo "Hydra CAD – Portable Linux. Voraussetzung: Qt6 (qt6-base / libqt6) installieren. Start: ./run.sh" > hydracad-linux-portable/README.txt
@@ -149,6 +149,51 @@ jobs:
           name: release-linux-portable
           path: hydracad-linux-portable.tar.gz
 
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          cache: true
+
+      - name: Create .icns from PNG
+        run: |
+          mkdir -p packaging/macos/HydraCAD.icns.iconset
+          for s in 16 32 64 128 256; do
+            sips -z $s $s packaging/macos/HydraCAD.png --out packaging/macos/HydraCAD.icns.iconset/icon_${s}x${s}.png
+            s2=$((s*2))
+            sips -z $s2 $s2 packaging/macos/HydraCAD.png --out packaging/macos/HydraCAD.icns.iconset/icon_${s}x${s}@2x.png
+          done
+          iconutil -c icns packaging/macos/HydraCAD.icns.iconset -o packaging/macos/HydraCAD.icns
+          rm -rf packaging/macos/HydraCAD.icns.iconset
+
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF
+          cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Deploy Qt (macdeployqt)
+        run: |
+          QT_BIN=$(dirname $(find $HOME -name macdeployqt -type f 2>/dev/null | head -1))
+          [ -n "$QT_BIN" ] && export PATH="$QT_BIN:$PATH"
+          macdeployqt build/cad_desktop.app -always-overwrite || true
+
+      - name: Create macOS archive
+        run: |
+          cd build && zip -r ../HydraCAD-macos.zip cad_desktop.app && cd ..
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: HydraCAD-macos.zip
+
+  # Nur Windows + Linux erforderlich – EXE/ZIP/Tarball werden so auch bei macOS-Fehler angehängt
   upload-release-assets:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
@@ -166,12 +211,13 @@ jobs:
           find release-assets -name 'HydraCADSetup.exe' -exec cp {} upload/ \;
           find release-assets -name 'app-windows.zip' -exec cp {} upload/ \;
           find release-assets -name '*.tar.gz' -exec cp {} upload/ \;
+          find release-assets -name 'HydraCAD-macos.zip' -exec cp {} upload/ \;
           ls -la upload/
 
       - name: Assets ans Release hängen
         run: |
           TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
-          for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz; do
+          for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip; do
             [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber
           done
         env:
