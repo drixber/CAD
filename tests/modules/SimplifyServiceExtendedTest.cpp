@@ -34,7 +34,9 @@ TEST(SimplifyServiceExtendedTest, SmallFeatureRemoval) {
 TEST(SimplifyServiceExtendedTest, GeometryComplexity) {
     SimplifyService service;
     
-    double ratio = service.calculateGeometryComplexityRatio("original_part", "simplified_part");
+    SimplifyResult result = service.replaceWithBoundingBox("test_assembly");
+    ASSERT_TRUE(result.success);
+    double ratio = service.getSimplificationRatio("test_assembly");
     
     ASSERT_GE(ratio, 0.0);
     ASSERT_LE(ratio, 1.0);

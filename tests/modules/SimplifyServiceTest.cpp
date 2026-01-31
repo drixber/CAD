@@ -30,7 +30,7 @@ TEST(SimplifyServiceTest, GetSimplificationRatio) {
     SimplifyResult result = service.replaceWithBoundingBox("assembly_1");
     ASSERT_TRUE(result.success);
     
-    double ratio = service.getSimplificationRatio("assembly_1", result.simplified_assembly_id);
+    double ratio = service.getSimplificationRatio("assembly_1");
     EXPECT_GE(ratio, 0.0);
     EXPECT_LE(ratio, 1.0);
 }

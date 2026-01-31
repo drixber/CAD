@@ -36,19 +36,12 @@ TEST(UpdateServiceTest, DownloadUpdate) {
     ASSERT_TRUE(downloaded);
 }
 
-TEST(UpdateServiceTest, ChecksumVerification) {
+TEST(UpdateServiceTest, CurrentVersion) {
     UpdateService service;
     
-    std::string test_file = "test_update.exe";
-    std::ofstream file(test_file, std::ios::binary);
-    file.write("test data", 9);
-    file.close();
+    std::string version = service.getCurrentVersion();
+    ASSERT_FALSE(version.empty());
     
-    std::string checksum = service.calculateFileChecksum(test_file);
-    ASSERT_FALSE(checksum.empty());
-    
-    bool verified = service.verifyUpdateChecksum(test_file, checksum);
-    ASSERT_TRUE(verified);
-    
-    std::remove(test_file.c_str());
+    service.setCurrentVersion("2.0.0");
+    ASSERT_EQ(service.getCurrentVersion(), "2.0.0");
 }

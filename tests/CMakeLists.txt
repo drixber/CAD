@@ -229,6 +229,7 @@ if(CAD_BUILD_TESTS)
             target_link_libraries(viewport_integration_test
                 PRIVATE
                     cad_ui
+                    cad_core
                     GTest::gtest
                     GTest::gtest_main
                     Qt6::Core

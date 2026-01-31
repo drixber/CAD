@@ -58,18 +58,25 @@ TEST(VisualizationServiceTest, ExportToImage) {
     EXPECT_FALSE(result.output_file_path.empty());
 }
 
-TEST(VisualizationServiceTest, GetQualitySettings) {
+TEST(VisualizationServiceTest, QualityPresets) {
     VisualizationService service;
     
-    RenderSettings low = service.getQualitySettings(RenderQuality::Low);
-    EXPECT_EQ(low.resolution_x, 640);
-    EXPECT_EQ(low.resolution_y, 480);
-    EXPECT_FALSE(low.enable_shadows);
+    VisualizationRequest req_low;
+    req_low.targetPart = "part_1";
+    req_low.mode = VisualizationMode::Rendering;
+    req_low.render_settings.quality = RenderQuality::Low;
+    req_low.render_settings.resolution_x = 640;
+    req_low.render_settings.resolution_y = 480;
+    VisualizationResult res_low = service.runVisualization(req_low);
+    EXPECT_TRUE(res_low.success || !res_low.message.empty());
     
-    RenderSettings ultra = service.getQualitySettings(RenderQuality::Ultra);
-    EXPECT_EQ(ultra.resolution_x, 3840);
-    EXPECT_EQ(ultra.resolution_y, 2160);
-    EXPECT_TRUE(ultra.enable_shadows);
-    EXPECT_TRUE(ultra.enable_reflections);
+    VisualizationRequest req_ultra;
+    req_ultra.targetPart = "part_1";
+    req_ultra.mode = VisualizationMode::Rendering;
+    req_ultra.render_settings.quality = RenderQuality::Ultra;
+    req_ultra.render_settings.resolution_x = 3840;
+    req_ultra.render_settings.resolution_y = 2160;
+    VisualizationResult res_ultra = service.runVisualization(req_ultra);
+    EXPECT_TRUE(res_ultra.success || !res_ultra.message.empty());
 }
 

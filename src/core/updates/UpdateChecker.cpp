@@ -1,6 +1,7 @@
 #include "UpdateChecker.h"
 
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
@@ -178,7 +179,7 @@ bool openUrlInBrowser(const std::string& url) {
     if (url.empty()) {
         return false;
     }
-    return reinterpret_cast<int>(ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) > 32;
+    return reinterpret_cast<intptr_t>(ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) > 32;
 #elif __APPLE__
     if (url.empty()) {
         return false;

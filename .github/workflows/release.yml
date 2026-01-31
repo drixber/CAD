@@ -1,15 +1,11 @@
-name: Create Release with Installer
+name: Build Windows (Push)
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+      - master
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g., v2.0.0)'
-        required: true
-        type: string
 
 jobs:
   build-windows:
@@ -48,15 +44,14 @@ jobs:
       id: version
       shell: powershell
       run: |
-        if ("${{ github.ref_type }}" -eq "tag") {
-          $ver = "${{ github.ref_name }}" -replace '^v', ''
-        } else {
-          $ver = "${{ github.event.inputs.version }}" -replace '^v', ''
+        $ver = "2.0.0"
+        if ("${{ github.ref }}" -match "refs/heads/(.+)") {
+          $branch = $matches[1]
+          if ($branch -match "^\d+\.\d+\.\d+") { $ver = $branch }
         }
-        if ([string]::IsNullOrEmpty($ver)) { $ver = "2.0.0" }
         echo "version=$ver" >> $env:GITHUB_OUTPUT
         echo "vversion=v$ver" >> $env:GITHUB_OUTPUT
-        Write-Host "Release version: $ver"
+        Write-Host "Build version: $ver"
     
     - name: Clean build directory
       shell: powershell
@@ -195,84 +190,15 @@ jobs:
         Write-Host "Created $zipName"
     
     - name: Upload Windows Installer
-      uses: actions/upload-artifact@v4.4.2
+      uses: actions/upload-artifact@v4
       with:
         name: HydraCAD-Windows-Installer
         path: installer/HydraCADSetup.exe
         retention-days: 7
 
     - name: Upload Windows Portable ZIP
-      uses: actions/upload-artifact@v4.4.2
+      uses: actions/upload-artifact@v4
       with:
         name: HydraCAD-Windows-Portable
         path: app-windows.zip
         retention-days: 7
-
-  create-release:
-    needs: [build-windows]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
-    steps:
-    - name: Extract Version
-      id: version
-      run: |
-        if [ "${{ github.ref_type }}" = "tag" ]; then
-          version="${{ github.ref_name }}"
-        else
-          version="${{ github.event.inputs.version }}"
-        fi
-        version=$(echo "$version" | sed 's/^v//')
-        if [ -z "$version" ]; then
-          version="2.0.0"
-        fi
-        echo "version=$version" >> $GITHUB_OUTPUT
-    
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4.4.2
-      with:
-        path: artifacts
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ github.ref_name != '' && github.ref_name || format('v{0}', github.event.inputs.version) }}
-        name: Hydra CAD ${{ steps.version.outputs.version }}
-        body: |
-          ## 🚀 Hydra CAD ${{ steps.version.outputs.version }}
-          
-          ### 📥 Installation
-          
-          **Windows (Installer):**
-          1. Download `HydraCADSetup.exe`
-          2. Doppelklick, Installationsassistenten folgen
-          
-          **Windows (Portable):**
-          1. Download `app-windows.zip`
-          2. Entpacken und `cad_desktop.exe` starten
-          
-          ### ✨ Features
-          - ✅ Vollständige CAD-Funktionalität
-          - ✅ Modern UI (Inventor-Style)
-          - ✅ AI-Integration
-          - ✅ Auto-Update System
-          - ✅ Projekt-Management
-          - ✅ User Authentication
-          
-          ### 💻 Systemanforderungen
-          - **Windows**: Windows 10/11 (64-bit)
-          - **RAM**: 4 GB minimum, 8 GB empfohlen
-          - **Festplatte**: 500 MB
-          - **Grafik**: OpenGL 3.3+ kompatible Grafikkarte
-          
-          ### 📚 Weitere Informationen
-          - [CHANGELOG.md](CHANGELOG.md) - Änderungsprotokoll
-          - [docs/INSTALLATION.md](docs/INSTALLATION.md) - Installations-Anleitung
-        files: |
-          artifacts/HydraCAD-Windows-Installer/HydraCADSetup.exe
-          artifacts/HydraCAD-Windows-Portable/app-windows.zip
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
