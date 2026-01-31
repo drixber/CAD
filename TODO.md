@@ -70,7 +70,7 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 | # | Thema | Status | Details |
 |---|--------|--------|---------|
 | 13 | **Tests in CI** | ✅ Erledigt | `CAD_BUILD_TESTS=ON` in ci-cd.yml, ctest-Schritt (continue-on-error). |
-| 14 | **Linux/macOS** | Pausiert | Laut README ist CI für Linux/macOS derzeit pausiert. **Arch vorbereitet:** [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md), PKGBUILD-Vorlage unter `packaging/arch/` – Nutzung und Weiterentwicklung auf Arch möglich; kein zusätzlicher Linux-Code. Bei Bedarf: Linux/Arch-Jobs in CI reaktivieren. |
+| 14 | **Linux/macOS** | Im Hintergrund | Linux-Support vollständig vorbereitet, **nicht produktionsfertig**: [docs/TODO_LINUX.md](docs/TODO_LINUX.md). Doku: [BUILD_LINUX.md](docs/BUILD_LINUX.md), [BUILD_ARCH.md](docs/BUILD_ARCH.md). Packaging: `packaging/arch/`, `packaging/ubuntu/`, `packaging/debian/`. CI: `build-linux.yml` nur per workflow_dispatch. Keine offiziellen Linux-Releases. |
 
 ---
 

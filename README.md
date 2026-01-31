@@ -19,7 +19,7 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 
 **Releases**: [GitHub Releases](https://github.com/drixber/CAD/releases) – bei jedem Tag `v*` werden Installer und Portable-ZIP automatisch erstellt.
 
-**Linux / macOS**: Aus Quellcode bauen, siehe [docs/INSTALLATION.md](docs/INSTALLATION.md). **Arch Linux**: Build und Entwicklung vorbereitet – [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md); PKGBUILD-Vorlage unter `packaging/arch/`. CI für Linux/macOS ist derzeit pausiert.
+**Linux / macOS**: Aus Quellcode bauen, siehe [docs/INSTALLATION.md](docs/INSTALLATION.md). **Linux-Support ist experimentell und im Hintergrund** – keine offiziellen Linux-Releases, siehe [docs/TODO_LINUX.md](docs/TODO_LINUX.md). Build: [docs/BUILD_LINUX.md](docs/BUILD_LINUX.md) (Ubuntu/Debian/Fedora), [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md) (Arch); Packaging-Vorlagen unter `packaging/`. Linux-CI nur per manuellem Workflow (`build-linux.yml`).
 
 ### Erste Schritte
 
@@ -116,7 +116,7 @@ Beim Öffnen eines anderen Projekts erscheint bei ungespeicherten Änderungen ei
 ## Systemanforderungen
 
 - **Windows**: 10/11 (64-bit)
-- **Linux**: Ubuntu 20.04+ / Debian 11+ / Fedora 34+ / Arch Linux (64-bit)
+- **Linux** (experimentell, im Hintergrund): Ubuntu 20.04+ / Debian 11+ / Fedora 34+ / Arch Linux (64-bit), nur aus Quellcode
 - **macOS**: 10.15+ (Intel/Apple Silicon)
 - **RAM**: 4 GB mind., 8 GB empfohlen
 - **Festplatte**: ca. 500 MB + Platz für Projekte

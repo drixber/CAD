@@ -1,0 +1,43 @@
+# Linux-Build (im Hintergrund)
+# Läuft nur per workflow_dispatch – kein automatischer Run bei Push/Release.
+# Erzeugt keine offiziellen Releases; Artifacts nur für Entwickler.
+
+name: Build Linux (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt 6 and deps (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libxcb-cursor0
+          # Optional for CAD_USE_QT_NETWORK
+          sudo apt-get install -y qt6-network-dev || true
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCAD_USE_QT=ON \
+            -DCAD_BUILD_TESTS=OFF
+
+      - name: Build
+        run: |
+          cmake --build build -j$(nproc)
+
+      - name: Run tests (optional, continue on error)
+        run: |
+          (cd build && ctest --output-on-failure) || true
+
+      - name: Upload Linux binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HydraCAD-Linux-ubuntu
+          path: build/cad_desktop
+          retention-days: 7

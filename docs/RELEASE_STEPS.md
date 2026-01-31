@@ -27,4 +27,36 @@ Wenn du auf GitHub eine **Release-Seite** mit Beschreibung und Dateien haben wil
 
 ---
 
-**Aktueller Stand:** Commit und Tag `v3.0.6` sind lokal erstellt. Sobald du `git push origin main` und `git push origin v3.0.6` ausführst, läuft der Windows-Build; danach kannst du bei Bedarf das Release wie oben anlegen.
+## 401 / „Authentifizierung fehlgeschlagen“ (HTTPS)
+
+Wenn `git push origin main` oder `git push origin v3.0.6` mit **401** oder **Missing or invalid credentials** abbricht:
+
+- **Ursache:** `origin` nutzt `https://github.com/drixber/CAD.git`. GitHub erlaubt für HTTPS **kein Passwort** mehr, nur noch einen **Personal Access Token (PAT)** oder **SSH**.
+
+### Option A: Auf SSH umstellen (empfohlen, wenn du SSH-Keys hast)
+
+```bash
+cd /home/herd/GitHub/CAD
+git remote set-url origin git@github.com:drixber/CAD.git
+git push origin main
+git push origin v3.0.6
+```
+
+Vorher prüfen: `ls -la ~/.ssh` – es sollte z. B. `id_ed25519` / `id_rsa` geben und der Key bei GitHub unter **Settings → SSH and GPG keys** eingetragen sein. Keinen Key? Erzeugen mit `ssh-keygen -t ed25519 -C "deine@email"` und den öffentlichen Key bei GitHub hinzufügen.
+
+### Option B: HTTPS mit Personal Access Token (PAT)
+
+1. Auf GitHub: **Settings → Developer settings → Personal access tokens → Tokens (classic)** → **Generate new token**. Scope mindestens **repo**.
+2. Token kopieren (nur einmal sichtbar).
+3. Beim nächsten `git push` Nutzername (dein GitHub-Username) und als Passwort den **Token** eingeben.
+4. Oder URL mit Token setzen (Token liegt dann in der Config – nur auf sicherem Rechner):
+
+   ```bash
+   git remote set-url origin https://DEIN_GITHUB_USERNAME:DEIN_TOKEN@github.com/drixber/CAD.git
+   ```
+
+   Danach `git push origin main` und `git push origin v3.0.6`.
+
+---
+
+**Aktueller Stand:** Commit und Tag `v3.0.6` sind lokal erstellt. Sobald du mit gültigen Zugangsdaten (SSH oder PAT) `git push origin main` und `git push origin v3.0.6` ausführst, läuft der Windows-Build; danach kannst du bei Bedarf das Release wie oben anlegen.
