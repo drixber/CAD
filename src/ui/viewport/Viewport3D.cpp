@@ -421,8 +421,13 @@ void Viewport3D::resizeEvent(QResizeEvent* event) {
             }
         }
     } else {
-        if (render_engine_ && render_engine_->isInitialized()) {
-            render_engine_->setViewportSize(width(), height());
+        if (render_engine_) {
+            if (!render_engine_->isInitialized() && width() >= 100 && height() >= 100) {
+                render_engine_->initialize(width(), height());
+                initializeViewport();
+            } else if (render_engine_->isInitialized()) {
+                render_engine_->setViewportSize(width(), height());
+            }
         }
     }
     

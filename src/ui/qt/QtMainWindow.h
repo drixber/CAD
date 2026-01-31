@@ -59,13 +59,35 @@ public:
     QtAIChatPanel* aiChatPanel() { return ai_chat_panel_; }
     void setCurrentUser(const std::string& username, const std::string& email);
     void setLogoutHandler(const std::function<void()>& handler);
-    
+    void setProfileHandler(const std::function<void()>& handler);
+
     // Project file operations
+    void setNewProjectHandler(const std::function<void()>& handler);
     void setSaveProjectHandler(const std::function<void(const std::string&)>& handler);
     void setLoadProjectHandler(const std::function<void(const std::string&)>& handler);
+    void setCurrentProjectPath(const QString& path);
+    QString currentProjectPath() const;
     void setAutoSaveTriggerHandler(const std::function<void()>& handler);
     void setAutoSaveStatusHandler(const std::function<void(const std::string&)>& handler);
+    void setCheckForUpdatesHandler(const std::function<void()>& handler);
     void updateRecentProjectsMenu(const std::vector<std::string>& projects);
+    void setCheckpointsListProvider(const std::function<std::vector<std::string>(const std::string&)>& provider);
+    void setLoadCheckpointHandler(const std::function<void(const std::string&)>& handler);
+    void setDeleteCheckpointHandler(const std::function<void(const std::string&)>& handler);
+    void showCheckpointsDialog();
+
+    void setImportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler);
+    void setExportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler);
+    void triggerImportDialog();
+    void triggerExportDialog();
+
+    void executeCommand(const std::string& command);
+
+    enum class UnsavedAction { Cancel = 0, Save = 1, Discard = 2 };
+    void setAskUnsavedChangesHandler(const std::function<UnsavedAction()>& handler);
+    void setGetSavePathHandler(const std::function<std::string()>& handler);
+    UnsavedAction askUnsavedChanges() const;
+    std::string getSavePathForNewProject() const;
 
 private:
     QtRibbon* ribbon_{nullptr};
@@ -88,12 +110,24 @@ private:
     QMenu* user_menu_{nullptr};
     
     std::function<void()> logout_handler_;
-    
+    std::function<void()> profile_handler_;
+
+    std::function<void()> new_project_handler_;
     std::function<void(const std::string&)> save_project_handler_;
     std::function<void(const std::string&)> load_project_handler_;
+    QString current_project_path_;
     std::function<void()> autosave_trigger_handler_;
     std::function<void(const std::string&)> autosave_status_handler_;
-    
+    std::function<void()> check_for_updates_handler_;
+    std::function<std::vector<std::string>(const std::string&)> checkpoints_list_provider_;
+    std::function<void(const std::string&)> load_checkpoint_handler_;
+    std::function<void(const std::string&)> delete_checkpoint_handler_;
+    std::function<void(const std::string&, const std::string&)> import_file_handler_;
+    std::function<void(const std::string&, const std::string&)> export_file_handler_;
+    std::function<void(const std::string&)> command_handler_;
+    std::function<UnsavedAction()> ask_unsaved_handler_;
+    std::function<std::string()> get_save_path_handler_;
+
     void restoreUiState();
     void saveUiState();
 

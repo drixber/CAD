@@ -9,6 +9,8 @@
 namespace cad {
 namespace app {
 
+class HttpClient;
+
 struct UpdateInfo {
     std::string version;
     std::string download_url;
@@ -60,6 +62,9 @@ public:
     // Manual update
     bool performManualUpdate();
     
+    /** For Qt-based GitHub API fetch when CAD_USE_QT_NETWORK (avoids curl on Windows). */
+    HttpClient& getHttpClient() const;
+    
 private:
     std::string current_version_;
     std::string update_server_url_;
@@ -69,7 +74,6 @@ private:
     int auto_update_check_interval_days_{7};
     mutable std::unique_ptr<class HttpClient> http_client_;
     
-    HttpClient& getHttpClient() const;
     bool fetchUpdateInfo();
     bool verifyUpdateFile(const std::string& file_path, const std::string& checksum) const;
     bool verifyUpdateChecksum(const std::string& update_file_path, const std::string& expected_checksum) const;

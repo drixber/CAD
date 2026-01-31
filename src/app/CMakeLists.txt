@@ -2,7 +2,6 @@ add_library(cad_app
     CADApplication.cpp
     AppController.cpp
     UpdateService.cpp
-    UpdateChecker.cpp
     HttpClient.cpp
     ProjectFileService.cpp
     UserAuthService.cpp
@@ -28,18 +27,17 @@ target_link_libraries(cad_app
         cad_interop
 )
 
+if(CAD_USE_QT)
+    find_package(Qt6 QUIET COMPONENTS Network)
+    if(Qt6_FOUND)
+        target_link_libraries(cad_app PRIVATE Qt6::Network)
+        target_compile_definitions(cad_app PRIVATE CAD_USE_QT_NETWORK=1)
+    endif()
+endif()
+
 if(DEFINED APP_VERSION)
     target_compile_definitions(cad_app PRIVATE CAD_APP_VERSION="${APP_VERSION}")
 else()
     target_compile_definitions(cad_app PRIVATE CAD_APP_VERSION="v0.0.0")
 endif()
 
-if(CAD_USE_QT)
-    find_package(Qt6 QUIET COMPONENTS Network)
-    if(Qt6_FOUND)
-        target_link_libraries(cad_app PUBLIC Qt6::Network)
-    else()
-        find_package(Qt5 REQUIRED COMPONENTS Network)
-        target_link_libraries(cad_app PUBLIC Qt5::Network)
-    endif()
-endif()

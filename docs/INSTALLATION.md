@@ -2,159 +2,156 @@
 
 ## Voraussetzungen
 
-### Windows
-- Windows 10 oder höher (64-bit)
-- Visual Studio 2019 oder höher (mit C++ Desktop Development Workload)
-- CMake 3.15 oder höher
-- vcpkg (für Dependency Management)
-- NSIS 3.0 oder höher (für Installer-Erstellung)
+### Windows (empfohlen)
+- Windows 10/11 (64-bit)
+- Visual Studio 2019 oder 2022 (mit C++ Desktop Development Workload)
+- CMake 3.26 oder höher
+- **Qt 6.x** (z. B. 6.5.3, win64_msvc2019_64)
+- NSIS 3.0+ (optional, nur für Installer-Erstellung)
 
 ### Optionale Abhängigkeiten
-- Python 3.8+ (für Python Bindings)
-- Qt 5.15+ oder Qt 6.x
+- Python 3.11+ (für Python-Bindings, `CAD_BUILD_PYTHON=ON`)
+- vcpkg (optional, für weitere Bibliotheken)
 
-## Build-Prozess
+**Hinweis:** Die Anwendung baut mit **Qt 6**; Qt 5 wird nicht mehr unterstützt.
 
-### 1. Repository klonen
+## Build-Prozess (Windows)
+
+### Option A: Automatischer Build inkl. Installer (empfohlen)
+
+```powershell
+.\build_installer.ps1
+```
+
+Oder per Batch:
+
+```cmd
+.\build_installer.bat
+```
+
+### Option B: Manueller Build
+
+#### 1. Repository klonen
+
 ```bash
-git clone <repository-url>
+git clone https://github.com/drixber/CAD.git
 cd CAD
 ```
 
-### 2. vcpkg einrichten
-```bash
-# vcpkg installieren (falls noch nicht vorhanden)
-git clone https://github.com/Microsoft/vcpkg.git
-cd vcpkg
-.\bootstrap-vcpkg.bat
+#### 2. Qt 6 installieren
 
-# Abhängigkeiten installieren
-.\vcpkg install qt5-base qt5-tools --triplet x64-windows
-```
+- Download von https://www.qt.io/download-qt-installer
+- Oder über den Installer die Komponente **Qt 6.x für MSVC 2019 64-bit** auswählen
+- Notieren Sie den Pfad (z. B. `C:\Qt\6.5.3\msvc2019_64`)
 
-### 3. Projekt konfigurieren
-```bash
-# Build-Verzeichnis erstellen
+#### 3. CMake konfigurieren
+
+```powershell
+# Build-Verzeichnis anlegen
 mkdir build
 cd build
 
-# CMake konfigurieren
-cmake .. -DCMAKE_TOOLCHAIN_FILE=[path-to-vcpkg]/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
+# Mit Qt 6 (Pfad anpassen)
+$QtDir = "C:\Qt\6.5.3\msvc2019_64"
+cmake -S .. -B . -G "Visual Studio 17 2022" -A x64 `
+  -DCAD_USE_QT=ON `
+  -DCMAKE_BUILD_TYPE=Release `
+  -DQt6_DIR="$QtDir" `
+  -DCMAKE_PREFIX_PATH="$QtDir"
 ```
 
-### 4. Projekt kompilieren
-```bash
-# Kompilieren
-cmake --build . --config Release
+#### 4. Kompilieren
 
-# Oder mit Visual Studio
-cmake --build . --config Release --target cad_desktop
+```powershell
+cmake --build . --config Release --parallel
 ```
 
-Die ausführbare Datei wird in `build/Release/cad_desktop.exe` erstellt.
+Die ausführbare Datei liegt in `build\Release\cad_desktop.exe`.
+
+#### 5. Qt-Deployment (für portable Nutzung)
+
+```powershell
+# Aus dem build-Verzeichnis, Qt bin-Pfad anpassen
+& "C:\Qt\6.5.3\msvc2019_64\bin\windeployqt.exe" Release\cad_desktop.exe
+```
+
+Anschließend alle Dateien aus `build\Release\` (inkl. `platforms\`, Qt-DLLs etc.) zusammen mit der EXE verwenden oder als ZIP packen.
 
 ## Installer erstellen
 
-### 1. NSIS installieren
-- Download von: https://nsis.sourceforge.io/Download
-- Installation durchführen
+### NSIS installieren
 
-### 2. Installer-Skript anpassen
-Öffnen Sie `installer/hydracad.nsi` und passen Sie die Pfade an:
+- Download: https://nsis.sourceforge.io/Download
+- Standardpfad: `C:\Program Files (x86)\NSIS\makensis.exe`
 
-```nsis
-; Pfade anpassen
-File "..\build\Release\cad_desktop.exe"
-File /nonfatal "..\build\Release\*.dll"
+### Installer bauen
+
+Nach erfolgreichem Build und `windeployqt`:
+
+```powershell
+# Im Projektroot
+& "C:\Program Files (x86)\NSIS\makensis.exe" /DINSTALLER_VERSION="2.0.0" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
 ```
 
-### 3. Installer kompilieren
-```bash
-# Im installer-Verzeichnis
-cd installer
+Der Installer wird als `installer\HydraCADSetup.exe` erstellt.
 
-# NSIS ausführen (GUI)
-# Oder über Kommandozeile:
-"C:\Program Files (x86)\NSIS\makensis.exe" hydracad.nsi
+## Installation (Endanwender)
+
+### Automatische Installation (Windows)
+
+1. **Download** von [GitHub Releases](https://github.com/drixber/CAD/releases)
+2. **Installer:** `HydraCADSetup.exe` ausführen, Assistent folgen (Datenschutz, Pfad, Sprache)
+3. **Portable:** `app-windows.zip` entpacken, `cad_desktop.exe` starten
+
+### Erste Schritte
+
+- Beim ersten Start: Account registrieren / einloggen
+- Projekte: **File → Save Project** (Strg+S) / **Open Project** (Strg+O)
+- Updates: **Settings → Check for Updates...**
+
+## Build-Optionen (CMake)
+
+| Option | Beschreibung | Default |
+|--------|--------------|---------|
+| `CAD_USE_QT` | Qt-UI aktivieren | OFF |
+| `CAD_BUILD_TESTS` | Tests bauen | OFF |
+| `CAD_BUILD_PYTHON` | Python-Bindings | OFF |
+| `CAD_USE_FREECAD` | FreeCAD-Integration | OFF |
+| `APP_VERSION` | Versionsstring (z. B. v1.0.0) | - |
+
+Beispiel mit Tests:
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+  -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=ON -DQt6_DIR="$QtDir" -DCMAKE_PREFIX_PATH="$QtDir"
+cmake --build build --config Release
+ctest --test-dir build -C Release
 ```
 
-Der Installer wird als `HydraCADSetup.exe` im `installer`-Verzeichnis erstellt.
+## Linux / macOS
 
-## Installation
+Aktuell wird der automatische Release-Build nur für Windows ausgeführt. Für Linux/macOS aus dem Quellcode bauen:
 
-### Automatische Installation
-1. Doppelklicken Sie auf `HydraCADSetup.exe`
-2. Folgen Sie dem Installationsassistenten
-3. Wählen Sie die gewünschten Komponenten:
-   - **Core Application** (immer erforderlich)
-   - **Python Bindings** (optional)
-   - **Example Files** (optional)
-4. Wählen Sie das Installationsverzeichnis (Standard: `C:\Program Files\Hydra CAD`)
-5. Klicken Sie auf "Install"
-
-### Manuelle Installation
-Falls Sie keinen Installer verwenden möchten:
-
-1. Kopieren Sie `build/Release/cad_desktop.exe` in ein Verzeichnis Ihrer Wahl
-2. Kopieren Sie alle benötigten DLLs (Qt, etc.) in dasselbe Verzeichnis
-3. Erstellen Sie eine Verknüpfung auf dem Desktop
-
-## Erste Schritte
-
-### Starten der Anwendung
-- Doppelklicken Sie auf das Desktop-Symbol
-- Oder starten Sie `cad_desktop.exe` aus dem Installationsverzeichnis
-
-### Updates
-Die Anwendung prüft automatisch auf Updates:
-- Automatische Prüfung: Alle 7 Tage (konfigurierbar)
-- Manuelle Prüfung: Über das Menü "Help" > "Check for Updates"
-
-### Deinstallation
-1. Öffnen Sie "Systemsteuerung" > "Programme und Funktionen"
-2. Wählen Sie "Hydra CAD"
-3. Klicken Sie auf "Deinstallieren"
-4. Oder verwenden Sie `Uninstall.exe` im Installationsverzeichnis
+- **Linux:** Qt 6 installieren (Paketmanager oder Qt Online Installer), dann CMake mit `-DCAD_USE_QT=ON` und passendem `Qt6_DIR`
+- **macOS:** Qt 6 über den Qt Installer, dann CMake; optional `-DCAD_USE_QT=ON` und MACOSX_BUNDLE wird gesetzt
 
 ## Troubleshooting
 
-### Problem: "DLL nicht gefunden"
-**Lösung:** Stellen Sie sicher, dass alle Qt-DLLs im gleichen Verzeichnis wie die .exe sind.
+### "DLL nicht gefunden" (Windows)
 
-### Problem: Installer erstellt keine Datei
-**Lösung:** 
-- Prüfen Sie, ob der Build erfolgreich war
-- Prüfen Sie die Pfade im NSIS-Skript
-- Führen Sie NSIS als Administrator aus
+- Nach dem Build `windeployqt` auf `cad_desktop.exe` ausführen
+- Sicherstellen, dass `Qt6Core.dll`, `Qt6Gui.dll`, `platforms\qwindows.dll` neben der EXE liegen
 
-### Problem: Anwendung startet nicht
-**Lösung:**
-- Prüfen Sie die Event Viewer auf Fehler
-- Stellen Sie sicher, dass Visual C++ Redistributables installiert sind
-- Prüfen Sie die Log-Dateien im Installationsverzeichnis
+### Anwendung startet nicht
 
-## Build-Optionen
+- Visual C++ Redistributable (z. B. VC++ 2015–2022) installieren
+- Logs prüfen: **Settings → Diagnostics → Open Logs Folder** bzw. **Show Startup Log**
 
-### Python Bindings aktivieren
-```bash
-cmake .. -DCAD_BUILD_PYTHON=ON
-```
+### CMake findet Qt 6 nicht
 
-### Debug-Build
-```bash
-cmake .. -DCMAKE_BUILD_TYPE=Debug
-cmake --build . --config Debug
-```
-
-### Spezifische Komponenten
-```bash
-# Nur bestimmte Module bauen
-cmake --build . --target cad_desktop
-```
+- `Qt6_DIR` auf das Qt-Verzeichnis setzen, das die Datei `Qt6Config.cmake` enthält (z. B. `C:\Qt\6.5.3\msvc2019_64\lib\cmake\Qt6`)
 
 ## Weitere Informationen
 
-- **Vollständige Dokumentation**: [PROJECT_FINAL.md](PROJECT_FINAL.md)
-- **Release Notes**: [FINAL_RELEASE_NOTES.md](FINAL_RELEASE_NOTES.md)
-- **Dokumentations-Übersicht**: [README.md](README.md)
-
+- **Projekt-README:** [../README.md](../README.md)
+- **Changelog:** [../CHANGELOG.md](../CHANGELOG.md)

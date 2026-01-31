@@ -1,5 +1,23 @@
 # Changelog - Hydra CAD
 
+## [3.0.5] - 2026-01-27
+
+### Changed
+- 🔄 Update-System: Kein curl auf Windows mehr nötig – GitHub-API und Download nutzen Qt Network (QNetworkAccessManager)
+- 🔄 UpdateChecker: Parser-Funktion `parseGithubReleaseResponse` für API-Antwort; Fallback auf curl nur ohne Qt Network
+
+### Fixed
+- ✅ HttpClient: Progress-Callback nur bei vorhandenem Callback aufrufen (kein Crash bei nullptr)
+- ✅ HttpClient: Download-Rückgabe nur true, wenn Datei tatsächlich geschrieben wurde
+- ✅ installUpdate: Prüfung auf leere download_url; klare Fehlermeldung
+- ✅ UpdateService: Regex-Raw-Strings mit Delimiter (Compiler-Warnungen behoben)
+- ✅ Fehlerbehandlung bei manueller Update-Prüfung (GitHub-Fehler in Statusleiste)
+
+### Removed
+- 🧹 Ungenutzte `parseResponse` in HttpClient entfernt
+
+---
+
 ## [2.0.0] - 2026-01-23
 
 ### Added

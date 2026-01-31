@@ -47,6 +47,11 @@ public:
     void setTargetFps(int fps);
     void setTargetFpsHandler(const std::function<void(int)>& handler);
 
+    void setImportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler);
+    void setExportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler);
+    void triggerImportDialog();
+    void triggerExportDialog();
+
     bool hasNativeWindow() const;
 #ifdef CAD_USE_QT
     QtMainWindow* nativeWindow();

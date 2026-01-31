@@ -7,6 +7,16 @@
 #include <thread>
 #include <chrono>
 
+#ifdef CAD_USE_QT_NETWORK
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrl>
+#include <QEventLoop>
+#include <QFile>
+#include <QCoreApplication>
+#endif
+
 namespace cad {
 namespace app {
 
@@ -26,16 +36,31 @@ HttpResponse HttpClient::get(const std::string& url, const std::map<std::string,
         response.body = "Invalid URL";
         return response;
     }
-    
-    std::string request = buildRequest("GET", url, headers);
-    
+#ifdef CAD_USE_QT_NETWORK
+    QNetworkAccessManager manager;
+    QNetworkRequest request(QUrl(QString::fromStdString(url)));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QString::fromStdString(user_agent_));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    for (const auto& h : headers) {
+        request.setRawHeader(QByteArray::fromStdString(h.first), QByteArray::fromStdString(h.second));
+    }
+    QNetworkReply* reply = manager.get(request);
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+    HttpResponse response;
+    response.status_code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    response.success = (reply->error() == QNetworkReply::NoError && response.status_code >= 200 && response.status_code < 300);
+    response.body = reply->readAll().toStdString();
+    reply->deleteLater();
+    return response;
+#else
+    (void)headers;
     std::hash<std::string> hasher;
     std::size_t url_hash = hasher(url);
-    
     HttpResponse response;
     response.status_code = 200;
     response.success = true;
-    
     std::stringstream json_body;
     json_body << "{\n";
     json_body << "  \"version\": \"" << ((url_hash % 10) + 1) << "." << ((url_hash / 10) % 10) << "." << ((url_hash / 100) % 10) << "\",\n";
@@ -45,14 +70,12 @@ HttpResponse HttpClient::get(const std::string& url, const std::map<std::string,
     json_body << "  \"checksum\": \"sha256:" << url_hash << "\",\n";
     json_body << "  \"changelog\": \"Version " << ((url_hash % 10) + 1) << "." << ((url_hash / 10) % 10) << "." << ((url_hash / 100) % 10) << ": Bug fixes and improvements\"\n";
     json_body << "}\n";
-    
     response.body = json_body.str();
     response.headers["Content-Type"] = "application/json";
     response.headers["Content-Length"] = std::to_string(response.body.length());
-    
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
     return response;
+#endif
 }
 
 HttpResponse HttpClient::post(const std::string& url, const std::string& body, const std::map<std::string, std::string>& headers) const {
@@ -82,49 +105,44 @@ bool HttpClient::downloadFile(const std::string& url, const std::string& file_pa
     if (!validateUrl(url)) {
         return false;
     }
-    
-    std::hash<std::string> hasher;
-    std::size_t url_hash = hasher(url);
-    std::size_t file_size = 50 * 1024 * 1024 + (url_hash % 100) * 1024 * 1024;
-    
-    std::ofstream file(file_path, std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-    
-    int chunk_size = 64 * 1024;
-    int total_chunks = static_cast<int>(file_size / chunk_size) + 1;
-    
-    char chunk_data[65536];
-    std::fill(chunk_data, chunk_data + sizeof(chunk_data), static_cast<char>(url_hash % 256));
-    
-    for (int i = 0; i < total_chunks; ++i) {
-        int bytes_to_write = (i < total_chunks - 1) ? chunk_size : 
-                            static_cast<int>(file_size - (total_chunks - 1) * chunk_size);
-        
-        file.write(chunk_data, bytes_to_write);
-        
-        std::size_t bytes_downloaded = static_cast<std::size_t>(i + 1) * chunk_size;
-        if (bytes_downloaded > file_size) {
-            bytes_downloaded = file_size;
-        }
-        
-        int percentage = static_cast<int>((bytes_downloaded * 100) / file_size);
-        
-        if (progress_callback) {
-            progress_callback(percentage, bytes_downloaded, file_size);
-        }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    
-    file.close();
-    
+#ifdef CAD_USE_QT_NETWORK
+    QNetworkAccessManager manager;
+    QNetworkRequest request(QUrl(QString::fromStdString(url)));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QString::fromStdString(user_agent_));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    QNetworkReply* reply = manager.get(request);
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     if (progress_callback) {
-        progress_callback(100, file_size, file_size);
+        QObject::connect(reply, &QNetworkReply::downloadProgress, reply, [progress_callback](qint64 received, qint64 total) {
+            int pct = (total > 0) ? static_cast<int>((received * 100) / total) : 0;
+            progress_callback(pct, static_cast<std::size_t>(received), total > 0 ? static_cast<std::size_t>(total) : 0);
+        });
+        progress_callback(0, 0, 0);
     }
-    
-    return true;
+    loop.exec();
+    const bool ok = (reply->error() == QNetworkReply::NoError);
+    bool wrote = false;
+    if (ok) {
+        QFile out(QString::fromStdString(file_path));
+        if (out.open(QIODevice::WriteOnly)) {
+            out.write(reply->readAll());
+            out.close();
+            wrote = true;
+        }
+        if (wrote && progress_callback) {
+            QFile f(QString::fromStdString(file_path));
+            std::size_t size = f.exists() ? static_cast<std::size_t>(f.size()) : 0;
+            progress_callback(100, size, size);
+        }
+    }
+    reply->deleteLater();
+    return ok && wrote;
+#else
+    (void)file_path;
+    (void)progress_callback;
+    return false;
+#endif
 }
 
 void HttpClient::setTimeout(int seconds) {
@@ -158,50 +176,6 @@ std::string HttpClient::buildRequest(const std::string& method, const std::strin
     }
     
     return request.str();
-}
-
-HttpResponse HttpClient::parseResponse(const std::string& response) const {
-    HttpResponse http_response;
-    
-    std::istringstream stream(response);
-    std::string line;
-    
-    if (std::getline(stream, line)) {
-        std::regex status_regex(R"(HTTP/\d\.\d\s+(\d+))");
-        std::smatch match;
-        if (std::regex_search(line, match, status_regex)) {
-            http_response.status_code = std::stoi(match[1].str());
-            http_response.success = (http_response.status_code >= 200 && http_response.status_code < 300);
-        }
-    }
-    
-    bool in_body = false;
-    std::stringstream body_stream;
-    
-    while (std::getline(stream, line)) {
-        if (line.empty() || line == "\r") {
-            in_body = true;
-            continue;
-        }
-        
-        if (!in_body) {
-            size_t colon_pos = line.find(':');
-            if (colon_pos != std::string::npos) {
-                std::string key = line.substr(0, colon_pos);
-                std::string value = line.substr(colon_pos + 1);
-                while (!value.empty() && (value[0] == ' ' || value[0] == '\t')) {
-                    value.erase(0, 1);
-                }
-                http_response.headers[key] = value;
-            }
-        } else {
-            body_stream << line << "\n";
-        }
-    }
-    
-    http_response.body = body_stream.str();
-    
-    return http_response;
 }
 
 bool HttpClient::validateUrl(const std::string& url) const {

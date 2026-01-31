@@ -1,12 +1,16 @@
 #include "AppController.h"
 #include "ai/AIService.h"
 #include "UpdateInstaller.h"
+#include "HttpClient.h"
 #include "core/updates/UpdateChecker.h"
 #include <sstream>
 #ifdef CAD_USE_QT
+#include <QString>
 #include <QSettings>
 #include <QStringList>
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QStatusBar>
 #include <QTimer>
 #include <QApplication>
 #include "ui/qt/QtLoginDialog.h"
@@ -15,6 +19,8 @@
 #include "ui/qt/QtAISettingsDialog.h"
 #include "ui/qt/QtUpdateDialog.h"
 #include <QProcess>
+#include <QDir>
+#include <QFileInfo>
 #endif
 
 namespace cad {
@@ -207,6 +213,9 @@ void AppController::initialize() {
     cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
     if (qt_window) {
         // Setup project file handlers
+        qt_window->setNewProjectHandler([this]() {
+            newProject();
+        });
         qt_window->setSaveProjectHandler([this](const std::string& path) {
             saveProject(path);
         });
@@ -230,25 +239,107 @@ void AppController::initialize() {
         qt_window->setLogoutHandler([this]() {
             logout();
         });
-        
+        qt_window->setProfileHandler([this, qt_window]() {
+            cad::app::User u = user_auth_service_.getCurrentUser();
+            if (u.username.empty()) {
+                QMessageBox::information(qt_window, QObject::tr("Profile"), QObject::tr("Not logged in."));
+                return;
+            }
+            QString text = QObject::tr("User: %1").arg(QString::fromStdString(u.username));
+            if (!u.email.empty()) {
+                text += QLatin1String("\n") + QObject::tr("Email: %1").arg(QString::fromStdString(u.email));
+            }
+            QMessageBox::information(qt_window, QObject::tr("Profile"), text);
+        });
+
         // AI Service integration
         setupAIService(qt_window);
         
-        // Auto-update setup
+        qt_window->setCheckForUpdatesHandler([this, qt_window]() {
+            checkForUpdates(qt_window, false);
+        });
         setupAutoUpdate(qt_window);
+
+        qt_window->setImportFileHandler([this](const std::string& path, const std::string& format) {
+            cad::interop::IoJob job;
+            job.path = path;
+            job.format = format;
+            if (!io_pipeline_.supportsFormat(format, false)) {
+                main_window_.setIntegrationStatus("Import format unsupported: " + format);
+            } else {
+                cad::interop::IoJobResult result = io_pipeline_.importJob(job);
+                main_window_.setIntegrationStatus(result.message);
+                main_window_.setViewportStatus("Import queued");
+            }
+        });
+        qt_window->setExportFileHandler([this](const std::string& path, const std::string& format) {
+            cad::interop::IoJob job;
+            job.path = path;
+            job.format = format;
+            if (!io_pipeline_.supportsFormat(format, true)) {
+                main_window_.setIntegrationStatus("Export format unsupported: " + format);
+            } else {
+                cad::interop::IoJobResult result = io_pipeline_.exportJob(job);
+                main_window_.setIntegrationStatus(result.message + " (" + format + ")");
+                main_window_.setViewportStatus("Export queued");
+            }
+        });
+
+        qt_window->setAskUnsavedChangesHandler([qt_window]() {
+            QMessageBox::StandardButton b = QMessageBox::question(qt_window,
+                QObject::tr("Unsaved Changes"),
+                QObject::tr("Save changes before opening another project?"),
+                QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel,
+                QMessageBox::Save);
+            if (b == QMessageBox::Save) return cad::ui::QtMainWindow::UnsavedAction::Save;
+            if (b == QMessageBox::Discard) return cad::ui::QtMainWindow::UnsavedAction::Discard;
+            return cad::ui::QtMainWindow::UnsavedAction::Cancel;
+        });
+        qt_window->setGetSavePathHandler([qt_window]() {
+            QString path = QFileDialog::getSaveFileName(qt_window,
+                QObject::tr("Save Project"), QString(),
+                QObject::tr("CAD Project (*.cad);;All Files (*)"));
+            return path.isEmpty() ? std::string() : path.toStdString();
+        });
+
+        qt_window->setCheckpointsListProvider([this](const std::string& project_path) {
+            return getCheckpointsForProject(project_path);
+        });
+        qt_window->setLoadCheckpointHandler([this](const std::string& path) {
+            loadCheckpoint(path);
+        });
+        qt_window->setDeleteCheckpointHandler([this](const std::string& path) {
+            deleteCheckpoint(path);
+        });
     }
     #endif
 
-    // Simple GitHub release check on startup (opens release page if newer).
+    // Simple GitHub release check on startup (optional).
     #ifndef CAD_APP_VERSION
     #define CAD_APP_VERSION "v0.0.0"
     #endif
-    static constexpr const char* kCurrentVersionTag = CAD_APP_VERSION;  // TODO: replace with build-defined version tag.
+    static constexpr const char* kCurrentVersionTag = CAD_APP_VERSION;
     const std::string owner = "drixber";
     const std::string repo = "CAD";
-    cad::core::updates::UpdateInfo update_info =
-        cad::core::updates::checkGithubLatestRelease(owner, repo, kCurrentVersionTag);
-    if (update_info.updateAvailable) {
+    cad::core::updates::UpdateInfo update_info;
+    #ifdef CAD_USE_QT_NETWORK
+    const std::string api_url = "https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest";
+    cad::app::HttpResponse api_resp = update_service_.getHttpClient().get(api_url, {{"Accept", "application/vnd.github.v3+json"}});
+    if (api_resp.success && !api_resp.body.empty()) {
+        update_info = cad::core::updates::parseGithubReleaseResponse(api_resp.body, kCurrentVersionTag);
+    } else {
+        update_info = cad::core::updates::checkGithubLatestRelease(owner, repo, kCurrentVersionTag);
+    }
+    #else
+    update_info = cad::core::updates::checkGithubLatestRelease(owner, repo, kCurrentVersionTag);
+    #endif
+    #ifdef CAD_USE_QT
+    QSettings release_settings("HydraCAD", "HydraCAD");
+    const bool open_release = release_settings.value("updates/open_release_on_startup", false).toBool();
+    #else
+    const bool open_release = false;
+    #endif
+    if (open_release && update_info.updateAvailable) {
         cad::core::updates::openUrlInBrowser(update_info.releaseUrl);
     }
 }
@@ -662,27 +753,21 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("MBD view unavailable");
         }
     } else if (command == "Import") {
-        cad::interop::IoJob job;
-        job.path = "C:/temp/model.step";
-        job.format = "STEP";
-        if (!io_pipeline_.supportsFormat(job.format, false)) {
-            main_window_.setIntegrationStatus("Import format unsupported");
-        } else {
-            cad::interop::IoJobResult result = io_pipeline_.importJob(job);
-            main_window_.setIntegrationStatus(result.message);
-            main_window_.setViewportStatus("Import queued");
+        #ifdef CAD_USE_QT
+        if (cad::ui::QtMainWindow* w = main_window_.nativeWindow()) {
+            w->triggerImportDialog();
+            return;
         }
+        #endif
+        main_window_.setIntegrationStatus("Import: use File dialog (Qt required)");
     } else if (command == "Export") {
-        cad::interop::IoJob job;
-        job.path = "C:/temp/model.step";
-        job.format = io_pipeline_.supportedFormats().front().format;
-        if (!io_pipeline_.supportsFormat(job.format, true)) {
-            main_window_.setIntegrationStatus("Export format unsupported");
-        } else {
-            cad::interop::IoJobResult result = io_pipeline_.exportJob(job);
-            main_window_.setIntegrationStatus(result.message + " (" + job.format + ")");
-            main_window_.setViewportStatus("Export queued");
+        #ifdef CAD_USE_QT
+        if (cad::ui::QtMainWindow* w = main_window_.nativeWindow()) {
+            w->triggerExportDialog();
+            return;
         }
+        #endif
+        main_window_.setIntegrationStatus("Export: use File dialog (Qt required)");
     } else if (command == "Export RFA" || command == "ExportRFA") {
         cad::interop::IoResult result = io_service_.exportBimRfa("C:/temp/model.rfa");
         main_window_.setIntegrationStatus(result.message);
@@ -896,11 +981,57 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "AddIns") {
         main_window_.setIntegrationStatus("Add-ins manager");
         main_window_.setViewportStatus("Add-ins panel available");
+    } else if (command == "Undo") {
+        if (undo_stack_.canUndo()) {
+            std::string name = undo_stack_.undo();
+            main_window_.setIntegrationStatus("Undo: " + name);
+            main_window_.setViewportStatus("Undone");
+        } else {
+            main_window_.setIntegrationStatus("Nothing to undo");
+            main_window_.setViewportStatus("Undo unavailable");
+        }
+    } else if (command == "Redo") {
+        if (undo_stack_.canRedo()) {
+            std::string name = undo_stack_.redo();
+            main_window_.setIntegrationStatus("Redo: " + name);
+            main_window_.setViewportStatus("Redone");
+        } else {
+            main_window_.setIntegrationStatus("Nothing to redo");
+            main_window_.setViewportStatus("Redo unavailable");
+        }
     } else {
         // Unknown command - provide feedback
         main_window_.setIntegrationStatus("Command: " + command);
         main_window_.setViewportStatus("Command executed: " + command);
     }
+}
+
+void AppController::newProject() {
+    active_assembly_ = modeler_.createAssembly();
+    cad::core::Sketch sketch("Sketch1");
+    sketch.addConstraint({cad::core::ConstraintType::Distance, "line1", "line2", 25.0});
+    sketch.addParameter({"Width", 0.0, "100"});
+    sketch.addParameter({"Height", 0.0, "50"});
+    setActiveSketch(sketch);
+    modeler_.evaluateParameters(active_sketch_);
+    main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+    main_window_.setParameterCount(static_cast<int>(active_sketch_.parameters().size()));
+    main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
+    initializeAssembly();
+    has_unsaved_changes_ = false;
+    current_project_path_.clear();
+    main_window_.setDocumentLabel("Untitled");
+    main_window_.setIntegrationStatus("New project created");
+    main_window_.setViewportStatus("Ready – use Sketch tools or File → Open/Save");
+    #ifdef CAD_USE_QT
+    cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+    if (qt_window) {
+        qt_window->setCurrentProjectPath(QString());
+        if (qt_window->viewport3D()) {
+            qt_window->viewport3D()->clearScene();
+        }
+    }
+    #endif
 }
 
 bool AppController::saveProject(const std::string& file_path) {
@@ -949,6 +1080,7 @@ bool AppController::saveProject(const std::string& file_path) {
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
         if (qt_window) {
             qt_window->updateRecentProjectsMenu(recent_projects_);
+            qt_window->setCurrentProjectPath(QString::fromStdString(file_path));
         }
         #endif
     } else {
@@ -959,18 +1091,39 @@ bool AppController::saveProject(const std::string& file_path) {
             error_msg += " (Check file permissions or disk space)";
         }
         main_window_.setIntegrationStatus(error_msg);
+        #ifdef CAD_USE_QT
+        QMessageBox::warning(nullptr, QObject::tr("Save Failed"), QString::fromStdString(error_msg));
+        #endif
     }
     return success;
 }
 
 bool AppController::loadProject(const std::string& file_path) {
-    // Check for unsaved changes
     if (has_unsaved_changes_) {
-        // In a real implementation, show a dialog here
-        // For now, we'll just log it
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* w = main_window_.nativeWindow();
+        if (w) {
+            cad::ui::QtMainWindow::UnsavedAction action = w->askUnsavedChanges();
+            if (action == cad::ui::QtMainWindow::UnsavedAction::Cancel) {
+                main_window_.setIntegrationStatus("Open project cancelled");
+                return false;
+            }
+            if (action == cad::ui::QtMainWindow::UnsavedAction::Save) {
+                std::string path = !current_project_path_.empty() ? current_project_path_ : w->getSavePathForNewProject();
+                if (path.empty()) {
+                    main_window_.setIntegrationStatus("Save cancelled");
+                    return false;
+                }
+                if (!saveProject(path)) {
+                    return false;
+                }
+            }
+        }
+        #else
         main_window_.setIntegrationStatus("Warning: Unsaved changes will be lost");
+        #endif
     }
-    
+
     // Validate file path
     if (file_path.empty()) {
         main_window_.setIntegrationStatus("Error: File path is empty");
@@ -1006,10 +1159,15 @@ bool AppController::loadProject(const std::string& file_path) {
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
         if (qt_window) {
             qt_window->updateRecentProjectsMenu(recent_projects_);
+            qt_window->setCurrentProjectPath(QString::fromStdString(file_path));
         }
         #endif
     } else {
-        main_window_.setIntegrationStatus("Failed to load project: " + file_path + " (File may be corrupted or incompatible)");
+        std::string error_msg = "Failed to load project: " + file_path + " (File may be corrupted or incompatible)";
+        main_window_.setIntegrationStatus(error_msg);
+        #ifdef CAD_USE_QT
+        QMessageBox::warning(nullptr, QObject::tr("Load Failed"), QString::fromStdString(error_msg));
+        #endif
     }
     return success;
 }
@@ -1032,6 +1190,20 @@ bool AppController::loadCheckpoint(const std::string& checkpoint_path) {
         main_window_.setIntegrationStatus("Failed to load checkpoint: " + checkpoint_path);
     }
     return success;
+}
+
+bool AppController::deleteCheckpoint(const std::string& checkpoint_path) {
+    bool success = project_file_service_.deleteCheckpoint(checkpoint_path);
+    if (success) {
+        main_window_.setIntegrationStatus("Checkpoint deleted: " + checkpoint_path);
+    } else {
+        main_window_.setIntegrationStatus("Failed to delete checkpoint: " + checkpoint_path);
+    }
+    return success;
+}
+
+std::vector<std::string> AppController::getCheckpointsForProject(const std::string& project_path) const {
+    return project_file_service_.listCheckpoints(project_path);
 }
 
 void AppController::triggerAutoSave() {
@@ -1245,8 +1417,11 @@ void AppController::setupAutoUpdate(cad::ui::QtMainWindow* qt_window) {
     update_service_.enableAutoUpdate(auto_update_enabled);
     update_service_.setAutoUpdateCheckInterval(check_interval_days);
     
-    // Set current version
-    update_service_.setCurrentVersion("2.0.0");
+    #ifdef CAD_APP_VERSION
+    update_service_.setCurrentVersion(CAD_APP_VERSION);
+    #else
+    update_service_.setCurrentVersion("v0.0.0");
+    #endif
     
     // Set installation directory
     QString install_path = settings.value("app/install_path", "C:/Program Files/Hydra CAD").toString();
@@ -1254,8 +1429,10 @@ void AppController::setupAutoUpdate(cad::ui::QtMainWindow* qt_window) {
     
     // Check for updates on startup (if enabled)
     if (auto_update_enabled) {
-        QTimer::singleShot(5000, qt_window, [this, qt_window, auto_install]() {
-            checkForUpdates(qt_window, auto_install);
+        QTimer::singleShot(8000, qt_window, [this, qt_window, auto_install]() {
+            if (qt_window->isVisible()) {
+                checkForUpdates(qt_window, auto_install);
+            }
         });
     }
     
@@ -1266,42 +1443,70 @@ void AppController::setupAutoUpdate(cad::ui::QtMainWindow* qt_window) {
     });
     
     int interval_ms = check_interval_days * 24 * 60 * 60 * 1000;
-    update_check_timer->start(interval_ms);
+    if (auto_update_enabled) {
+        update_check_timer->start(interval_ms);
+    }
     #endif
 }
 
 void AppController::checkForUpdates(cad::ui::QtMainWindow* qt_window, bool auto_install) {
     #ifdef CAD_USE_QT
     if (!qt_window) return;
+    (void)auto_install;
     
-    if (!update_service_.checkForUpdates()) {
-        return; // No updates or error
+    cad::app::UpdateInfo update_info;
+    bool have_update = false;
+    
+    if (update_service_.checkForUpdates() && update_service_.isUpdateAvailable()) {
+        update_info = update_service_.getLatestUpdateInfo();
+        have_update = true;
     }
     
-    if (!update_service_.isUpdateAvailable()) {
-        return; // Already up to date
+    if (!have_update) {
+        std::string current_tag = update_service_.getCurrentVersion();
+        if (current_tag.empty()) {
+            current_tag = "v0.0.0";
+        }
+        cad::core::updates::UpdateInfo gh;
+        #ifdef CAD_USE_QT_NETWORK
+        const std::string api_url = "https://api.github.com/repos/drixber/CAD/releases/latest";
+        cad::app::HttpResponse api_resp = update_service_.getHttpClient().get(api_url, {{"Accept", "application/vnd.github.v3+json"}});
+        if (api_resp.success && !api_resp.body.empty()) {
+            gh = cad::core::updates::parseGithubReleaseResponse(api_resp.body, current_tag);
+        } else {
+            gh = cad::core::updates::checkGithubLatestRelease("drixber", "CAD", current_tag);
+        }
+        #else
+        gh = cad::core::updates::checkGithubLatestRelease("drixber", "CAD", current_tag);
+        #endif
+        if (gh.updateAvailable && !gh.releaseUrl.empty()) {
+            update_info.version = gh.latestTag;
+            update_info.changelog = "See release page for changelog.";
+            update_info.download_url = !gh.assetDownloadUrl.empty() ? gh.assetDownloadUrl : gh.releaseUrl;
+            update_info.mandatory = false;
+            have_update = true;
+        } else {
+            if (qt_window->statusBar()) {
+                if (!gh.error.empty()) {
+                    qt_window->statusBar()->showMessage(QString::fromStdString(gh.error), 5000);
+                } else {
+                    qt_window->statusBar()->showMessage(QObject::tr("No updates available. You are using the latest version."), 4000);
+                }
+            }
+            return;
+        }
     }
     
-    cad::app::UpdateInfo update_info = update_service_.getLatestUpdateInfo();
-    
-    // Show update dialog
     cad::ui::QtUpdateDialog dialog(qt_window);
     dialog.setUpdateInfo(QString::fromStdString(update_info.version),
                         QString::fromStdString(update_info.changelog),
                         update_info.mandatory);
     
-    // Connect install handler
-    QObject::connect(&dialog, &cad::ui::QtUpdateDialog::installRequested, &dialog, [this, &dialog, update_info, qt_window]() {
-        installUpdate(qt_window, update_info, dialog.getCreateBackup());
+    QObject::connect(&dialog, &cad::ui::QtUpdateDialog::installRequested, &dialog, [this, update_info, qt_window]() {
+        installUpdate(qt_window, update_info, true);
     });
     
-    // If auto-install is enabled and not mandatory, install automatically
-    if (auto_install && !update_info.mandatory) {
-        dialog.hide();
-        installUpdate(qt_window, update_info, true);
-    } else {
-        dialog.exec();
-    }
+    dialog.exec();
     #endif
 }
 
@@ -1310,16 +1515,30 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
                                   bool create_backup) {
     #ifdef CAD_USE_QT
     if (!qt_window) return;
+    (void)create_backup;
     
-    // Show progress dialog
+    if (update_info.download_url.empty()) {
+        QMessageBox::warning(qt_window, QObject::tr("Update"),
+                             QObject::tr("No download URL available. Please check the release page manually."));
+        return;
+    }
+    const bool is_direct_asset = (update_info.download_url.find("releases/download") != std::string::npos);
+    if (!is_direct_asset && update_info.download_url.find("github.com") != std::string::npos) {
+        cad::core::updates::openUrlInBrowser(update_info.download_url);
+        QMessageBox::information(qt_window, QObject::tr("Update"),
+                                 QObject::tr("The release page has been opened. Download the installer (e.g. HydraCADSetup.exe or app-windows.zip) from the page."));
+        return;
+    }
+    
     cad::ui::QtUpdateDialog progress_dialog(qt_window);
     progress_dialog.setUpdateInfo(QString::fromStdString(update_info.version),
                                  QString::fromStdString(update_info.changelog),
                                  update_info.mandatory);
     progress_dialog.setProgress(0, QObject::tr("Downloading update..."));
+    progress_dialog.setModal(true);
     progress_dialog.show();
+    QApplication::processEvents();
     
-    // Download update
     std::string download_path;
     bool download_success = update_service_.downloadUpdate(update_info,
         [&progress_dialog](const cad::app::UpdateProgress& progress) {
@@ -1330,59 +1549,40 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
     
     if (!download_success) {
         progress_dialog.setCompleted(false, QObject::tr("Download failed"));
+        progress_dialog.exec();
+        QMessageBox::warning(qt_window, QObject::tr("Update Failed"),
+                             QObject::tr("Download failed. Please check your connection and try again."));
         return;
     }
     
-    // Determine download path
-    download_path = "update_" + update_info.version + ".zip";
-    
-    // Install update in-place
-    progress_dialog.setProgress(50, QObject::tr("Installing update..."));
+    download_path = "update_" + update_info.version + ".exe";
+    QString download_path_qt = QDir::current().absoluteFilePath(QString::fromStdString(download_path));
+
+    progress_dialog.setProgress(90, QObject::tr("Starting installer..."));
     QApplication::processEvents();
-    
-    bool install_success = update_service_.installInPlaceUpdate(download_path,
-        [&progress_dialog](const cad::app::UpdateProgress& progress) {
-            progress_dialog.setProgress(50 + (progress.percentage / 2),
-                                      QString::fromStdString(progress.status_message));
-            if (!progress.status_message.empty() && 
-                progress.status_message.find("Updating") != std::string::npos) {
-                // Extract filename from status message
-                size_t last_slash = progress.status_message.find_last_of("/\\");
-                if (last_slash != std::string::npos) {
-                    std::string filename = progress.status_message.substr(last_slash + 1);
-                    progress_dialog.setCurrentFile(QString::fromStdString(filename));
-                }
-            }
-            QApplication::processEvents();
-        });
-    
-    if (install_success) {
-        progress_dialog.setCompleted(true, QObject::tr("Update installed successfully!"));
-        progress_dialog.exec(); // Show completion message
-        
-        // Restart application
-        QMessageBox::information(qt_window, QObject::tr("Update Complete"),
-                                QObject::tr("Update installed successfully. The application will restart."));
-        
-        // Restart application
-        #ifdef _WIN32
-        QString app_path = QApplication::applicationFilePath();
-        QStringList args = QApplication::arguments();
-        args.removeFirst(); // Remove executable path
-        
-        QProcess::startDetached(app_path, args);
+
+    bool run_installer = false;
+    #ifdef _WIN32
+    if (QFileInfo::exists(download_path_qt)) {
+        run_installer = QProcess::startDetached(download_path_qt, QStringList(), QFileInfo(download_path_qt).absolutePath());
+    }
+    #else
+    if (QFileInfo::exists(download_path_qt)) {
+        run_installer = QProcess::startDetached(download_path_qt, QStringList());
+    }
+    #endif
+
+    if (run_installer) {
+        progress_dialog.setCompleted(true, QObject::tr("Installer started."));
+        progress_dialog.exec();
+        QMessageBox::information(qt_window, QObject::tr("Update"),
+                                QObject::tr("The installer has been started. Complete the setup and restart the application."));
         QApplication::quit();
-        #else
-        // Linux/Mac: Use exec to replace current process
-        QString app_path = QApplication::applicationFilePath();
-        QStringList args = QApplication::arguments();
-        args.removeFirst();
-        
-        QProcess::startDetached(app_path, args);
-        QApplication::quit();
-        #endif
     } else {
-        progress_dialog.setCompleted(false, QObject::tr("Installation failed"));
+        progress_dialog.setCompleted(false, QObject::tr("Could not start installer"));
+        progress_dialog.exec();
+        QMessageBox::warning(qt_window, QObject::tr("Update"),
+                             QObject::tr("Could not start the installer. You can run it manually: %1").arg(download_path_qt));
     }
     #endif
 }

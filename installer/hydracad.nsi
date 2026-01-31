@@ -99,6 +99,28 @@ Section "Core Application" SecCore
     
     ; DLLs and dependencies (Qt, etc.)
     File /nonfatal /r /x *.pdb /x *.ilk "${PROJECT_ROOT}\build\Release\*.*"
+
+    ; Warn if VC++ runtime is missing
+    ${IfNot} ${FileExists} "$SYSDIR\VCRUNTIME140.dll"
+        MessageBox MB_ICONEXCLAMATION|MB_OK "Microsoft Visual C++ Runtime was not found. If the app does not start, install the latest VC++ Redistributable."
+    ${EndIf}
+    ${IfNot} ${FileExists} "$SYSDIR\VCRUNTIME140_1.dll"
+        MessageBox MB_ICONEXCLAMATION|MB_OK "Microsoft Visual C++ Runtime was not found. If the app does not start, install the latest VC++ Redistributable."
+    ${EndIf}
+
+    ; Validate critical runtime files
+    ${IfNot} ${FileExists} "$INSTDIR\cad_desktop.exe"
+        MessageBox MB_ICONSTOP|MB_OK "Installation failed: required runtime files are missing. Please re-download the installer."
+        Abort
+    ${EndIf}
+    ${IfNot} ${FileExists} "$INSTDIR\Qt6Gui.dll"
+        MessageBox MB_ICONSTOP|MB_OK "Installation failed: required runtime files are missing. Please re-download the installer."
+        Abort
+    ${EndIf}
+    ${IfNot} ${FileExists} "$INSTDIR\platforms\qwindows.dll"
+        MessageBox MB_ICONSTOP|MB_OK "Installation failed: required runtime files are missing. Please re-download the installer."
+        Abort
+    ${EndIf}
     
     ; Create data directory for user files
     CreateDirectory "$INSTDIR\data"

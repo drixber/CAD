@@ -3,6 +3,7 @@
 #include "CADApplication.h"
 #include "core/Modeler/Modeler.h"
 #include "core/FreeCAD/FreeCADAdapter.h"
+#include "core/undo/UndoStack.h"
 #include "core/FreeCAD/TechDrawBridge.h"
 #include "core/analysis/InterferenceChecker.h"
 #include "core/assembly/AssemblyManager.h"
@@ -51,10 +52,13 @@ public:
     void logout();
     
     // Project file operations
+    void newProject();
     bool saveProject(const std::string& file_path);
     bool loadProject(const std::string& file_path);
     bool saveCheckpoint(const std::string& checkpoint_path);
     bool loadCheckpoint(const std::string& checkpoint_path);
+    bool deleteCheckpoint(const std::string& checkpoint_path);
+    std::vector<std::string> getCheckpointsForProject(const std::string& project_path) const;
     void triggerAutoSave();
     std::vector<std::string> getRecentProjects() const;
     bool hasUnsavedChanges() const { return has_unsaved_changes_; }
@@ -86,6 +90,7 @@ private:
     cad::modules::SimplifyService simplify_service_;
     cad::interop::ImportExportService io_service_;
     cad::interop::IoPipeline io_pipeline_;
+    cad::core::UndoStack undo_stack_;
     cad::app::UpdateService update_service_;
     cad::app::UpdateInstaller update_installer_;
     cad::app::ProjectFileService project_file_service_;

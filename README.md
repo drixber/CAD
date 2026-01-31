@@ -1,147 +1,136 @@
-# Hydra CAD - Professional CAD Application
+# Hydra CAD – Professional CAD Application
 
 ## Overview
 
-Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with C++ and Qt, featuring advanced 3D modeling, simulation, and drawing generation capabilities.
+Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with C++ and Qt 6, with 3D viewport rendering, project management, AI-assisted workflows, and optional FreeCAD/Coin3D integration.
 
-**Status**: ✅ Windows Releases via GitHub Tags
+**Status**: ✅ Windows releases via GitHub (Installer + Portable ZIP). Version from Git tag (e.g. `v1.0.0`).
+
+---
 
 ## 🚀 Schnellstart
 
-### Installation (Windows - empfohlen)
+### Installation (Windows)
 
-**Option A: Installer (empfohlen)**
+| Option | Datei | Schritte |
+|--------|------|----------|
+| **Installer** | [HydraCADSetup.exe](https://github.com/drixber/CAD/releases) | Herunterladen → Ausführen → Datenschutz bestätigen, Pfad und Sprache wählen |
+| **Portable** | [app-windows.zip](https://github.com/drixber/CAD/releases) | ZIP entpacken → `cad_desktop.exe` starten |
 
-1. **Download**: [GitHub Releases](https://github.com/drixber/CAD/releases)
-2. **Asset**: `HydraCADSetup.exe`
-3. **Starten**: Installer ausfuehren (Datenschutz bestaetigen, Zielpfad waehlen, Sprache waehlen)
+**Releases**: [GitHub Releases](https://github.com/drixber/CAD/releases) – bei jedem Tag `v*` werden Installer und Portable-ZIP automatisch erstellt.
 
-**Option B: Portable ZIP**
-1. **Download**: [GitHub Releases](https://github.com/drixber/CAD/releases)
-2. **Asset**: `app-windows.zip`
-3. **Entpacken** und `cad_desktop.exe` starten
+**Linux / macOS**: Aus Quellcode bauen, siehe [docs/INSTALLATION.md](docs/INSTALLATION.md). CI für Linux/macOS ist derzeit pausiert.
 
-**Linux/macOS:**
-- Aktuell bitte aus dem Quellcode bauen (siehe [docs/INSTALLATION.md](docs/INSTALLATION.md)). CI/CD fuer Linux/macOS ist derzeit pausiert.
+### Erste Schritte
 
-**Erste Schritte (Windows):**
-- Beim ersten Start: Account registrieren
-- Nach Login: App ist bereit für die Verwendung
-- Projekte speichern: File → Save Project (Strg+S / Cmd+S)
-- Projekte öffnen: File → Open Project (Strg+O / Cmd+O)
+- **Erster Start**: Account registrieren, danach einloggen (optional: „Remember me“).
+- **Projekt**: File → New Project / Open Project (Strg+O) / Save Project (Strg+S).
+- **Sprache**: Settings → Language → Deutsch, English, 中文, 日本語 (wirkt nach Neustart).
+- **Updates**: Settings → Check for Updates… (öffnet die Release-Seite bei neuer Version).
 
-### Eigenen Build erstellen (optional)
-
-**Windows:**
-```powershell
-.\build_installer.ps1
-```
-
-**Linux/macOS:**
-Siehe [docs/INSTALLATION.md](docs/INSTALLATION.md) für detaillierte Anleitung.
+---
 
 ## Features
 
 ### Kern-Features
-- ✅ **3D Viewport Rendering**: Coin3D/SoQt Integration mit Echtzeit-3D-Visualisierung
-- ✅ **FreeCAD Integration**: Vollständige Synchronisation von Sketches, Parts und Drawings
-- ✅ **Import/Export**: Unterstützung für STEP, IGES, STL, DWG, DXF, OBJ, PLY, 3MF, GLTF
-- ✅ **Constraint Solver**: Professioneller Newton-Raphson Solver
-- ✅ **Simulation**: FEA, Motion, Deflection, Optimization, Thermal Analysis
-- ✅ **Sheet Metal**: Flange, Bend, Cut, Unfold/Refold mit K-Faktor-Berechnungen
-- ✅ **Routing**: A*-basierte Pfadfindung für Pipes, Hoses, Tubes
-- ✅ **Direct Editing**: Face-Modifikation, Offset, Deletion, Freeform
-- ✅ **Drawing Generation**: TechDraw Integration mit ISO/ANSI/JIS Templates
-- ✅ **Project Management**: Save/Load, Checkpoints, Auto-Save
-- ✅ **User Authentication**: Login, Registration, Session Management
-- ✅ **AI Integration**: OpenAI/Grok Support für CAD-Assistenz (Anthropic geplant)
-- ✅ **Update-Check**: Prüft GitHub Releases und öffnet bei Update die Release-Seite
+
+- **3D Viewport**: Coin3D/SoQt-Integration, Echtzeit-Darstellung.
+- **Projekt-Verwaltung**: Speichern/Laden (`.cad`), Auto-Save (z. B. alle 5 Min.), Checkpoints.
+- **Import/Export**: File-Dialog für STEP, IGES, STL, OBJ, DXF (Ribbon oder Befehl „Import“/„Export“).
+- **Undo/Redo**: Ribbon oder Strg+Z / Strg+Y.
+- **User & Profil**: Login, Registrierung, Session, User → Profile (Anzeige Nutzer/E-Mail).
+- **Checkpoints**: File → Manage Checkpoints… – Liste, Öffnen, Löschen.
+- **Sprachen**: Deutsch, English, 中文, 日本語 (Übersetzungen in der App).
+- **Automatische Updates**: Settings → Check for Updates… – lädt bei neuer Version den Installer herunter und startet ihn; danach Setup abschließen, App neu starten. Kein manuelles Neu-Installieren nötig.
+
+### Weitere Module (Build-Optionen)
+
+- **FreeCAD-Integration**: Sketches, Parts, Drawings (optional).
+- **Constraint Solver**, **Simulation** (FEA, Motion, etc.), **Sheet Metal**, **Routing**, **Direct Editing**, **Drawing/TechDraw**.
+- **AI**: OpenAI und Grok für CAD-Assistenz (Anthropic geplant).
+
+---
 
 ## Installation & Build
 
 ### Voraussetzungen
+
 - **Windows 10/11** (64-bit)
-- **Visual Studio 2019+** oder **MinGW-w64**
+- **Visual Studio 2019/2022** (C++ Desktop) oder MinGW-w64
 - **CMake 3.26+**
-- **Qt 6.x** (für UI)
-- **NSIS 3.0+** (optional, nur falls Installer gebaut werden)
+- **Qt 6.x** (für die UI)
+- **NSIS 3.0+** (optional, nur für den Installer)
 
-### Automatischer Build & Installer (Empfohlen)
+### Build & Installer (empfohlen)
 
-**PowerShell**:
 ```powershell
 .\build_installer.ps1
 ```
 
-**Batch**:
-```cmd
-.\build_installer.bat
-```
+Alternativ: `.\build_installer.bat`
 
 ### Manueller Build
 
 ```powershell
-# CMake konfigurieren
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCAD_USE_QT=ON
+# Qt-Pfad anpassen
+$QtDir = "C:\Qt\6.5.3\msvc2019_64"
 
-# Kompilieren
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+  -DCAD_USE_QT=ON -DQt6_DIR="$QtDir" -DCMAKE_PREFIX_PATH="$QtDir"
 cmake --build build --config Release
 
-# Installer erstellen
-cd installer
-"C:\Program Files (x86)\NSIS\makensis.exe" hydracad.nsi
+# Qt-DLLs für portable Nutzung
+& "$QtDir\bin\windeployqt.exe" build\Release\cad_desktop.exe
 ```
 
-### Installation (Portable)
+EXE liegt in `build\Release\cad_desktop.exe`. Übersetzungen (`.qm`) werden beim Build nach `build\Release\i18n\` erzeugt.
 
-Windows Release-ZIP ist lauffaehig ohne Installer:
-1. `app-windows.zip` entpacken
-2. `cad_desktop.exe` starten
-
-## 📚 Dokumentation
-
-Detaillierte Dokumentation finden Sie im `docs/` Verzeichnis:
-- **[PROJECT_FINAL.md](docs/PROJECT_FINAL.md)** - Vollständige Projekt-Dokumentation
-- **[INSTALLATION.md](docs/INSTALLATION.md)** - Installations-Anleitung
-- **[FINAL_RELEASE_NOTES.md](docs/FINAL_RELEASE_NOTES.md)** - Release Notes (falls vorhanden)
-
-Siehe auch: [docs/README.md](docs/README.md) für eine vollständige Übersicht.
-
-## Projekt-Verwaltung
-
-### Projekte speichern/laden
-- **Speichern**: File → Save Project (Strg+S)
-- **Laden**: File → Open Project (Strg+O)
-- **Checkpoints**: Automatische Sicherungspunkte
-- **Auto-Save**: Automatisches Speichern alle 5 Minuten
-
-### User-Authentifizierung
-- **Registrierung**: Beim ersten Start
-- **Login**: Bei jedem Start (optional: Remember Me)
-- **Session Management**: Automatische Session-Verwaltung
-
-## System-Anforderungen
-
-- **Windows**: Windows 10/11 (64-bit)
-- **Linux**: Ubuntu 20.04+ / Debian 11+ / Fedora 34+ (64-bit)
-- **macOS**: macOS 10.15+ (Intel/Apple Silicon)
-- **RAM**: 4 GB minimum, 8 GB empfohlen
-- **Festplatte**: 500 MB für Installation, zusätzlich für Projekte
-- **Grafik**: OpenGL 3.3+ kompatible Grafikkarte
-
-## Lizenz
-
-Siehe [installer/license.txt](installer/license.txt)
-
-## 📝 Changelog
-
-Siehe [CHANGELOG.md](CHANGELOG.md) für detaillierte Änderungen.
-
-## Support
-
-Für Fragen und Support siehe die Dokumentation im `docs/` Verzeichnis.
+**Installer**: Siehe [docs/INSTALLATION.md](docs/INSTALLATION.md) (NSIS, Projekt-Pfade).
 
 ---
 
-**Version**: kommt aus dem Git-Tag (z.B. `v1.0.0`)  
-**Status**: ✅ Windows Releases via GitHub Tags
+## Projekt & Einstellungen
+
+| Aktion | Menü / Tastatur |
+|--------|------------------|
+| Projekt speichern | File → Save Project (Strg+S) |
+| Projekt öffnen | File → Open Project (Strg+O) |
+| Checkpoints verwalten | File → Manage Checkpoints… |
+| Sprache | Settings → Language |
+| Updates prüfen | Settings → Check for Updates… |
+| Profil anzeigen | User → Profile |
+| Logs/Diagnose | Settings → Diagnostics |
+
+Beim Öffnen eines anderen Projekts erscheint bei ungespeicherten Änderungen ein Dialog (Speichern / Verwerfen / Abbrechen).
+
+---
+
+## Entwicklung vs. installierte App / CAD Cursor
+
+- **Installierte Hydra CAD** (z. B. nach Setup oder aus `app-windows.zip`) ist eine **standalone** C++/Qt-Anwendung. Sie ruft **kein** Python und **kein** `cadursor` auf.
+- **CAD Cursor** (`python/cadursor/`) ist ein **separates** Python-Tool für Agent-Workflows (Planner, Executor, Historian, …). Es läuft nur, wenn du es im Repo explizit startest, z. B. `python -m cadursor.cli --goal "..." --rules .cursorcad`.
+- **Es gibt keine automatische Einpflegung**: Was du in der installierten App machst (Projekte, Einstellungen), wird **nicht** automatisch ins Repo oder in die Cursor-Umgebung übernommen. Umgekehrt werden Änderungen im Repo erst nach neuem Build/Release in der installierten Version sichtbar.
+
+---
+
+## Systemanforderungen
+
+- **Windows**: 10/11 (64-bit)
+- **Linux**: Ubuntu 20.04+ / Debian 11+ / Fedora 34+ (64-bit)
+- **macOS**: 10.15+ (Intel/Apple Silicon)
+- **RAM**: 4 GB mind., 8 GB empfohlen
+- **Festplatte**: ca. 500 MB + Platz für Projekte
+- **Grafik**: OpenGL 3.3+
+
+---
+
+## Dokumentation & Lizenz
+
+- **Installation/Build**: [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
+- **Lizenz**: [installer/license.txt](installer/license.txt)
+
+---
+
+**Version**: Aus Git-Tag (z. B. `v1.0.0`).  
+**Releases**: ✅ Windows (Installer + Portable ZIP) bei Push eines `v*`-Tags.

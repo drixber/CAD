@@ -35,7 +35,6 @@ private:
     std::string buildRequest(const std::string& method, const std::string& url,
                             const std::map<std::string, std::string>& headers,
                             const std::string& body = "") const;
-    HttpResponse parseResponse(const std::string& response) const;
     bool validateUrl(const std::string& url) const;
 };
 

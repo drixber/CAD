@@ -40,6 +40,19 @@ if(CAD_USE_QT)
         src/main.cpp
     )
     target_link_libraries(cad_desktop PRIVATE cad_app cad_ui)
+
+    # Build translations (.ts -> .qm) into exe directory for runtime loading
+    find_package(Qt6 QUIET COMPONENTS LinguistTools)
+    if(Qt6_FOUND AND TARGET Qt6::lrelease)
+        set(I18N_DIR "${CMAKE_SOURCE_DIR}/src/ui/resources/i18n")
+        add_custom_command(TARGET cad_desktop POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:cad_desktop>/i18n"
+            COMMAND $<TARGET_FILE:Qt6::lrelease> "${I18N_DIR}/hydracad_de.ts" -qm "$<TARGET_FILE_DIR:cad_desktop>/i18n/hydracad_de.qm"
+            COMMAND $<TARGET_FILE:Qt6::lrelease> "${I18N_DIR}/hydracad_zh.ts" -qm "$<TARGET_FILE_DIR:cad_desktop>/i18n/hydracad_zh.qm"
+            COMMAND $<TARGET_FILE:Qt6::lrelease> "${I18N_DIR}/hydracad_ja.ts" -qm "$<TARGET_FILE_DIR:cad_desktop>/i18n/hydracad_ja.qm"
+            COMMENT "Building translations (lrelease)"
+        )
+    endif()
     
     # macOS App Bundle
     if(APPLE)

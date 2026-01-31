@@ -176,6 +176,32 @@ void MainWindow::setBackgroundLoadingHandler(const std::function<void(bool)>& ha
 #endif
 }
 
+void MainWindow::setImportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler) {
+    (void)handler;
+#ifdef CAD_USE_QT
+    native_window_.setImportFileHandler(handler);
+#endif
+}
+
+void MainWindow::setExportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler) {
+    (void)handler;
+#ifdef CAD_USE_QT
+    native_window_.setExportFileHandler(handler);
+#endif
+}
+
+void MainWindow::triggerImportDialog() {
+#ifdef CAD_USE_QT
+    native_window_.triggerImportDialog();
+#endif
+}
+
+void MainWindow::triggerExportDialog() {
+#ifdef CAD_USE_QT
+    native_window_.triggerExportDialog();
+#endif
+}
+
 bool MainWindow::hasNativeWindow() const {
 #ifdef CAD_USE_QT
     return true;

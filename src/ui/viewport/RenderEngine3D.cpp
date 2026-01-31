@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 
 #ifndef M_PI

@@ -102,7 +102,57 @@ bool extractJsonStringValue(const std::string& json,
     return true;
 }
 
+/** Find first asset with name matching preferred or fallback, return its browser_download_url. */
+std::string extractAssetDownloadUrl(const std::string& json,
+                                    const std::string& preferred_name,
+                                    const std::string& fallback_name) {
+    auto try_asset = [&json](const std::string& name) -> std::string {
+        const std::string name_key = "\"name\":\"" + name + "\"";
+        size_t name_pos = json.find(name_key);
+        if (name_pos == std::string::npos) return {};
+        const std::string url_key = "\"browser_download_url\":\"";
+        size_t url_start = json.find(url_key, name_pos);
+        if (url_start == std::string::npos) return {};
+        url_start += url_key.size();
+        size_t url_end = json.find('"', url_start);
+        if (url_end == std::string::npos || url_end <= url_start) return {};
+        return json.substr(url_start, url_end - url_start);
+    };
+    std::string url = try_asset(preferred_name);
+    if (!url.empty()) return url;
+    return try_asset(fallback_name);
+}
+
 }  // namespace
+
+UpdateInfo parseGithubReleaseResponse(const std::string& response, const std::string& currentTag) {
+    UpdateInfo info{};
+    if (response.empty()) {
+        info.error = "Empty response from GitHub API";
+        return info;
+    }
+    std::string latest_tag;
+    std::string html_url;
+    if (!extractJsonStringValue(response, "tag_name", latest_tag)) {
+        info.error = "Failed to parse tag_name";
+        return info;
+    }
+    if (!extractJsonStringValue(response, "html_url", html_url)) {
+        info.error = "Failed to parse html_url";
+        return info;
+    }
+    info.latestTag = latest_tag;
+    info.releaseUrl = html_url;
+    info.assetDownloadUrl = extractAssetDownloadUrl(response, "HydraCADSetup.exe", "app-windows.zip");
+    Semver latest{};
+    Semver current{};
+    if (!parseSemverTag(latest_tag, latest) || !parseSemverTag(currentTag, current)) {
+        info.error = "Invalid version format";
+        return info;
+    }
+    info.updateAvailable = isNewer(latest, current);
+    return info;
+}
 
 UpdateInfo checkGithubLatestRelease(const std::string& owner,
                                     const std::string& repo,
@@ -120,34 +170,7 @@ UpdateInfo checkGithubLatestRelease(const std::string& owner,
         info.error = "curl failed or is not available";
         return info;
     }
-    if (response.empty()) {
-        info.error = "Empty response from GitHub API";
-        return info;
-    }
-
-    std::string latest_tag;
-    std::string html_url;
-    if (!extractJsonStringValue(response, "tag_name", latest_tag)) {
-        info.error = "Failed to parse tag_name";
-        return info;
-    }
-    if (!extractJsonStringValue(response, "html_url", html_url)) {
-        info.error = "Failed to parse html_url";
-        return info;
-    }
-
-    info.latestTag = latest_tag;
-    info.releaseUrl = html_url;
-
-    Semver latest{};
-    Semver current{};
-    if (!parseSemverTag(latest_tag, latest) || !parseSemverTag(currentTag, current)) {
-        info.error = "Invalid version format";
-        return info;
-    }
-
-    info.updateAvailable = isNewer(latest, current);
-    return info;
+    return parseGithubReleaseResponse(response, currentTag);
 }
 
 bool openUrlInBrowser(const std::string& url) {

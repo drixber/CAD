@@ -15,11 +15,26 @@
 #include <QMenu>
 #include <QAction>
 #include <QActionGroup>
+#include <QCoreApplication>
+#include <QDesktopServices>
+#include <QDir>
+#include <QFile>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QKeySequence>
+#include <QShortcut>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QDialogButtonBox>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QDialog>
+#include <QStandardPaths>
+#include <QTextStream>
+#include <QToolBar>
+#include <QUrl>
 
 namespace cad {
 namespace ui {
@@ -66,6 +81,30 @@ QString categoryForCommand(const QString& command) {
     return "General";
 }
 
+QString logsDirectory() {
+    const QString app_data = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (app_data.isEmpty()) {
+        return QString();
+    }
+    return QDir(app_data).filePath("logs");
+}
+
+QString readLogPreview(const QString& path, int max_lines = 200) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QString();
+    }
+    QTextStream in(&file);
+    QStringList lines;
+    while (!in.atEnd()) {
+        lines.append(in.readLine());
+        if (lines.size() > max_lines) {
+            lines.removeFirst();
+        }
+    }
+    return lines.join('\n');
+}
+
 }  // namespace
 
 QtMainWindow::QtMainWindow(QWidget* parent)
@@ -80,11 +119,36 @@ QtMainWindow::QtMainWindow(QWidget* parent)
       log_panel_(new QtLogPanel(this)),
       perf_panel_(new QtPerformancePanel(this)) {
     QWidget* central = new QWidget(this);
+    central->setObjectName("centralWorkspace");
     QVBoxLayout* layout = new QVBoxLayout(central);
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(2, 2, 2, 2);
     layout->addWidget(ribbon_);
-    layout->addWidget(viewport_);
+    layout->addWidget(viewport_, 1);  // stretch so viewport gets remaining space
     setCentralWidget(central);
+
+    // Quick-access toolbar (File: New, Open, Save)
+    QToolBar* file_toolbar = addToolBar(tr("File"));
+    file_toolbar->setObjectName("fileToolbar");
+    file_toolbar->setMovable(false);
+    QAction* tb_new = file_toolbar->addAction(tr("New"));
+    QAction* tb_open = file_toolbar->addAction(tr("Open"));
+    QAction* tb_save = file_toolbar->addAction(tr("Save"));
+    connect(tb_new, &QAction::triggered, this, [this]() {
+        if (new_project_handler_) { new_project_handler_(); }
+    });
+    connect(tb_open, &QAction::triggered, this, [this]() {
+        QString path = QFileDialog::getOpenFileName(this, tr("Open Project"), "", tr("CAD Project (*.cad);;All Files (*)"));
+        if (!path.isEmpty() && load_project_handler_) { load_project_handler_(path.toStdString()); }
+    });
+    connect(tb_save, &QAction::triggered, this, [this]() {
+        if (!current_project_path_.isEmpty() && save_project_handler_) {
+            save_project_handler_(current_project_path_.toStdString());
+            statusBar()->showMessage(tr("Project saved."), 3000);
+        } else {
+            QString path = QFileDialog::getSaveFileName(this, tr("Save Project"), "", tr("CAD Project (*.cad);;All Files (*)"));
+            if (!path.isEmpty() && save_project_handler_) { save_project_handler_(path.toStdString()); }
+        }
+    });
 
     ribbon_->setCommandHandler([this](const QString& command) {
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
@@ -115,6 +179,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         }
         log_panel_->appendLog(tr("Workspace changed: %1").arg(tab));
     });
+
+    new QShortcut(QKeySequence::Undo, this, [this]() { executeCommand("Undo"); });
+    new QShortcut(QKeySequence::Redo, this, [this]() { executeCommand("Redo"); });
 
     connect(agent_console_, &QtAgentConsole::commandIssued, this, [this](const QString& command) {
         agent_thoughts_->appendThought(tr("Queued agent task: %1").arg(command));
@@ -264,6 +331,11 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     // User menu
     user_menu_ = menu_bar->addMenu(tr("&User"));
     QAction* profile_action = user_menu_->addAction(tr("&Profile"));
+    connect(profile_action, &QAction::triggered, this, [this]() {
+        if (profile_handler_) {
+            profile_handler_();
+        }
+    });
     QAction* logout_action = user_menu_->addAction(tr("&Logout"));
     connect(logout_action, &QAction::triggered, this, [this]() {
         if (logout_handler_) {
@@ -317,13 +389,17 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     
     QAction* new_action = file_menu->addAction(tr("&New Project"), this, [this]() {
         log_panel_->appendLog(tr("New Project"));
-        setDocumentLabel("Untitled");
+        if (new_project_handler_) {
+            new_project_handler_();
+        } else {
+            setDocumentLabel("Untitled");
+        }
     });
     new_action->setShortcut(QKeySequence::New);
     
     QAction* open_action = file_menu->addAction(tr("&Open Project..."), this, [this]() {
         QString file_path = QFileDialog::getOpenFileName(this, tr("Open Project"), 
-                                                       "", tr("CAD Project (*.cad)"));
+                                                       "", tr("CAD Project (*.cad);;All Files (*)"));
         if (!file_path.isEmpty() && load_project_handler_) {
             load_project_handler_(file_path.toStdString());
         }
@@ -333,22 +409,29 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     file_menu->addSeparator();
     
     QAction* save_action = file_menu->addAction(tr("&Save Project"), this, [this]() {
-        QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project"), 
-                                                        "", tr("CAD Project (*.cad)"));
-        if (!file_path.isEmpty() && save_project_handler_) {
-            save_project_handler_(file_path.toStdString());
+        if (!current_project_path_.isEmpty() && save_project_handler_) {
+            save_project_handler_(current_project_path_.toStdString());
+            statusBar()->showMessage(tr("Project saved."), 3000);
+        } else {
+            QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project"), 
+                                                            "", tr("CAD Project (*.cad);;All Files (*)"));
+            if (!file_path.isEmpty() && save_project_handler_) {
+                save_project_handler_(file_path.toStdString());
+            }
         }
     });
     save_action->setShortcut(QKeySequence::Save);
     
     QAction* save_as_action = file_menu->addAction(tr("Save Project &As..."), this, [this]() {
-        QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project As"), 
-                                                        "", tr("CAD Project (*.cad)"));
+        QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project As"),
+                                                        "", tr("CAD Project (*.cad);;All Files (*)"));
         if (!file_path.isEmpty() && save_project_handler_) {
             save_project_handler_(file_path.toStdString());
         }
     });
     save_as_action->setShortcut(QKeySequence::SaveAs);
+    
+    file_menu->addAction(tr("Manage &Checkpoints..."), this, [this]() { showCheckpointsDialog(); });
     
     file_menu->addSeparator();
     
@@ -398,6 +481,45 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         settings.setValue("ui/language", action->data().toString());
         QMessageBox::information(this, tr("Language"),
                                  tr("Language will be applied after restart."));
+    });
+
+    QAction* check_updates_action = settings_menu->addAction(tr("Check for &Updates..."));
+    connect(check_updates_action, &QAction::triggered, this, [this]() {
+        if (check_for_updates_handler_) {
+            check_for_updates_handler_();
+        }
+    });
+
+    QMenu* diagnostics_menu = settings_menu->addMenu(tr("&Diagnostics"));
+    diagnostics_menu->addAction(tr("Open &Logs Folder"), this, [this]() {
+        const QString logs_dir = logsDirectory();
+        if (logs_dir.isEmpty()) {
+            QMessageBox::warning(this, tr("Diagnostics"), tr("Logs folder is not available."));
+            return;
+        }
+        QDesktopServices::openUrl(QUrl::fromLocalFile(logs_dir));
+    });
+    diagnostics_menu->addAction(tr("Open &Install Folder"), this, []() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QCoreApplication::applicationDirPath()));
+    });
+    diagnostics_menu->addSeparator();
+    diagnostics_menu->addAction(tr("Show &Startup Log"), this, [this]() {
+        const QString log_path = QDir(logsDirectory()).filePath("startup.log");
+        const QString preview = readLogPreview(log_path);
+        if (preview.isEmpty()) {
+            QMessageBox::information(this, tr("Startup Log"), tr("No startup log found."));
+            return;
+        }
+        QMessageBox::information(this, tr("Startup Log"), preview);
+    });
+    diagnostics_menu->addAction(tr("Show &Last Crash Log"), this, [this]() {
+        const QString log_path = QDir(logsDirectory()).filePath("last_crash.log");
+        const QString preview = readLogPreview(log_path);
+        if (preview.isEmpty()) {
+            QMessageBox::information(this, tr("Crash Log"), tr("No crash log found."));
+            return;
+        }
+        QMessageBox::information(this, tr("Crash Log"), preview);
     });
     
     // Setup auto-save timer
@@ -485,9 +607,10 @@ void QtMainWindow::setMateCount(int count) {
 }
 
 void QtMainWindow::setCommandHandler(const std::function<void(const std::string&)>& handler) {
-    ribbon_->setCommandHandler([this, handler](const QString& command) {
-        if (handler) {
-            handler(command.toStdString());
+    command_handler_ = handler;
+    ribbon_->setCommandHandler([this](const QString& command) {
+        if (command_handler_) {
+            command_handler_(command.toStdString());
         }
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         command_line_->setText(command);
@@ -503,6 +626,12 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         browser_tree_->appendRecentCommand(command);
         log_panel_->appendLog(tr("Command: %1").arg(command));
     });
+}
+
+void QtMainWindow::executeCommand(const std::string& command) {
+    if (command_handler_) {
+        command_handler_(command);
+    }
 }
 
 void QtMainWindow::setAssemblySummary(const std::string& summary) {
@@ -539,6 +668,7 @@ void QtMainWindow::setDocumentLabel(const std::string& label) {
     if (document_label_) {
         document_label_->setText(tr("Document: %1").arg(QString::fromStdString(label)));
     }
+    setWindowTitle(tr("Hydra CAD - %1").arg(QString::fromStdString(label.empty() ? "Untitled" : label)));
 }
 
 void QtMainWindow::setCacheStats(int entries, int max_entries) {
@@ -622,12 +752,28 @@ Viewport3D* QtMainWindow::viewport3D() {
     return nullptr;
 }
 
+void QtMainWindow::setNewProjectHandler(const std::function<void()>& handler) {
+    new_project_handler_ = handler;
+}
+
 void QtMainWindow::setSaveProjectHandler(const std::function<void(const std::string&)>& handler) {
     save_project_handler_ = handler;
 }
 
 void QtMainWindow::setLoadProjectHandler(const std::function<void(const std::string&)>& handler) {
     load_project_handler_ = handler;
+}
+
+void QtMainWindow::setCurrentProjectPath(const QString& path) {
+    current_project_path_ = path;
+}
+
+void QtMainWindow::setCheckForUpdatesHandler(const std::function<void()>& handler) {
+    check_for_updates_handler_ = handler;
+}
+
+QString QtMainWindow::currentProjectPath() const {
+    return current_project_path_;
 }
 
 void QtMainWindow::setAutoSaveTriggerHandler(const std::function<void()>& handler) {
@@ -663,6 +809,10 @@ void QtMainWindow::setLogoutHandler(const std::function<void()>& handler) {
     logout_handler_ = handler;
 }
 
+void QtMainWindow::setProfileHandler(const std::function<void()>& handler) {
+    profile_handler_ = handler;
+}
+
 void QtMainWindow::updateRecentProjectsMenu(const std::vector<std::string>& projects) {
     if (!recent_projects_menu_) {
         return;
@@ -680,6 +830,135 @@ void QtMainWindow::updateRecentProjectsMenu(const std::vector<std::string>& proj
         QAction* no_projects = recent_projects_menu_->addAction(tr("No recent projects"));
         no_projects->setEnabled(false);
     }
+}
+
+void QtMainWindow::setImportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler) {
+    import_file_handler_ = handler;
+}
+
+void QtMainWindow::setExportFileHandler(const std::function<void(const std::string& path, const std::string& format)>& handler) {
+    export_file_handler_ = handler;
+}
+
+static QString formatFromExtension(const QString& path) {
+    const QString ext = QFileInfo(path).suffix().toLower();
+    if (ext == QLatin1String("step") || ext == QLatin1String("stp")) return QStringLiteral("STEP");
+    if (ext == QLatin1String("igs") || ext == QLatin1String("iges")) return QStringLiteral("IGES");
+    if (ext == QLatin1String("stl")) return QStringLiteral("STL");
+    if (ext == QLatin1String("obj")) return QStringLiteral("OBJ");
+    if (ext == QLatin1String("dxf")) return QStringLiteral("DXF");
+    if (ext == QLatin1String("dwg")) return QStringLiteral("DWG");
+    if (ext == QLatin1String("3mf")) return QStringLiteral("3MF");
+    if (ext == QLatin1String("gltf") || ext == QLatin1String("glb")) return QStringLiteral("GLTF");
+    if (ext == QLatin1String("ply")) return QStringLiteral("PLY");
+    return QStringLiteral("STEP");
+}
+
+void QtMainWindow::triggerImportDialog() {
+    if (!import_file_handler_) {
+        statusBar()->showMessage(tr("Import not available."), 3000);
+        return;
+    }
+    const QString filter = tr("STEP (*.step *.stp);;IGES (*.igs *.iges);;STL (*.stl);;OBJ (*.obj);;DXF (*.dxf);;All Files (*)");
+    QString path = QFileDialog::getOpenFileName(this, tr("Import Model"), current_project_path_.isEmpty() ? QString() : QFileInfo(current_project_path_).absolutePath(), filter);
+    if (path.isEmpty()) return;
+    const std::string pathStr = path.toStdString();
+    const std::string formatStr = formatFromExtension(path).toStdString();
+    import_file_handler_(pathStr, formatStr);
+    statusBar()->showMessage(tr("Import: %1").arg(QString::fromStdString(pathStr)), 4000);
+}
+
+void QtMainWindow::triggerExportDialog() {
+    if (!export_file_handler_) {
+        statusBar()->showMessage(tr("Export not available."), 3000);
+        return;
+    }
+    const QString filter = tr("STEP (*.step *.stp);;IGES (*.igs *.iges);;STL (*.stl);;OBJ (*.obj);;DXF (*.dxf);;All Files (*)");
+    QString path = QFileDialog::getSaveFileName(this, tr("Export Model"), current_project_path_.isEmpty() ? QString() : QFileInfo(current_project_path_).absolutePath(), filter);
+    if (path.isEmpty()) return;
+    const std::string pathStr = path.toStdString();
+    const std::string formatStr = formatFromExtension(path).toStdString();
+    export_file_handler_(pathStr, formatStr);
+    statusBar()->showMessage(tr("Export: %1").arg(QString::fromStdString(pathStr)), 4000);
+}
+
+void QtMainWindow::setAskUnsavedChangesHandler(const std::function<UnsavedAction()>& handler) {
+    ask_unsaved_handler_ = handler;
+}
+
+void QtMainWindow::setGetSavePathHandler(const std::function<std::string()>& handler) {
+    get_save_path_handler_ = handler;
+}
+
+QtMainWindow::UnsavedAction QtMainWindow::askUnsavedChanges() const {
+    if (ask_unsaved_handler_) {
+        return ask_unsaved_handler_();
+    }
+    return UnsavedAction::Discard;
+}
+
+std::string QtMainWindow::getSavePathForNewProject() const {
+    if (get_save_path_handler_) {
+        return get_save_path_handler_();
+    }
+    return {};
+}
+
+void QtMainWindow::setCheckpointsListProvider(const std::function<std::vector<std::string>(const std::string&)>& provider) {
+    checkpoints_list_provider_ = provider;
+}
+
+void QtMainWindow::setLoadCheckpointHandler(const std::function<void(const std::string&)>& handler) {
+    load_checkpoint_handler_ = handler;
+}
+
+void QtMainWindow::setDeleteCheckpointHandler(const std::function<void(const std::string&)>& handler) {
+    delete_checkpoint_handler_ = handler;
+}
+
+void QtMainWindow::showCheckpointsDialog() {
+    if (!checkpoints_list_provider_ || current_project_path_.isEmpty()) {
+        QMessageBox::information(this, tr("Checkpoints"), tr("Open a project first, or no checkpoints available."));
+        return;
+    }
+    std::vector<std::string> list = checkpoints_list_provider_(current_project_path_.toStdString());
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Manage Checkpoints"));
+    QVBoxLayout* layout = new QVBoxLayout(&dlg);
+    QListWidget* listWidget = new QListWidget(&dlg);
+    for (const auto& path : list) {
+        QFileInfo fi(QString::fromStdString(path));
+        listWidget->addItem(fi.fileName() + QLatin1String(" (") + fi.absolutePath() + QLatin1String(")"));
+        listWidget->item(listWidget->count() - 1)->setData(Qt::UserRole, QString::fromStdString(path));
+    }
+    if (list.empty()) {
+        listWidget->addItem(tr("No checkpoints found for this project."));
+        listWidget->item(0)->setFlags(listWidget->item(0)->flags() & ~Qt::ItemIsEnabled);
+    }
+    layout->addWidget(listWidget);
+    QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+    if (!list.empty()) {
+        QPushButton* openBtn = buttons->addButton(tr("Open"), QDialogButtonBox::AcceptRole);
+        QPushButton* deleteBtn = buttons->addButton(tr("Delete"), QDialogButtonBox::DestructiveRole);
+        connect(openBtn, &QPushButton::clicked, &dlg, [&dlg, listWidget, this]() {
+            QListWidgetItem* item = listWidget->currentItem();
+            if (item && item->data(Qt::UserRole).isValid() && !item->data(Qt::UserRole).toString().isEmpty() && load_checkpoint_handler_) {
+                load_checkpoint_handler_(item->data(Qt::UserRole).toString().toStdString());
+                dlg.accept();
+            }
+        });
+        connect(deleteBtn, &QPushButton::clicked, &dlg, [&dlg, listWidget, this]() {
+            QListWidgetItem* item = listWidget->currentItem();
+            if (item && item->data(Qt::UserRole).isValid() && !item->data(Qt::UserRole).toString().isEmpty() && delete_checkpoint_handler_) {
+                QString path = item->data(Qt::UserRole).toString();
+                delete_checkpoint_handler_(path.toStdString());
+                delete listWidget->takeItem(listWidget->row(item));
+            }
+        });
+    }
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    layout->addWidget(buttons);
+    dlg.exec();
 }
 
 void QtMainWindow::closeEvent(QCloseEvent* event) {

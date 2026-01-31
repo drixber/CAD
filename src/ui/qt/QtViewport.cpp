@@ -12,11 +12,15 @@ namespace ui {
 
 QtViewport::QtViewport(QWidget* parent) : QFrame(parent) {
     setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+    setObjectName("cadViewport");
+    setStyleSheet("#cadViewport { background-color: #2b2b2b; }");
     layout_ = new QVBoxLayout(this);
     layout_->setContentsMargins(0, 0, 0, 0);
     
-    // Create 3D viewport
+    // Create 3D viewport (central drawing area)
     viewport_3d_ = new Viewport3D(this);
+    viewport_3d_->setMinimumSize(400, 320);
+    viewport_3d_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout_->addWidget(viewport_3d_);
     
     // Status bar at bottom

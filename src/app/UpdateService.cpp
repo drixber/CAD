@@ -213,13 +213,13 @@ bool UpdateService::fetchUpdateInfo() {
     latest_update_info_.mandatory = json["mandatory"].toBool();
     latest_update_info_.changelog = json["changelog"].toString().toStdString();
     #else
-    // Fallback: Simple regex parsing
-    std::regex version_regex(R"("version"\s*:\s*"([^"]+)")");
-    std::regex url_regex(R"("download_url"\s*:\s*"([^"]+)")");
-    std::regex size_regex(R"("file_size"\s*:\s*(\d+))");
-    std::regex checksum_regex(R"("checksum"\s*:\s*"([^"]+)")");
-    std::regex mandatory_regex(R"("mandatory"\s*:\s*(true|false))");
-    std::regex changelog_regex(R"("changelog"\s*:\s*"([^"]+)")");
+    // Fallback: Simple regex parsing (delimiter re avoids raw-string closing issues)
+    std::regex version_regex(R"re("version"\s*:\s*"([^"]+)")re");
+    std::regex url_regex(R"re("download_url"\s*:\s*"([^"]+)")re");
+    std::regex size_regex(R"re("file_size"\s*:\s*(\d+))re");
+    std::regex checksum_regex(R"re("checksum"\s*:\s*"([^"]+)")re");
+    std::regex mandatory_regex(R"re("mandatory"\s*:\s*(true|false))re");
+    std::regex changelog_regex(R"re("changelog"\s*:\s*"([^"]+)")re");
     
     std::smatch match;
     
