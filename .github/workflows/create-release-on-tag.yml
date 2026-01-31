@@ -15,6 +15,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
       - name: Release für Tag erstellen
         run: |
           gh release create "${{ github.ref_name }}" --generate-notes
