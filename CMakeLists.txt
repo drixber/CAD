@@ -36,7 +36,7 @@ if(CAD_BUILD_EXAMPLES)
 endif()
 
 if(CAD_USE_QT)
-    add_executable(cad_desktop
+    add_executable(cad_desktop WIN32
         src/main.cpp
     )
     target_link_libraries(cad_desktop PRIVATE cad_app cad_ui)

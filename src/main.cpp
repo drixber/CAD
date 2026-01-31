@@ -8,6 +8,9 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QSplashScreen>
+#include <QByteArray>
+
+#include <filesystem>
 
 #include "app/AppController.h"
 #include "app/CADApplication.h"
@@ -15,6 +18,17 @@
 #include "ui/theme/ThemeManager.h"
 
 int main(int argc, char** argv) {
+    try {
+        std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
+        std::filesystem::path exe_dir = exe_path.parent_path();
+        const QByteArray plugin_root = QByteArray::fromStdString(exe_dir.string());
+        const QByteArray platform_path = QByteArray::fromStdString((exe_dir / "platforms").string());
+        qputenv("QT_PLUGIN_PATH", plugin_root);
+        qputenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path);
+    } catch (...) {
+        // If path resolution fails, let Qt use default search paths.
+    }
+
     QApplication qt_app(argc, argv);
 
     QTranslator translator;
