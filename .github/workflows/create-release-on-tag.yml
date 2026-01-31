@@ -1,6 +1,8 @@
 # Beim Push eines Tags (z. B. v3.0.10) automatisch ein GitHub-Release erstellen.
-# Danach startet release-attach-assets.yml (release: published) und hängt die gebauten Assets an.
-# Ohne diesen Workflow: Tags allein erzeugen kein Release – man müsste manuell "Draft new release" erstellen.
+# Durch "gh release create" wird das Event release: published ausgelöst – der Workflow
+# "Release – Assets anhängen" (release-attach-assets.yml) startet dann automatisch und
+# hängt HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz (ggf. macOS) an.
+# Hinweis: GITHUB_TOKEN kann andere Workflows nicht per workflow_dispatch starten (403).
 
 name: Release bei Tag-Push erstellen
 
@@ -23,11 +25,5 @@ jobs:
       - name: Release für Tag erstellen
         run: |
           gh release create "${{ github.ref_name }}" --generate-notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Asset-Build starten (EXE/ZIP/Tarball)
-        run: |
-          gh workflow run "Release – Assets anhängen" -f tag_name="${{ github.ref_name }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
