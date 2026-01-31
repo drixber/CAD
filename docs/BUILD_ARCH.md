@@ -55,6 +55,8 @@ ctest --output-on-failure
 | `CAD_USE_FREECAD=ON` | FreeCAD-Integration (FreeCAD-Entwicklungspakete nötig) |
 | `CAD_BUILD_PYTHON=ON` | Python-Bindings |
 
+**FreeCAD unter Arch:** Mit installiertem `freecad` und Build-Flag `-DCAD_USE_FREECAD=ON` nutzt Hydra CAD das System-FreeCAD; die App zeigt „FreeCAD on“, sofern die Bibliotheken gefunden werden.
+
 ---
 
 ## Entwicklung unter Arch
@@ -75,5 +77,5 @@ ctest --output-on-failure
 - Linux (Ubuntu/Debian/Fedora): [BUILD_LINUX.md](BUILD_LINUX.md)
 - pacman/yay und AUR: [INSTALL_ARCH_PACMAN_YAY.md](INSTALL_ARCH_PACMAN_YAY.md)
 - Allgemeine Installation: [INSTALLATION.md](INSTALLATION.md)
-- Linux-Status (im Hintergrund): [TODO_LINUX.md](TODO_LINUX.md)
+- Linux-Status: [TODO_LINUX.md](TODO_LINUX.md)
 - Projekt-README: [../README.md](../README.md)

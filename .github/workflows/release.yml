@@ -227,9 +227,11 @@ jobs:
 
       - name: Prepare AppDir
         run: |
-          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
           cp build/cad_desktop AppDir/usr/bin/
           cp packaging/linux/HydraCAD.desktop AppDir/
+          cp packaging/linux/HydraCAD.png AppDir/
+          cp packaging/linux/HydraCAD.png AppDir/usr/share/icons/hicolor/256x256/apps/
           mkdir -p AppDir/usr/share/applications
           cp packaging/linux/HydraCAD.desktop AppDir/usr/share/applications/
 
@@ -248,13 +250,14 @@ jobs:
           ./linuxdeploy.AppImage --appdir AppDir \
             --executable AppDir/usr/bin/cad_desktop \
             --desktop-file AppDir/HydraCAD.desktop \
+            --icon-file packaging/linux/HydraCAD.png \
             --output appimage || true
 
       - name: Create portable tarball
         run: |
           mkdir -p hydracad-linux-portable/usr/bin
           cp build/cad_desktop hydracad-linux-portable/usr/bin/
-          cp packaging/linux/HydraCAD.desktop hydracad-linux-portable/
+          cp packaging/linux/HydraCAD.desktop packaging/linux/HydraCAD.png hydracad-linux-portable/
           ( echo '#!/bin/sh'; echo 'SELF="$(dirname "$0")"'; echo 'for d in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do [ -d "$d" ] && export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$d"; done'; echo 'exec "$SELF/usr/bin/cad_desktop" "$@"' ) > hydracad-linux-portable/run.sh
           chmod +x hydracad-linux-portable/run.sh
           echo "Hydra CAD – Portable Linux. Voraussetzung: Qt6 (qt6-base / libqt6) installieren. Start: ./run.sh" > hydracad-linux-portable/README.txt
@@ -283,4 +286,54 @@ jobs:
         with:
           name: HydraCAD-Linux-Portable
           path: hydracad-linux-portable.tar.gz
+          retention-days: 7
+
+  build-macos:
+    name: Build macOS (App Bundle)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          cache: true
+
+      - name: Create .icns from PNG
+        run: |
+          mkdir -p packaging/macos/HydraCAD.icns.iconset
+          for s in 16 32 64 128 256; do
+            sips -z $s $s packaging/macos/HydraCAD.png --out packaging/macos/HydraCAD.icns.iconset/icon_${s}x${s}.png
+            s2=$((s*2))
+            sips -z $s2 $s2 packaging/macos/HydraCAD.png --out packaging/macos/HydraCAD.icns.iconset/icon_${s}x${s}@2x.png
+          done
+          iconutil -c icns packaging/macos/HydraCAD.icns.iconset -o packaging/macos/HydraCAD.icns
+          rm -rf packaging/macos/HydraCAD.icns.iconset
+
+      - name: Configure and build
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCAD_USE_QT=ON \
+            -DCAD_BUILD_TESTS=OFF
+          cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Deploy Qt (macdeployqt)
+        run: |
+          QT_BIN=$(dirname $(find $HOME/Qt -name macdeployqt -type f 2>/dev/null | head -1))
+          [ -n "$QT_BIN" ] && export PATH="$QT_BIN:$PATH"
+          macdeployqt build/cad_desktop.app -always-overwrite || true
+
+      - name: Create macOS archive
+        run: |
+          cd build
+          zip -r ../HydraCAD-macos.zip cad_desktop.app
+          cd ..
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HydraCAD-macos
+          path: HydraCAD-macos.zip
           retention-days: 7

@@ -82,6 +82,8 @@ ctest --output-on-failure
 | `CAD_USE_FREECAD=ON` | FreeCAD-Integration (Entwicklungspakete nötig) |
 | `CAD_BUILD_PYTHON=ON` | Python-Bindings |
 
+**FreeCAD unter Linux:** Die FreeCAD-Integration funktioniert unter Ubuntu/Debian/Fedora/Arch mit dem System-FreeCAD, wenn die FreeCAD-Entwicklungspakete installiert sind (z. B. unter Ubuntu/Debian die passenden -dev-Pakete; unter Arch `freecad`). Build mit `-DCAD_USE_FREECAD=ON`; die App zeigt dann „FreeCAD on“, sofern die Bibliotheken gefunden werden.
+
 Unter Ubuntu/Debian/Fedora setzt CMake Qt in der Regel automatisch voraus; `Qt6_DIR` nur bei manueller Qt-Installation nötig.
 
 ---

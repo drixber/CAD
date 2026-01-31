@@ -1,5 +1,6 @@
 #include "QtBrowserTree.h"
 
+#include <QMenu>
 #include <QTreeWidgetItem>
 
 namespace cad {
@@ -7,6 +8,9 @@ namespace ui {
 
 QtBrowserTree::QtBrowserTree(QWidget* parent) : QTreeWidget(parent) {
     setHeaderHidden(true);
+    setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(this, &QTreeWidget::customContextMenuRequested, this, &QtBrowserTree::showContextMenu);
+
     root_ = new QTreeWidgetItem(this);
     root_->setText(0, tr("Model"));
     addTopLevelItem(root_);
@@ -37,6 +41,30 @@ QtBrowserTree::QtBrowserTree(QWidget* parent) : QTreeWidget(parent) {
 
     root_->setExpanded(true);
 }
+
+void QtBrowserTree::showContextMenu(const QPoint& pos) {
+    QTreeWidgetItem* item = itemAt(pos);
+    QMenu menu(this);
+    menu.addAction(tr("Visibility"), []() {});
+    menu.addAction(tr("Suppress"), []() {});
+    menu.addSeparator();
+    menu.addAction(tr("Create New Component"), []() {});
+    menu.addAction(tr("Place From File..."), []() {});
+    menu.addAction(tr("Edit Component"), []() {});
+    menu.addSeparator();
+    menu.addAction(tr("Properties..."), []() {});
+    menu.addAction(tr("Rename"), []() {});
+    menu.addAction(tr("Delete"), []() {});
+    menu.addSeparator();
+    menu.addAction(tr("Copy"), []() {});
+    menu.addAction(tr("Cut"), []() {});
+    menu.addAction(tr("Paste"), []() {});
+    menu.addSeparator();
+    menu.addAction(tr("Search"), []() {});
+    menu.addAction(tr("Show Dependencies"), []() {});
+    menu.exec(viewport()->mapToGlobal(pos));
+}
+
 
 void QtBrowserTree::setAssemblySummary(const QString& summary) {
     if (!root_) {

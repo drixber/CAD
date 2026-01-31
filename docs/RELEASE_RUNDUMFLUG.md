@@ -30,10 +30,11 @@ Checkliste von **aktueller Codebasis** bis **neues Release** (z. B. v3.0.12) i
   `git tag vX.Y.Z`  
   `git push origin vX.Y.Z`
 - [ ] **3.2** Workflow **„Release bei Tag-Push erstellen“** erstellt automatisch das GitHub-Release (sofern auf main).
-- [ ] **3.3** Workflow **„Release – Assets anhängen“** startet bei `release: published` und baut:
+- [ ] **3.3** Workflow **„Release – Assets anhängen“** wird nach Release-Erstellung per `gh workflow run` getriggert und baut:
   - **HydraCADSetup.exe**, **app-windows.zip** (Windows)
-  - **hydracad-linux-portable.tar.gz** (Linux)  
-  und hängt sie am Release an.
+  - **hydracad-linux-portable.tar.gz** (Linux)
+  - **HydraCAD-macos.zip** (macOS, falls Build erfolgreich)  
+  Diese Dateien werden bei **jedem** Release automatisch erzeugt und ans Release gehängt (Upload-Job hängt nur von Windows + Linux ab, damit EXE/ZIP/Tarball auch bei macOS-Fehler ankommen).
 
 ---
 

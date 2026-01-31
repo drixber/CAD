@@ -394,6 +394,39 @@ QString ThemeManager::generateStylesheet() const {
     stream << "    color: " << palette_.textPrimary.name() << ";\n";
     stream << "}\n\n";
     
+    // Group boxes – Inventor-style collapsible sections (flat, rounded)
+    stream << "QGroupBox {\n";
+    stream << "    font-weight: 600;\n";
+    stream << "    color: " << palette_.textPrimary.name() << ";\n";
+    stream << "    border: 1px solid " << palette_.borderLight.name() << ";\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    margin-top: 10px;\n";
+    stream << "    padding: 12px 10px 8px 10px;\n";
+    stream << "    background: " << palette_.surface.name() << ";\n";
+    stream << "}\n\n";
+    stream << "QGroupBox::title {\n";
+    stream << "    subcontrol-origin: margin;\n";
+    stream << "    subcontrol-position: top left;\n";
+    stream << "    left: 10px;\n";
+    stream << "    padding: 0 6px;\n";
+    stream << "    color: " << palette_.textPrimary.name() << ";\n";
+    stream << "}\n\n";
+    
+    // Ribbon group frame (Inventor-style vertical group)
+    stream << "QFrame#ribbonGroup {\n";
+    stream << "    border: 1px solid " << palette_.borderLight.name() << ";\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    background: transparent;\n";
+    stream << "}\n\n";
+    stream << "QFrame#ribbonGroup:hover {\n";
+    stream << "    background: " << palette_.surfaceHover.name() << ";\n";
+    stream << "}\n\n";
+    stream << "QLabel#ribbonGroupLabel {\n";
+    stream << "    color: " << palette_.textSecondary.name() << ";\n";
+    stream << "    font-size: 11px;\n";
+    stream << "    font-weight: 600;\n";
+    stream << "}\n\n";
+    
     return style;
 }
 

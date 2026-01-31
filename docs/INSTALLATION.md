@@ -181,12 +181,11 @@ ctest --test-dir build -C Release
 
 ## Linux / macOS
 
-Aktuell wird der automatische Release-Build nur für Windows ausgeführt. **Linux-Support ist experimentell und existiert im Hintergrund** – keine offiziellen Linux-Releases, siehe [docs/TODO_LINUX.md](TODO_LINUX.md). Für Linux/macOS aus dem Quellcode bauen:
+**Linux** und **macOS** werden vollständig unterstützt: Bei jedem Release werden **hydracad-linux-portable.tar.gz** und **HydraCAD-macos.zip** automatisch an das GitHub-Release gehängt. Siehe [docs/TODO_LINUX.md](TODO_LINUX.md), [docs/TODO_MACOS.md](TODO_MACOS.md).
 
-- **Linux (Ubuntu, Debian, Fedora):** Download von der Release-Seite: **hydracad-linux-portable.tar.gz** entpacken, Qt6 installieren (apt/dnf), dann `./run.sh` starten. Aus dem Quellcode bauen: [docs/BUILD_LINUX.md](BUILD_LINUX.md). Paketnamen: `packaging/ubuntu/README.md`, `packaging/debian/README.md`.
+- **Linux (Ubuntu, Debian, Fedora):** Von der Release-Seite **hydracad-linux-portable.tar.gz** herunterladen, entpacken, Qt6 installieren (apt/dnf), dann `./run.sh` starten. Aus dem Quellcode bauen: [docs/BUILD_LINUX.md](BUILD_LINUX.md). Paketnamen: `packaging/ubuntu/README.md`, `packaging/debian/README.md`.
 - **Arch Linux:** [docs/BUILD_ARCH.md](BUILD_ARCH.md). Installation mit **pacman** (lokal) oder **yay** (AUR): [docs/INSTALL_ARCH_PACMAN_YAY.md](INSTALL_ARCH_PACMAN_YAY.md). PKGBUILD: `packaging/arch/PKGBUILD`.
-- **Linux-CI (im Hintergrund):** Workflow `build-linux.yml` nur per manuellem Auslösen (workflow_dispatch); baut unter Ubuntu, Artifacts für Entwickler, kein Release-Upload.
-- **macOS:** Qt 6 über den Qt Installer, dann CMake; optional `-DCAD_USE_QT=ON` und MACOSX_BUNDLE wird gesetzt.
+- **macOS:** Von der Release-Seite **HydraCAD-macos.zip** herunterladen, entpacken, **Hydra CAD.app** starten. Aus dem Quellcode bauen: [docs/BUILD_MACOS.md](BUILD_MACOS.md) (Qt 6, Xcode Command Line Tools, CMake mit `-DCAD_USE_QT=ON`; MACOSX_BUNDLE wird automatisch gesetzt).
 
 ## Troubleshooting
 

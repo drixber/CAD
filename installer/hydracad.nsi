@@ -19,10 +19,10 @@ InstallDirRegKey HKCU "Software\HydraCAD" "InstallPath"
 RequestExecutionLevel admin
 
 ; Version Information
-!define VERSION "3.0.12"
+!define VERSION "3.0.13"
 !define VERSION_MAJOR "3"
 !define VERSION_MINOR "0"
-!define VERSION_PATCH "12"
+!define VERSION_PATCH "13"
 VIProductVersion "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.0"
 VIAddVersionKey "ProductName" "Hydra CAD"
 VIAddVersionKey "ProductVersion" "${VERSION}"

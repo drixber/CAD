@@ -19,7 +19,7 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 
 **Releases**: [GitHub Releases](https://github.com/drixber/CAD/releases). Ein **Tag** (z. B. `v3.0.10`) pushen → automatisch wird ein Release erstellt und der CI hängt Installer + Portable an. Ohne manuelles „Draft new release“.
 
-**Linux / macOS**: Bei **Publish release** erscheinen auf der Release-Seite u. a. **HydraCADSetup.exe**, **app-windows.zip** und **hydracad-linux-portable.tar.gz** (Linux: entpacken, Qt6 installieren, `./run.sh`). Aus Quellcode bauen: [docs/INSTALLATION.md](docs/INSTALLATION.md), [docs/BUILD_LINUX.md](docs/BUILD_LINUX.md), [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md). Weitere Linux-Details: [docs/TODO_LINUX.md](docs/TODO_LINUX.md).
+**Linux / macOS**: Bei **Publish release** erscheinen **HydraCADSetup.exe**, **app-windows.zip**, **hydracad-linux-portable.tar.gz** (Linux: entpacken, Qt6 installieren, `./run.sh`) und **HydraCAD-macos.zip** (macOS: entpacken, **Hydra CAD.app** starten). Aus Quellcode bauen: [docs/INSTALLATION.md](docs/INSTALLATION.md), [docs/BUILD_LINUX.md](docs/BUILD_LINUX.md), [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md), [docs/BUILD_MACOS.md](docs/BUILD_MACOS.md). Status: [docs/TODO_LINUX.md](docs/TODO_LINUX.md), [docs/TODO_MACOS.md](docs/TODO_MACOS.md).
 
 ### Erste Schritte
 
@@ -116,8 +116,8 @@ Beim Öffnen eines anderen Projekts erscheint bei ungespeicherten Änderungen ei
 ## Systemanforderungen
 
 - **Windows**: 10/11 (64-bit)
-- **Linux** (experimentell, im Hintergrund): Ubuntu 20.04+ / Debian 11+ / Fedora 34+ / Arch Linux (64-bit), nur aus Quellcode
-- **macOS**: 10.15+ (Intel/Apple Silicon)
+- **Linux** (vollständig unterstützt): Ubuntu 20.04+ / Debian 11+ / Fedora 34+ / Arch Linux (64-bit); Release: hydracad-linux-portable.tar.gz, alternativ aus Quellcode
+- **macOS** (vollständig unterstützt): 10.15+ (Intel/Apple Silicon); Release: HydraCAD-macos.zip (Hydra CAD.app), alternativ aus Quellcode ([docs/BUILD_MACOS.md](docs/BUILD_MACOS.md))
 - **RAM**: 4 GB mind., 8 GB empfohlen
 - **Festplatte**: ca. 500 MB + Platz für Projekte
 - **Grafik**: OpenGL 3.3+

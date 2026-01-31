@@ -8,7 +8,7 @@ set -euo pipefail
 
 # ========== ANPASSEN ==========
 PKGNAME="hydracad"
-PKGVER="3.0.12"
+PKGVER="3.0.13"
 PKGREL="1"
 PKGDESC="Professional CAD application (C++/Qt6)"
 ARCH="x86_64"

@@ -14,6 +14,9 @@ public:
     void setMatesSummary(const QString& summary);
     void appendRecentCommand(const QString& command);
 
+private slots:
+    void showContextMenu(const QPoint& pos);
+
 private:
     QTreeWidgetItem* root_{nullptr};
     QTreeWidgetItem* mates_node_{nullptr};

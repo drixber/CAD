@@ -1,6 +1,6 @@
 # Ubuntu / Debian – Paketnamen (nur Doku, kein Produktions-Release)
 
-Linux-Support ist **im Hintergrund**; es gibt keine offiziellen .deb-Pakete. Diese Liste dient dem lokalen Bauen aus dem Quellcode.
+Es gibt keine offiziellen .deb-Pakete auf der Release-Seite. Diese Liste dient dem lokalen Bauen aus dem Quellcode (Linux wird vollständig unterstützt).
 
 ## Abhängigkeiten (apt)
 
@@ -13,4 +13,4 @@ Optional: `qt6-network-dev` (Updates ohne curl), FreeCAD-Entwicklungspakete, Pyt
 
 ## Build
 
-Siehe [docs/BUILD_LINUX.md](../../docs/BUILD_LINUX.md). Es wird **kein** .deb gebaut oder auf der Release-Seite bereitgestellt.
+Siehe [docs/BUILD_LINUX.md](../../docs/BUILD_LINUX.md). Es wird **kein** .deb auf der Release-Seite bereitgestellt. **Optional:** Ein lokales .deb kann bei Bedarf mit eigenen Skripten (z. B. `dpkg-buildpackage` oder Vorlage in einem separaten Packaging-Branch) gebaut werden – keine Integration in den Haupt-Release.

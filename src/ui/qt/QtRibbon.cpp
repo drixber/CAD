@@ -1,6 +1,7 @@
 #include "QtRibbon.h"
 
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -8,6 +9,8 @@
 #include <QIcon>
 #include <QFile>
 #include <QDir>
+#include <QFrame>
+#include <QSize>
 
 namespace cad {
 namespace ui {
@@ -364,9 +367,11 @@ QString QtRibbon::getIconPath(const QString& commandId) {
 
 QWidget* QtRibbon::buildCommandTab(const QString& title,
                                    const QList<QPair<QString, QStringList>>& groups) {
+    Q_UNUSED(title);
     QWidget* page = new QWidget(this);
-    QVBoxLayout* layout = new QVBoxLayout(page);
-    layout->addWidget(new QLabel(title));
+    QHBoxLayout* layout = new QHBoxLayout(page);
+    layout->setContentsMargins(8, 6, 8, 6);
+    layout->setSpacing(4);
     for (const auto& group : groups) {
         layout->addWidget(buildGroup(group.first, group.second));
     }
@@ -375,17 +380,25 @@ QWidget* QtRibbon::buildCommandTab(const QString& title,
 }
 
 QWidget* QtRibbon::buildGroup(const QString& name, const QStringList& command_ids) {
-    QGroupBox* group = new QGroupBox(name, this);
-    QVBoxLayout* layout = new QVBoxLayout(group);
+    QFrame* frame = new QFrame(this);
+    frame->setObjectName("ribbonGroup");
+    QVBoxLayout* layout = new QVBoxLayout(frame);
+    layout->setContentsMargins(8, 6, 8, 6);
+    layout->setSpacing(4);
+    QLabel* groupLabel = new QLabel(name, frame);
+    groupLabel->setObjectName("ribbonGroupLabel");
+    layout->addWidget(groupLabel, 0, Qt::AlignHCenter);
     for (const auto& id : command_ids) {
         QAction* action = registerAction(id, id);
-        QToolButton* button = new QToolButton(group);
+        QToolButton* button = new QToolButton(frame);
         button->setDefaultAction(action);
-        button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        layout->addWidget(button);
+        button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        button->setIconSize(QSize(32, 32));
+        button->setMinimumSize(56, 52);
+        layout->addWidget(button, 0, Qt::AlignHCenter);
     }
-    group->setLayout(layout);
-    return group;
+    frame->setLayout(layout);
+    return frame;
 }
 
 }  // namespace ui

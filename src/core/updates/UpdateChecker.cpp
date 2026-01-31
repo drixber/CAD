@@ -159,7 +159,14 @@ UpdateInfo parseGithubReleaseResponse(const std::string& response, const std::st
     }
     info.latestTag = latest_tag;
     info.releaseUrl = html_url;
-    std::vector<std::string> asset_names = {"HydraCADSetup.exe", "app-windows.zip", "hydracad-linux-portable.tar.gz"};
+    std::vector<std::string> asset_names;
+#if defined(_WIN32)
+    asset_names = {"HydraCADSetup.exe", "app-windows.zip", "HydraCAD-macos.zip", "hydracad-linux-portable.tar.gz"};
+#elif defined(__APPLE__)
+    asset_names = {"HydraCAD-macos.zip", "HydraCADSetup.exe", "app-windows.zip", "hydracad-linux-portable.tar.gz"};
+#else
+    asset_names = {"hydracad-linux-portable.tar.gz", "HydraCAD-macos.zip", "HydraCADSetup.exe", "app-windows.zip"};
+#endif
     info.assetDownloadUrl = extractAssetDownloadUrl(response, asset_names);
     std::string body_raw;
     if (extractJsonStringValue(response, "body", body_raw)) {

@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHeaderView>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -28,20 +29,30 @@ namespace ui {
 
 QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
     QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel(tr("Selection")));
+    layout->setSpacing(8);
+
+    QGroupBox* selectionGroup = new QGroupBox(tr("Selection"), this);
+    selectionGroup->setFlat(true);
+    QVBoxLayout* selectionLayout = new QVBoxLayout(selectionGroup);
     constraints_label_ = new QLabel(tr("Constraints: 0"));
-    layout->addWidget(constraints_label_);
+    selectionLayout->addWidget(constraints_label_);
     parameters_label_ = new QLabel(tr("Parameters: 0"));
-    layout->addWidget(parameters_label_);
+    selectionLayout->addWidget(parameters_label_);
     parameters_summary_ = new QLabel(tr("Parameter Summary:"));
     parameters_summary_->setWordWrap(true);
-    layout->addWidget(parameters_summary_);
+    selectionLayout->addWidget(parameters_summary_);
+    layout->addWidget(selectionGroup);
+
+    QGroupBox* statusGroup = new QGroupBox(tr("Status"), this);
+    statusGroup->setFlat(true);
+    QVBoxLayout* statusLayout = new QVBoxLayout(statusGroup);
     integration_status_ = new QLabel(tr("Integration: FreeCAD off"));
-    layout->addWidget(integration_status_);
+    statusLayout->addWidget(integration_status_);
     mates_label_ = new QLabel(tr("Mates: 0"));
-    layout->addWidget(mates_label_);
+    statusLayout->addWidget(mates_label_);
     context_label_ = new QLabel(tr("Context: None"));
-    layout->addWidget(context_label_);
+    statusLayout->addWidget(context_label_);
+    layout->addWidget(statusGroup);
 
     context_stack_ = new QStackedWidget(this);
     auto makePanel = [this](const QString& title, const QStringList& fields) {

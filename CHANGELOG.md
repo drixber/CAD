@@ -1,5 +1,25 @@
 # Changelog - Hydra CAD
 
+## [Unreleased]
+
+(Keine Einträge.)
+
+---
+
+## [3.0.13] - 2026-01-31
+
+### Added
+- **GUI auf Inventor-Niveau (Roadmap):** docs/TODO_GUI_INVENTOR_LEVEL.md – aus Referenz-Screenshots abgeleitete TODO (Ribbon, Model Browser, Property-Panels, Viewport/ViewCube, Layout). AI-Chat bleibt rechts.
+- Ribbon: Command-Groups pro Tab **horizontal** (Inventor-Style); große Icons (32×32) mit Text unter Icon; Gruppen als QFrame mit Border und Hover.
+- Model Browser: **Kontextmenü** (Rechtsklick) mit Visibility, Suppress, Create New Component, Place From File, Edit, Properties, Rename, Delete, Copy, Paste, Search, Show Dependencies (Aktionen noch Stubs).
+- Property-Panel: **Sektionen** „Selection“ und „Status“ als QGroupBox (flach, Inventor-Style); ThemeManager-Styling für QGroupBox und Ribbon-Group.
+
+### Changed
+- ThemeManager: QGroupBox-Styling (Border, Radius, Padding, Title); QFrame#ribbonGroup und QLabel#ribbonGroupLabel für Ribbon-Gruppen.
+- Ribbon: buildCommandTab nutzt QHBoxLayout für Gruppen; buildGroup liefert QFrame mit Label und ToolButtons (TextUnderIcon, 56×52 min).
+
+---
+
 ## [3.0.12] - 2026-01-27
 
 ### Added
@@ -93,5 +113,5 @@
 
 ---
 
-**Version**: 3.0.12  
+**Version**: 3.0.13  
 **Status**: Produktionsbereit ✅

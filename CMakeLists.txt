@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(InventorStyleCAD VERSION 3.0.12 LANGUAGES CXX)
+project(InventorStyleCAD VERSION 3.0.13 LANGUAGES CXX)
 
 set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
@@ -63,6 +63,15 @@ if(CAD_USE_QT)
             MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
         )
+        if(EXISTS "${CMAKE_SOURCE_DIR}/packaging/macos/HydraCAD.icns")
+            set_target_properties(cad_desktop PROPERTIES MACOSX_BUNDLE_ICON_FILE HydraCAD.icns)
+            add_custom_command(TARGET cad_desktop POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy
+                    "${CMAKE_SOURCE_DIR}/packaging/macos/HydraCAD.icns"
+                    "$<TARGET_BUNDLE_DIR:cad_desktop>/Contents/Resources/HydraCAD.icns"
+                COMMENT "Copy macOS app icon into bundle"
+            )
+        endif()
     endif()
     
     # Linux AppImage deployment

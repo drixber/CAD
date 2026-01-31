@@ -71,7 +71,7 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 | # | Thema | Status | Details |
 |---|--------|--------|---------|
 | 13 | **Tests in CI** | ✅ Erledigt | `CAD_BUILD_TESTS=ON` in ci-cd.yml, ctest-Schritt (continue-on-error). |
-| 14 | **Linux/macOS** | ✅ Nutzbar | Linux: [docs/TODO_LINUX.md](docs/TODO_LINUX.md). Bei **Publish release** hängt `release-attach-assets.yml` Windows (EXE, ZIP) und Linux (Tarball mit run.sh) ans Release. Portable Tarball: Qt6 installieren, `./run.sh`. Doku: [BUILD_LINUX.md](docs/BUILD_LINUX.md), [BUILD_ARCH.md](docs/BUILD_ARCH.md), [INSTALL_ARCH_PACMAN_YAY.md](docs/INSTALL_ARCH_PACMAN_YAY.md). |
+| 14 | **Linux/macOS** | ✅ Fertig | Linux und macOS vollständig unterstützt: [docs/TODO_LINUX.md](docs/TODO_LINUX.md), [docs/TODO_MACOS.md](docs/TODO_MACOS.md). Bei **Publish release** hängt `release-attach-assets.yml` Windows (EXE, ZIP), Linux (Tarball, Icon) und macOS (HydraCAD-macos.zip, .app + Icon) ans Release. Doku: [BUILD_LINUX.md](docs/BUILD_LINUX.md), [BUILD_ARCH.md](docs/BUILD_ARCH.md), [BUILD_MACOS.md](docs/BUILD_MACOS.md), [INSTALL_ARCH_PACMAN_YAY.md](docs/INSTALL_ARCH_PACMAN_YAY.md). |
 
 ---
 
@@ -113,4 +113,6 @@ Alle Punkte sind in der Cursor-TODO-Liste als Aufgaben hinterlegt und können do
 | **[docs/RELEASE_RUNDUMFLUG.md](docs/RELEASE_RUNDUMFLUG.md)** | Kompletter Rundumflug bis neues Release: Version setzen, Changelog, Commit, Tag, GitHub Release, AUR-Update. |
 | **[docs/TODO_UPDATE_AND_RELEASE.md](docs/TODO_UPDATE_AND_RELEASE.md)** | Update-Funktion & Release: Von Tag bis EXE in der App (Workflows, Release erzeugen, Troubleshooting, Code-Status). |
 | **[docs/TODO_USER_BACKEND_LICENSES.md](docs/TODO_USER_BACKEND_LICENSES.md)** | User-Backend & Lizenzen: Phasen 1–5 (Auth, App an API, Lizenzen Backend/App, Tests, Deployment). |
-| **[docs/TODO_LINUX.md](docs/TODO_LINUX.md)** | Linux-Support: Build, Packaging, CI (experimentell). |
+| **[docs/TODO_GUI_INVENTOR_LEVEL.md](docs/TODO_GUI_INVENTOR_LEVEL.md)** | GUI auf Inventor-Niveau: Ribbon, Model Browser, Property-Panels, Viewport (ViewCube, Nav), Layout (AI-Chat rechts). |
+| **[docs/TODO_LINUX.md](docs/TODO_LINUX.md)** | Linux-Support: abgeschlossen (Build, Packaging, Icon, CI, Release-Assets). |
+| **[docs/TODO_MACOS.md](docs/TODO_MACOS.md)** | macOS-Support: abgeschlossen (Build, .app, Icon, CI, Release-Assets). |

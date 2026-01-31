@@ -13,6 +13,11 @@
 #include <QSettings>
 #include <QCryptographicHash>
 #include <QByteArrayView>
+#include <QJsonDocument>
+#include <QJsonObject>
+#endif
+#ifdef CAD_USE_QT_NETWORK
+#include <QUrlQuery>
 #endif
 
 namespace cad {

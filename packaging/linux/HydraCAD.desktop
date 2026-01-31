@@ -4,6 +4,6 @@ Name=Hydra CAD
 Comment=Professional CAD Application
 Exec=cad_desktop
 TryExec=cad_desktop
-Icon=applications-engineering
+Icon=HydraCAD
 Categories=Graphics;Engineering;
 Terminal=false
