@@ -1,0 +1,22 @@
+# Beim Push eines Tags (z. B. v3.0.10) automatisch ein GitHub-Release erstellen.
+# Danach startet release-attach-assets.yml (release: published) und hängt die gebauten Assets an.
+# Ohne diesen Workflow: Tags allein erzeugen kein Release – man müsste manuell "Draft new release" erstellen.
+
+name: Release bei Tag-Push erstellen
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Release für Tag erstellen
+        run: |
+          gh release create "${{ github.ref_name }}" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -77,6 +77,19 @@ Die ausführbare Datei liegt in `build\Release\cad_desktop.exe`.
 
 Anschließend alle Dateien aus `build\Release\` (inkl. `platforms\`, Qt-DLLs etc.) zusammen mit der EXE verwenden oder als ZIP packen.
 
+## Releases erstellen (Maintainer)
+
+- **Neuer Release:** Tag pushen, z. B. `git tag v3.0.10 && git push origin v3.0.10`. Der Workflow **Release bei Tag-Push erstellen** (`.github/workflows/create-release-on-tag.yml`) muss dafür **bereits auf GitHub im Branch `main` liegen**. Er erstellt dann automatisch das GitHub-Release; **Release – Assets anhängen** baut Windows (+ Linux) und hängt Installer/ZIP an.
+- **Bereits gepushte Tags ohne Release:** In GitHub unter **Releases → Draft a new release** den gewünschten Tag (z. B. v3.0.10) auswählen, Titel/Notizen eintragen, **Publish release** klicken. Danach baut der CI die Assets und hängt sie an.
+
+### Warum hat sich nach „git push origin v3.0.10“ nichts geändert?
+
+- Der Workflow **create-release-on-tag.yml** läuft nur, wenn er auf GitHub im Branch **main** existiert. Wenn du den Tag gepusht hast, **bevor** dieser Workflow nach GitHub gepusht wurde, wird kein Release erzeugt.
+- **Jetzt beheben:**  
+  1. Alle Änderungen (inkl. `.github/workflows/create-release-on-tag.yml`) nach `main` pushen: `git push origin main`.  
+  2. Für den **bereits gepushten** Tag v3.0.10 einmal manuell ein Release anlegen: GitHub → **Releases** → **Draft a new release** → Tag **v3.0.10** auswählen → **Publish release**. Danach baut der CI und hängt die Assets an.  
+- **Ab dem nächsten Tag:** Nach dem Push von `main` mit dem Workflow reicht für neue Versionen wieder: `git tag v3.0.11 && git push origin v3.0.11` – dann wird das Release automatisch erstellt.
+
 ## Installer erstellen
 
 ### NSIS installieren
@@ -132,7 +145,7 @@ ctest --test-dir build -C Release
 
 Aktuell wird der automatische Release-Build nur für Windows ausgeführt. **Linux-Support ist experimentell und existiert im Hintergrund** – keine offiziellen Linux-Releases, siehe [docs/TODO_LINUX.md](TODO_LINUX.md). Für Linux/macOS aus dem Quellcode bauen:
 
-- **Linux (Ubuntu, Debian, Fedora):** Abhängigkeiten und Build: [docs/BUILD_LINUX.md](BUILD_LINUX.md). Paketnamen für lokales Bauen: `packaging/ubuntu/README.md`, `packaging/debian/README.md`.
+- **Linux (Ubuntu, Debian, Fedora):** Download von der Release-Seite: **hydracad-linux-portable.tar.gz** entpacken, Qt6 installieren (apt/dnf), dann `./run.sh` starten. Aus dem Quellcode bauen: [docs/BUILD_LINUX.md](BUILD_LINUX.md). Paketnamen: `packaging/ubuntu/README.md`, `packaging/debian/README.md`.
 - **Arch Linux:** [docs/BUILD_ARCH.md](BUILD_ARCH.md). Installation mit **pacman** (lokal) oder **yay** (AUR): [docs/INSTALL_ARCH_PACMAN_YAY.md](INSTALL_ARCH_PACMAN_YAY.md). PKGBUILD: `packaging/arch/PKGBUILD`.
 - **Linux-CI (im Hintergrund):** Workflow `build-linux.yml` nur per manuellem Auslösen (workflow_dispatch); baut unter Ubuntu, Artifacts für Entwickler, kein Release-Upload.
 - **macOS:** Qt 6 über den Qt Installer, dann CMake; optional `-DCAD_USE_QT=ON` und MACOSX_BUNDLE wird gesetzt.
@@ -148,6 +161,15 @@ Aktuell wird der automatische Release-Build nur für Windows ausgeführt. **Linu
 
 - Visual C++ Redistributable (z. B. VC++ 2015–2022) installieren
 - Logs prüfen: **Settings → Diagnostics → Open Logs Folder** bzw. **Show Startup Log**
+
+### Schwarzes Fenster / nur Terminal nach Update – „Als Administrator“ nötig
+
+Wenn nach einem Update nur ein schwarzes Fenster erscheint und die Anwendung erst nach „Als Administrator ausführen“ startet, lag das an einem falschen Arbeitsverzeichnis beim Start. Ab der aktuellen Version:
+
+- Das Arbeitsverzeichnis wird beim Start auf das Installationsverzeichnis gesetzt (unabhängig davon, ob Sie per Verknüpfung oder über den Installer starten).
+- Updates werden in einen benutzerbeschreibbaren Ordner (Temp) heruntergeladen, sodass keine Schreibrechte in „Programme“ nötig sind.
+
+Falls das Problem bei einer älteren Installation weiterhin auftritt: einmal **Als Administrator ausführen**, danach normal starten; oder die Anwendung neu installieren.
 
 ### CMake findet Qt 6 nicht
 
