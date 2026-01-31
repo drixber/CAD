@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <fstream>
 #include <cstdio>
+#include <filesystem>
+#include <random>
 
 #ifdef CAD_USE_QT
 #include <QJsonDocument>
@@ -20,17 +22,19 @@ namespace ai {
 namespace {
 
 bool writeTempBodyFile(const std::string& body, std::string& path_out) {
-    char tmp_name[L_tmpnam];
-    if (!std::tmpnam(tmp_name)) {
-        return false;
+    auto tmp_dir = std::filesystem::temp_directory_path();
+    std::random_device rd;
+    for (int i = 0; i < 100; ++i) {
+        std::string path = (tmp_dir / ("hydracad_" + std::to_string(rd()) + ".tmp")).string();
+        if (std::filesystem::exists(path)) continue;
+        std::ofstream file(path, std::ios::binary);
+        if (!file.is_open()) return false;
+        file << body;
+        if (!file.good()) return false;
+        path_out = path;
+        return true;
     }
-    path_out = tmp_name;
-    std::ofstream file(path_out, std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-    file << body;
-    return file.good();
+    return false;
 }
 
 }  // namespace

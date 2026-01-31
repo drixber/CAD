@@ -152,29 +152,62 @@ QString ThemeManager::generateStylesheet() const {
     QString style;
     QTextStream stream(&style);
     
-    stream << "/* Hydra CAD Modern Theme - Inventor Style */\n\n";
+    stream << "/* Hydra CAD – Inventor-style theme, modern (no XP look) */\n\n";
+    
+    // Global: modern font, no flat gray
+    stream << "QWidget {\n";
+    stream << "    font-family: \"Segoe UI\", \"SF Pro Display\", \"Helvetica Neue\", system-ui, sans-serif;\n";
+    stream << "    font-size: 13px;\n";
+    stream << "}\n\n";
+    
+    // Dialogs: clean, rounded, elevated
+    stream << "QDialog {\n";
+    stream << "    background: " << palette_.surface.name() << ";\n";
+    stream << "    border: 1px solid " << palette_.border.name() << ";\n";
+    stream << "    border-radius: 8px;\n";
+    stream << "}\n\n";
+    
+    // Progress bar: modern, rounded
+    stream << "QProgressBar {\n";
+    stream << "    background: " << palette_.scrollbar.name() << ";\n";
+    stream << "    border: none;\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    text-align: center;\n";
+    stream << "    min-height: 10px;\n";
+    stream << "}\n\n";
+    stream << "QProgressBar::chunk {\n";
+    stream << "    background: " << palette_.primary.name() << ";\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "}\n\n";
+    
+    // Checkboxes
+    stream << "QCheckBox {\n";
+    stream << "    color: " << palette_.textPrimary.name() << ";\n";
+    stream << "    spacing: 8px;\n";
+    stream << "}\n\n";
     
     // Main Window
     stream << "QMainWindow {\n";
     stream << "    background-color: " << palette_.background.name() << ";\n";
     stream << "}\n\n";
     
-    // Ribbon
+    // Ribbon – Inventor-style tabs
     stream << "QTabWidget::pane {\n";
     stream << "    border: 1px solid " << palette_.border.name() << ";\n";
     stream << "    background: " << palette_.ribbonBackground.name() << ";\n";
     stream << "    top: -1px;\n";
+    stream << "    border-radius: 0 4px 4px 4px;\n";
     stream << "}\n\n";
     
     stream << "QTabBar::tab {\n";
     stream << "    background: " << palette_.ribbonTab.name() << ";\n";
     stream << "    color: " << palette_.textPrimary.name() << ";\n";
-    stream << "    padding: 8px 16px;\n";
+    stream << "    padding: 10px 18px;\n";
     stream << "    margin-right: 2px;\n";
     stream << "    border: 1px solid " << palette_.borderLight.name() << ";\n";
     stream << "    border-bottom: none;\n";
-    stream << "    border-top-left-radius: 4px;\n";
-    stream << "    border-top-right-radius: 4px;\n";
+    stream << "    border-top-left-radius: 6px;\n";
+    stream << "    border-top-right-radius: 6px;\n";
     stream << "}\n\n";
     
     stream << "QTabBar::tab:hover {\n";
@@ -184,7 +217,7 @@ QString ThemeManager::generateStylesheet() const {
     stream << "QTabBar::tab:selected {\n";
     stream << "    background: " << palette_.ribbonTabSelected.name() << ";\n";
     stream << "    border-bottom: 2px solid " << palette_.primary.name() << ";\n";
-    stream << "    font-weight: bold;\n";
+    stream << "    font-weight: 600;\n";
     stream << "}\n\n";
     
     // Dock Widgets
@@ -206,14 +239,15 @@ QString ThemeManager::generateStylesheet() const {
     stream << "    background: " << palette_.dockTitleActive.name() << ";\n";
     stream << "}\n\n";
     
-    // Buttons
+    // Buttons – modern, rounded (no flat XP look)
     stream << "QPushButton {\n";
     stream << "    background: " << palette_.button.name() << ";\n";
     stream << "    color: " << palette_.textPrimary.name() << ";\n";
     stream << "    border: 1px solid " << palette_.border.name() << ";\n";
-    stream << "    border-radius: 4px;\n";
-    stream << "    padding: 6px 12px;\n";
-    stream << "    min-height: 24px;\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    padding: 8px 16px;\n";
+    stream << "    min-height: 28px;\n";
+    stream << "    font-weight: 500;\n";
     stream << "}\n\n";
     
     stream << "QPushButton:hover {\n";
@@ -235,12 +269,12 @@ QString ThemeManager::generateStylesheet() const {
     stream << "    background: " << palette_.buttonPrimaryHover.name() << ";\n";
     stream << "}\n\n";
     
-    // Input fields
+    // Input fields – rounded, clear focus
     stream << "QLineEdit, QTextEdit, QPlainTextEdit {\n";
     stream << "    background: " << palette_.inputBackground.name() << ";\n";
     stream << "    border: 1px solid " << palette_.inputBorder.name() << ";\n";
-    stream << "    border-radius: 4px;\n";
-    stream << "    padding: 6px 8px;\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    padding: 8px 10px;\n";
     stream << "    color: " << palette_.textPrimary.name() << ";\n";
     stream << "    selection-background-color: " << palette_.primary.name() << ";\n";
     stream << "    selection-color: " << palette_.textOnPrimary.name() << ";\n";
@@ -248,14 +282,14 @@ QString ThemeManager::generateStylesheet() const {
     
     stream << "QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {\n";
     stream << "    border: 2px solid " << palette_.borderFocus.name() << ";\n";
-    stream << "    padding: 5px 7px;\n";
+    stream << "    padding: 7px 9px;\n";
     stream << "}\n\n";
     
-    // Tree/List views
+    // Tree/List views – clean panels
     stream << "QTreeView, QListView, QListWidget {\n";
     stream << "    background: " << palette_.treeBackground.name() << ";\n";
     stream << "    border: 1px solid " << palette_.border.name() << ";\n";
-    stream << "    border-radius: 4px;\n";
+    stream << "    border-radius: 6px;\n";
     stream << "    color: " << palette_.textPrimary.name() << ";\n";
     stream << "    outline: none;\n";
     stream << "}\n\n";
@@ -315,12 +349,12 @@ QString ThemeManager::generateStylesheet() const {
     stream << "    background: " << palette_.scrollbarHandleHover.name() << ";\n";
     stream << "}\n\n";
     
-    // Tool buttons
+    // Tool buttons – ribbon-style
     stream << "QToolButton {\n";
     stream << "    background: transparent;\n";
     stream << "    border: 1px solid transparent;\n";
-    stream << "    border-radius: 4px;\n";
-    stream << "    padding: 4px;\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    padding: 6px;\n";
     stream << "}\n\n";
     
     stream << "QToolButton:hover {\n";
@@ -332,12 +366,12 @@ QString ThemeManager::generateStylesheet() const {
     stream << "    background: " << palette_.buttonPressed.name() << ";\n";
     stream << "}\n\n";
     
-    // Combo boxes
+    // Combo boxes – rounded
     stream << "QComboBox {\n";
     stream << "    background: " << palette_.inputBackground.name() << ";\n";
     stream << "    border: 1px solid " << palette_.inputBorder.name() << ";\n";
-    stream << "    border-radius: 4px;\n";
-    stream << "    padding: 6px 8px;\n";
+    stream << "    border-radius: 6px;\n";
+    stream << "    padding: 8px 10px;\n";
     stream << "    color: " << palette_.textPrimary.name() << ";\n";
     stream << "}\n\n";
     
@@ -347,12 +381,12 @@ QString ThemeManager::generateStylesheet() const {
     
     stream << "QComboBox:focus {\n";
     stream << "    border: 2px solid " << palette_.borderFocus.name() << ";\n";
-    stream << "    padding: 5px 7px;\n";
+    stream << "    padding: 7px 9px;\n";
     stream << "}\n\n";
     
     stream << "QComboBox::drop-down {\n";
     stream << "    border: none;\n";
-    stream << "    width: 20px;\n";
+    stream << "    width: 24px;\n";
     stream << "}\n\n";
     
     // Labels

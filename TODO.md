@@ -10,7 +10,8 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 |---|--------|--------|---------|
 | 1 | **Portable ZIP** | ✅ Erledigt | `release.yml` erstellt `app-windows.zip` und lädt es als Asset hoch. |
 | 2 | **Version aus Git-Tag** | ✅ Erledigt | Version wird früh extrahiert und als `APP_VERSION` an CMake übergeben. |
-| 3 | **Code-Signing** | Optional | Signierung ist im `release.yml` vorgesehen (wenn `WINDOWS_PFX_*` gesetzt). Optional: in README/docs kurz dokumentieren, welche Secrets nötig sind und dass dann EXE + ggf. zukünftiges ZIP signiert werden. |
+| 3 | **Code-Signing** | ✅ Erledigt | Signierung im `release.yml` und `release-attach-assets.yml` (wenn `WINDOWS_PFX_*` gesetzt). Doku: [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md). |
+| 3b | **Update & Release (EXE)** | ✅ Doku + Flow | Vollständige Anleitung: [docs/TODO_UPDATE_AND_RELEASE.md](docs/TODO_UPDATE_AND_RELEASE.md). In-App-Update: Asset-URL aus API, Dateiname aus URL, nur .exe starten; Changelog aus Release-Body. |
 
 ---
 
@@ -44,7 +45,7 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 | # | Thema | Status | Details |
 |---|--------|--------|---------|
 | 8 | **Unsaved-Changes-Dialog** | ✅ Erledigt | askUnsavedChanges/getSavePath, Dialog Save/Discard/Cancel beim Öffnen. |
-| 9 | **Projekt-Serialisierung** | Vereinfacht | `ProjectFileService::serializeAssembly` speichert nur Assembly-Komponenten (Part-Name + Transform) und Mates. Part-Features und Sketch-Geometrie werden nicht serialisiert; `deserializeAssembly` erstellt leere Parts mit Namen. Für vollständige Projekte: Part-Features und Sketches (Geometrie, Constraints) in das Projektformat aufnehmen und beim Laden wiederherstellen. |
+| 9 | **Projekt-Serialisierung** | ✅ Erledigt | Part-Features und Sketches (Geometrie, Constraints, ID-Remap) in `ProjectFileService` serialisiert/deserialisiert; Save/Load mit `active_sketch_`; `serializeAssemblyWithSketches` / `deserializeAssemblyWithSketches`. |
 | 10 | **Checkpoints-UI** | ✅ Erledigt | File → Manage Checkpoints…, Liste/Open/Delete. |
 
 ---
@@ -61,7 +62,7 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 
 | # | Thema | Status | Details |
 |---|--------|--------|---------|
-| 12 | **Anthropic** | Geplant | Im Code (z. B. `AppController::setupAIService`, AI-Settings) ist Anthropic als Option erwähnt, aber auskommentiert ("will be implemented later"). README nennt "Anthropic geplant". Offen: Anthropic-Provider analog zu OpenAI/Grok implementieren und in der UI wählbar machen. |
+| 12 | **Anthropic** | ✅ Erledigt | Anthropic-Provider (Claude) implementiert; in AIService und Qt-AI-Settings wählbar. |
 
 ---
 
@@ -70,7 +71,7 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 | # | Thema | Status | Details |
 |---|--------|--------|---------|
 | 13 | **Tests in CI** | ✅ Erledigt | `CAD_BUILD_TESTS=ON` in ci-cd.yml, ctest-Schritt (continue-on-error). |
-| 14 | **Linux/macOS** | Im Hintergrund | Linux-Support vollständig vorbereitet, **nicht produktionsfertig**: [docs/TODO_LINUX.md](docs/TODO_LINUX.md). Doku: [BUILD_LINUX.md](docs/BUILD_LINUX.md), [BUILD_ARCH.md](docs/BUILD_ARCH.md). Packaging: `packaging/arch/`, `packaging/ubuntu/`, `packaging/debian/`. CI: `build-linux.yml` nur per workflow_dispatch. Keine offiziellen Linux-Releases. |
+| 14 | **Linux/macOS** | ✅ Nutzbar | Linux: [docs/TODO_LINUX.md](docs/TODO_LINUX.md). Bei **Publish release** hängt `release-attach-assets.yml` Windows (EXE, ZIP) und Linux (Tarball mit run.sh) ans Release. Portable Tarball: Qt6 installieren, `./run.sh`. Doku: [BUILD_LINUX.md](docs/BUILD_LINUX.md), [BUILD_ARCH.md](docs/BUILD_ARCH.md), [INSTALL_ARCH_PACMAN_YAY.md](docs/INSTALL_ARCH_PACMAN_YAY.md). |
 
 ---
 
@@ -95,10 +96,21 @@ Stand: Nach vollständiger Codebase-Analyse. Diese Liste fasst zusammen, was noc
 1. **Release**: Portable ZIP erstellen + hochladen; Version aus Tag an Build übergeben.
 2. **Ribbon**: Klick soll Befehl ausführen; Undo/Redo an UndoStack anbinden.
 3. **Import/Export**: File-Dialog und echte Pfad/Format-Weitergabe.
-4. **Projekt**: Unsaved-Changes-Dialog; langfristig vollständige Serialisierung (Features/Sketches).
+4. **Projekt**: Unsaved-Changes-Dialog; Serialisierung Features/Sketches (✅ erledigt).
 5. **Sprache**: Übersetzungsdateien anlegen und einbinden.
 6. **Profil**: Profile-Action verbinden oder entfernen.
 7. **Doku**: INSTALLATION.md auf Qt 6 und aktuelle Schritte aktualisieren.
-8. **CI**: Optional Tests aktivieren; optional Linux/macOS wieder aktivieren.
+8. **CI**: Optional Tests aktivieren; Linux-Assets bei Publish release (✅ release-attach-assets.yml).
 
 Alle Punkte sind in der Cursor-TODO-Liste als Aufgaben hinterlegt und können dort abgearbeitet werden.
+
+---
+
+## Alle TODO-Dokumente (Übersicht)
+
+| Dokument | Inhalt |
+|----------|--------|
+| **[docs/RELEASE_RUNDUMFLUG.md](docs/RELEASE_RUNDUMFLUG.md)** | Kompletter Rundumflug bis neues Release: Version setzen, Changelog, Commit, Tag, GitHub Release, AUR-Update. |
+| **[docs/TODO_UPDATE_AND_RELEASE.md](docs/TODO_UPDATE_AND_RELEASE.md)** | Update-Funktion & Release: Von Tag bis EXE in der App (Workflows, Release erzeugen, Troubleshooting, Code-Status). |
+| **[docs/TODO_USER_BACKEND_LICENSES.md](docs/TODO_USER_BACKEND_LICENSES.md)** | User-Backend & Lizenzen: Phasen 1–5 (Auth, App an API, Lizenzen Backend/App, Tests, Deployment). |
+| **[docs/TODO_LINUX.md](docs/TODO_LINUX.md)** | Linux-Support: Build, Packaging, CI (experimentell). |

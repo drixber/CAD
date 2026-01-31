@@ -17,9 +17,9 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 | **Installer** | [HydraCADSetup.exe](https://github.com/drixber/CAD/releases) | Herunterladen → Ausführen → Datenschutz bestätigen, Pfad und Sprache wählen |
 | **Portable** | [app-windows.zip](https://github.com/drixber/CAD/releases) | ZIP entpacken → `cad_desktop.exe` starten |
 
-**Releases**: [GitHub Releases](https://github.com/drixber/CAD/releases) – bei jedem Tag `v*` werden Installer und Portable-ZIP automatisch erstellt.
+**Releases**: [GitHub Releases](https://github.com/drixber/CAD/releases). Ein **Tag** (z. B. `v3.0.10`) pushen → automatisch wird ein Release erstellt und der CI hängt Installer + Portable an. Ohne manuelles „Draft new release“.
 
-**Linux / macOS**: Aus Quellcode bauen, siehe [docs/INSTALLATION.md](docs/INSTALLATION.md). **Linux-Support ist experimentell und im Hintergrund** – keine offiziellen Linux-Releases, siehe [docs/TODO_LINUX.md](docs/TODO_LINUX.md). Build: [docs/BUILD_LINUX.md](docs/BUILD_LINUX.md) (Ubuntu/Debian/Fedora), [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md) (Arch); Packaging-Vorlagen unter `packaging/`. Linux-CI nur per manuellem Workflow (`build-linux.yml`).
+**Linux / macOS**: Bei **Publish release** erscheinen auf der Release-Seite u. a. **HydraCADSetup.exe**, **app-windows.zip** und **hydracad-linux-portable.tar.gz** (Linux: entpacken, Qt6 installieren, `./run.sh`). Aus Quellcode bauen: [docs/INSTALLATION.md](docs/INSTALLATION.md), [docs/BUILD_LINUX.md](docs/BUILD_LINUX.md), [docs/BUILD_ARCH.md](docs/BUILD_ARCH.md). Weitere Linux-Details: [docs/TODO_LINUX.md](docs/TODO_LINUX.md).
 
 ### Erste Schritte
 
@@ -47,7 +47,7 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 
 - **FreeCAD-Integration**: Sketches, Parts, Drawings (optional).
 - **Constraint Solver**, **Simulation** (FEA, Motion, etc.), **Sheet Metal**, **Routing**, **Direct Editing**, **Drawing/TechDraw**.
-- **AI**: OpenAI und Grok für CAD-Assistenz (Anthropic geplant).
+- **AI**: OpenAI, Grok und Anthropic (Claude) für CAD-Assistenz.
 
 ---
 
@@ -127,10 +127,11 @@ Beim Öffnen eines anderen Projekts erscheint bei ungespeicherten Änderungen ei
 ## Dokumentation & Lizenz
 
 - **Installation/Build**: [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- **Code-Signing (Windows)**: [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 - **Lizenz**: [installer/license.txt](installer/license.txt)
 
 ---
 
 **Version**: Aus Git-Tag (z. B. `v1.0.0`).  
-**Releases**: ✅ Windows (Installer + Portable ZIP) bei Push eines `v*`-Tags.
+**Releases**: ✅ Push eines Tags `v*` erstellt automatisch das GitHub-Release; CI baut Windows (Installer + Portable) und hängt die Assets an.

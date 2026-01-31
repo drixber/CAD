@@ -144,6 +144,10 @@ int main(int argc, char** argv) {
 #endif
 
     QApplication qt_app(argc, argv);
+    // Ensure working directory is the application directory so plugins, resources and
+    // relative paths resolve correctly regardless of how the app was started (shortcut,
+    // installer "Run", etc.). Fixes black window / "run as admin" required after update.
+    QDir::setCurrent(QCoreApplication::applicationDirPath());
     setupStartupLogging();
 
     std::set_terminate([]() {

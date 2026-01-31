@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -103,25 +104,39 @@ bool extractJsonStringValue(const std::string& json,
     return true;
 }
 
-/** Find first asset with name matching preferred or fallback, return its browser_download_url. */
+/** Find first asset with name matching any of the given names, return its browser_download_url. */
 std::string extractAssetDownloadUrl(const std::string& json,
-                                    const std::string& preferred_name,
-                                    const std::string& fallback_name) {
-    auto try_asset = [&json](const std::string& name) -> std::string {
+                                    const std::vector<std::string>& asset_names) {
+    for (const auto& name : asset_names) {
         const std::string name_key = "\"name\":\"" + name + "\"";
         size_t name_pos = json.find(name_key);
-        if (name_pos == std::string::npos) return {};
+        if (name_pos == std::string::npos) continue;
         const std::string url_key = "\"browser_download_url\":\"";
         size_t url_start = json.find(url_key, name_pos);
-        if (url_start == std::string::npos) return {};
+        if (url_start == std::string::npos) continue;
         url_start += url_key.size();
         size_t url_end = json.find('"', url_start);
-        if (url_end == std::string::npos || url_end <= url_start) return {};
+        if (url_end == std::string::npos || url_end <= url_start) continue;
         return json.substr(url_start, url_end - url_start);
-    };
-    std::string url = try_asset(preferred_name);
-    if (!url.empty()) return url;
-    return try_asset(fallback_name);
+    }
+    return {};
+}
+
+/** Unescape JSON string (e.g. \\n -> newline, \\" -> "). */
+std::string unescapeJsonString(std::string s) {
+    std::string out;
+    out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '\\' && i + 1 < s.size()) {
+            if (s[i + 1] == 'n') { out += '\n'; ++i; continue; }
+            if (s[i + 1] == 'r') { out += '\r'; ++i; continue; }
+            if (s[i + 1] == 't') { out += '\t'; ++i; continue; }
+            if (s[i + 1] == '"') { out += '"';  ++i; continue; }
+            if (s[i + 1] == '\\') { out += '\\'; ++i; continue; }
+        }
+        out += s[i];
+    }
+    return out;
 }
 
 }  // namespace
@@ -144,7 +159,13 @@ UpdateInfo parseGithubReleaseResponse(const std::string& response, const std::st
     }
     info.latestTag = latest_tag;
     info.releaseUrl = html_url;
-    info.assetDownloadUrl = extractAssetDownloadUrl(response, "HydraCADSetup.exe", "app-windows.zip");
+    std::vector<std::string> asset_names = {"HydraCADSetup.exe", "app-windows.zip", "hydracad-linux-portable.tar.gz"};
+    info.assetDownloadUrl = extractAssetDownloadUrl(response, asset_names);
+    std::string body_raw;
+    if (extractJsonStringValue(response, "body", body_raw)) {
+        info.body = unescapeJsonString(body_raw);
+        if (info.body.size() > 2000) info.body.resize(2000);
+    }
     Semver latest{};
     Semver current{};
     if (!parseSemverTag(latest_tag, latest) || !parseSemverTag(currentTag, current)) {

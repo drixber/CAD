@@ -21,6 +21,7 @@
 #include <QProcess>
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
 #endif
 
 namespace cad {
@@ -1506,7 +1507,7 @@ void AppController::checkForUpdates(cad::ui::QtMainWindow* qt_window, bool auto_
         #endif
         if (gh.updateAvailable && !gh.releaseUrl.empty()) {
             update_info.version = gh.latestTag;
-            update_info.changelog = "See release page for changelog.";
+            update_info.changelog = !gh.body.empty() ? gh.body : QObject::tr("See release page for changelog.").toStdString();
             update_info.download_url = !gh.assetDownloadUrl.empty() ? gh.assetDownloadUrl : gh.releaseUrl;
             update_info.mandatory = false;
             have_update = true;
@@ -1563,15 +1564,34 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
     progress_dialog.setModal(true);
     progress_dialog.show();
     QApplication::processEvents();
-    
-    std::string download_path;
+
+    // Use a user-writable directory (Temp) so updates work without admin rights.
+    QString download_dir = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).absoluteFilePath("HydraCAD");
+    if (!QDir().mkpath(download_dir)) {
+        download_dir = QDir::tempPath();
+    }
+    // Derive filename from download URL (e.g. .../HydraCADSetup.exe -> HydraCADSetup.exe) so we save and run the correct file.
+    std::string url = update_info.download_url;
+    std::string filename = "update_" + update_info.version + ".exe";
+    if (!url.empty()) {
+        size_t last_slash = url.find('?');
+        if (last_slash != std::string::npos) url.resize(last_slash);
+        last_slash = url.rfind('/');
+        if (last_slash != std::string::npos && last_slash + 1 < url.size()) {
+            std::string segment = url.substr(last_slash + 1);
+            if (!segment.empty()) filename = segment;
+        }
+    }
+    const std::string target_path = (download_dir + "/" + QString::fromStdString(filename)).toStdString();
+
     bool download_success = update_service_.downloadUpdate(update_info,
         [&progress_dialog](const cad::app::UpdateProgress& progress) {
-            progress_dialog.setProgress(progress.percentage, 
+            progress_dialog.setProgress(progress.percentage,
                                       QString::fromStdString(progress.status_message));
             QApplication::processEvents();
-        });
-    
+        },
+        target_path);
+
     if (!download_success) {
         progress_dialog.setCompleted(false, QObject::tr("Download failed"));
         progress_dialog.exec();
@@ -1579,20 +1599,20 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
                              QObject::tr("Download failed. Please check your connection and try again."));
         return;
     }
-    
-    download_path = "update_" + update_info.version + ".exe";
-    QString download_path_qt = QDir::current().absoluteFilePath(QString::fromStdString(download_path));
+
+    QString download_path_qt = QString::fromStdString(target_path);
 
     progress_dialog.setProgress(90, QObject::tr("Starting installer..."));
     QApplication::processEvents();
 
     bool run_installer = false;
+    bool is_exe = (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, ".exe") == 0);
     #ifdef _WIN32
-    if (QFileInfo::exists(download_path_qt)) {
+    if (QFileInfo::exists(download_path_qt) && is_exe) {
         run_installer = QProcess::startDetached(download_path_qt, QStringList(), QFileInfo(download_path_qt).absolutePath());
     }
     #else
-    if (QFileInfo::exists(download_path_qt)) {
+    if (QFileInfo::exists(download_path_qt) && is_exe) {
         run_installer = QProcess::startDetached(download_path_qt, QStringList());
     }
     #endif
@@ -1604,10 +1624,15 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
                                 QObject::tr("The installer has been started. Complete the setup and restart the application."));
         QApplication::quit();
     } else {
-        progress_dialog.setCompleted(false, QObject::tr("Could not start installer"));
+        progress_dialog.setCompleted(true, QObject::tr("Download complete."));
         progress_dialog.exec();
-        QMessageBox::warning(qt_window, QObject::tr("Update"),
-                             QObject::tr("Could not start the installer. You can run it manually: %1").arg(download_path_qt));
+        if (is_exe) {
+            QMessageBox::warning(qt_window, QObject::tr("Update"),
+                                 QObject::tr("Could not start the installer. You can run it manually: %1").arg(download_path_qt));
+        } else {
+            QMessageBox::information(qt_window, QObject::tr("Update"),
+                                    QObject::tr("Update package downloaded to: %1\nPlease extract or run the installer manually.").arg(download_path_qt));
+        }
     }
     #endif
 }

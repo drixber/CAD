@@ -12,6 +12,7 @@
 #ifdef CAD_USE_QT
 #include <QSettings>
 #include <QCryptographicHash>
+#include <QByteArrayView>
 #endif
 
 namespace cad {
@@ -38,9 +39,9 @@ UserAuthService::~UserAuthService() = default;
 std::string UserAuthService::hashPassword(const std::string& password) const {
     #ifdef CAD_USE_QT
     QCryptographicHash hash(QCryptographicHash::Sha256);
-    hash.addData(password.c_str(), static_cast<int>(password.length()));
+    hash.addData(QByteArrayView(password.data(), static_cast<qsizetype>(password.length())));
     std::string salt = generateSalt();
-    hash.addData(salt.c_str(), static_cast<int>(salt.length()));
+    hash.addData(QByteArrayView(salt.data(), static_cast<qsizetype>(salt.length())));
     return salt + ":" + hash.result().toHex().toStdString();
     #else
     // Simple hash for non-Qt builds (not secure, but functional)
@@ -64,8 +65,8 @@ bool UserAuthService::verifyPassword(const std::string& password, const std::str
     
     #ifdef CAD_USE_QT
     QCryptographicHash hash_calc(QCryptographicHash::Sha256);
-    hash_calc.addData(password.c_str(), static_cast<int>(password.length()));
-    hash_calc.addData(salt.c_str(), static_cast<int>(salt.length()));
+    hash_calc.addData(QByteArrayView(password.data(), static_cast<qsizetype>(password.length())));
+    hash_calc.addData(QByteArrayView(salt.data(), static_cast<qsizetype>(salt.length())));
     std::string calculated_hash = hash_calc.result().toHex().toStdString();
     return calculated_hash == stored_hash;
     #else

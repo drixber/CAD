@@ -32,18 +32,17 @@
 
 ## Offen (optional, weiter im Hintergrund)
 
-- [ ] **Release-Upload:** Wenn gewünscht: Linux-Artifacts automatisch ans GitHub-Release hängen (z. B. Workflow bei `release: published` oder Download/Upload aus Artifacts).
+- [x] **Release-Upload:** Workflow `release-attach-assets.yml` läuft bei **Publish release** und hängt Windows (HydraCADSetup.exe, app-windows.zip) und Linux (hydracad-linux-portable.tar.gz) ans Release.
 - [ ] **Icon:** `packaging/linux/HydraCAD.png` (256×256) für AppImage/Desktop (optional).
 - [ ] **.deb/.rpm:** Nur wenn gewünscht: Vorlagen oder Skripte für lokales Bauen; keine Integration in Haupt-Release.
 - [ ] **FreeCAD unter Linux:** Doku prüfen, ob CAD_USE_FREECAD unter Ubuntu/Arch mit System-FreeCAD funktioniert.
 
 ---
 
-## Nicht geplant (Produktion) – unverändert
+## Abgeschlossen / aktuell
 
-- Kein offizieller Linux-Download auf der Release-Seite (Artifacts nur im Workflow-Run)
-- Kein „Download for Linux“ im Haupt-README als gleichwertig zu Windows
-- Kein automatischer Upload der Linux-Dateien ins GitHub-Release (kann bei Bedarf ergänzt werden)
+- **Release-Assets:** Bei **Publish release** werden Windows (EXE, ZIP) und Linux (hydracad-linux-portable.tar.gz mit run.sh, README.txt) automatisch ans Release gehängt (`release-attach-assets.yml`).
+- Linux-Tarball: Voraussetzung Qt6; Start mit `./run.sh`. Doku in [BUILD_LINUX.md](BUILD_LINUX.md).
 
 ---
 

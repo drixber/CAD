@@ -63,9 +63,12 @@ bool UpdateService::isUpdateAvailable() const {
 }
 
 bool UpdateService::downloadUpdate(const UpdateInfo& update_info,
-                                   std::function<void(const UpdateProgress&)> progress_callback) {
-    std::string download_file = "update_" + update_info.version + ".exe";
-    
+                                   std::function<void(const UpdateProgress&)> progress_callback,
+                                   const std::string& target_file_path) {
+    std::string download_file = target_file_path.empty()
+        ? ("update_" + update_info.version + ".exe")
+        : target_file_path;
+
     HttpClient& client = getHttpClient();
     
     auto http_progress = [&](int percentage, std::size_t bytes_downloaded, std::size_t total_bytes) {

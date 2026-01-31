@@ -46,13 +46,14 @@ yay -S hydracad
 
 Damit alle per **yay** (oder `pacman` nach AUR-Einreichung) installieren können, muss jemand mit einem **AUR-Account** das Paket anlegen:
 
-1. **AUR-Account:** https://aur.archlinux.org → Account anlegen (falls noch nicht vorhanden).
+1. **AUR-Account:** https://aur.archlinux.org → Account anlegen (falls noch nicht vorhanden). Pakete werden per **Git over SSH** eingereicht; SSH-Key im AUR-Profil hinterlegen.
 2. **Neues Paket anlegen:**  
-   AUR → „Submit Package“ (oder per Git):
+   AUR → „Submit Package“ (Paketname z. B. `hydracad`). Danach per SSH klonen:
    ```bash
-   git clone https://aur.archlinux.org/hydracad.git
+   git clone ssh://aur@aur.archlinux.org/hydracad.git
    cd hydracad
    ```
+   Beim ersten Verbinden den AUR-SSH-Fingerabdruck prüfen (offizielle Fingerprints: [AUR Wiki – Submitting packages](https://wiki.archlinux.org/title/Arch_User_Repository#Submitting_packages); siehe auch `packaging/arch/README.md`).
 3. **PKGBUILD und .SRCINFO einbringen:**  
    In dieses `hydracad`-Repo den Inhalt von `CAD/packaging/arch/PKGBUILD` kopieren (und ggf. anpassen). Dann:
    ```bash

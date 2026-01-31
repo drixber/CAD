@@ -250,15 +250,14 @@ jobs:
             --desktop-file AppDir/HydraCAD.desktop \
             --output appimage || true
 
-      - name: Create portable tarball (fallback)
+      - name: Create portable tarball
         run: |
           mkdir -p hydracad-linux-portable/usr/bin
           cp build/cad_desktop hydracad-linux-portable/usr/bin/
           cp packaging/linux/HydraCAD.desktop hydracad-linux-portable/
-          echo '#!/bin/sh' > hydracad-linux-portable/run.sh
-          echo 'export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}/usr/lib/x86_64-linux-gnu"' >> hydracad-linux-portable/run.sh
-          echo 'exec "$(dirname "$0")/usr/bin/cad_desktop" "$@"' >> hydracad-linux-portable/run.sh
+          ( echo '#!/bin/sh'; echo 'SELF="$(dirname "$0")"'; echo 'for d in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do [ -d "$d" ] && export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$d"; done'; echo 'exec "$SELF/usr/bin/cad_desktop" "$@"' ) > hydracad-linux-portable/run.sh
           chmod +x hydracad-linux-portable/run.sh
+          echo "Hydra CAD – Portable Linux. Voraussetzung: Qt6 (qt6-base / libqt6) installieren. Start: ./run.sh" > hydracad-linux-portable/README.txt
           tar czvf hydracad-linux-portable.tar.gz -C hydracad-linux-portable .
 
       - name: Prepare AppImage for upload

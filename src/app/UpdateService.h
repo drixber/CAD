@@ -37,9 +37,11 @@ public:
     UpdateInfo getLatestUpdateInfo() const;
     bool isUpdateAvailable() const;
     
-    // Update downloading
-    bool downloadUpdate(const UpdateInfo& update_info, 
-                       std::function<void(const UpdateProgress&)> progress_callback = nullptr);
+    // Update downloading. If target_file_path is non-empty, download there (e.g. user writable dir);
+    // otherwise save as "update_<version>.exe" in current directory.
+    bool downloadUpdate(const UpdateInfo& update_info,
+                       std::function<void(const UpdateProgress&)> progress_callback = nullptr,
+                       const std::string& target_file_path = std::string());
     bool installUpdate(const std::string& update_file_path);
     
     // In-place update installation (without full reinstall)

@@ -1,5 +1,29 @@
 # Changelog - Hydra CAD
 
+## [3.0.12] - 2026-01-27
+
+### Added
+- Update-Dialog: Changelog aus GitHub-API (Release-Body), Fallback „Siehe Release-Seite“
+- Update-Checker: flexible Asset-Namen (HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz) für direkten Download
+- Dynamischer Dateiname beim Update-Download aus Asset-URL; unter Windows nur bei .exe automatischer Installer-Start, sonst Hinweis zum manuellen Entpacken/Ausführen
+- GitHub-Workflow „Release bei Tag-Push erstellen“ (create-release-on-tag.yml) für automatisches Release bei Tag v*
+- Workflow „Release – Assets anhängen“: manueller Trigger (workflow_dispatch) mit tag_name zum Nachziehen von Assets
+- AUR-Skript packaging/arch/aur-upload.sh für automatische AUR-Paketaktualisierung
+- Dokumentation: RELEASE_RUNDUMFLUG.md (Checkliste bis neues Release), INSTALLATION.md erweitert (Release-Troubleshooting)
+
+### Changed
+- ThemeManager: moderneres UI (Dialoge, ProgressBar, CheckBox, Ribbon, Buttons, Listen, Statusleiste, Scrollbars) mit einheitlicher Palette und Border-Radius
+- QtUpdateDialog: Hardcoded-Farben durch ThemeManager-Palette ersetzt (inkl. Dark Mode)
+- Arbeitsverzeichnis der App beim Start auf Installationsverzeichnis gesetzt (verhindert „schwarzes Fenster“ nach Update)
+- Linux .desktop: Icon=applications-engineering, TryExec=cad_desktop
+
+### Fixed
+- Qt6-Deprecations: QMouseEvent::x()/y() → position().x()/y() (Viewport3D); QCryptographicHash::addData mit QByteArrayView (UserAuthService)
+- tmpnam durch portable Temp-Datei (std::filesystem::temp_directory_path + std::random_device) in GrokProvider und OpenAIProvider ersetzt
+- create-release-on-tag: actions/checkout@v4 ergänzt („not a git repository“ behoben)
+
+---
+
 ## [3.0.5] - 2026-01-27
 
 ### Changed
@@ -69,5 +93,5 @@
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 3.0.12  
 **Status**: Produktionsbereit ✅

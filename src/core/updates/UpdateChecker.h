@@ -12,6 +12,8 @@ struct UpdateInfo {
     /** Direct download URL for an asset (e.g. HydraCADSetup.exe or app-windows.zip). Empty if none found. */
     std::string assetDownloadUrl;
     std::string latestTag;
+    /** Release notes body from GitHub (markdown/text). Empty if not parsed. */
+    std::string body;
     std::string error;
 };
 

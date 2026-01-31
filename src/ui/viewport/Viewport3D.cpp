@@ -437,20 +437,20 @@ void Viewport3D::resizeEvent(QResizeEvent* event) {
 void Viewport3D::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         is_dragging_ = true;
-        last_mouse_x_ = event->x();
-        last_mouse_y_ = event->y();
+        last_mouse_x_ = static_cast<int>(event->position().x());
+        last_mouse_y_ = static_cast<int>(event->position().y());
         drag_mode_ = "orbit";  // Default to orbit
         
         if (selection_enabled_) {
-            std::string object_id = pickObjectAt(event->x(), event->y());
+            std::string object_id = pickObjectAt(static_cast<int>(event->position().x()), static_cast<int>(event->position().y()));
             if (!object_id.empty()) {
                 selectObject(object_id);
             }
         }
     } else if (event->button() == Qt::MiddleButton) {
         is_dragging_ = true;
-        last_mouse_x_ = event->x();
-        last_mouse_y_ = event->y();
+        last_mouse_x_ = static_cast<int>(event->position().x());
+        last_mouse_y_ = static_cast<int>(event->position().y());
         drag_mode_ = "pan";
     }
     QWidget::mousePressEvent(event);
@@ -458,8 +458,8 @@ void Viewport3D::mousePressEvent(QMouseEvent* event) {
 
 void Viewport3D::mouseMoveEvent(QMouseEvent* event) {
     if (is_dragging_) {
-        int dx = event->x() - last_mouse_x_;
-        int dy = event->y() - last_mouse_y_;
+        int dx = static_cast<int>(event->position().x()) - last_mouse_x_;
+        int dy = static_cast<int>(event->position().y()) - last_mouse_y_;
         
         if (drag_mode_ == "orbit") {
             // Rotate camera around target
@@ -491,8 +491,8 @@ void Viewport3D::mouseMoveEvent(QMouseEvent* event) {
             setCamera(camera_);
         }
         
-        last_mouse_x_ = event->x();
-        last_mouse_y_ = event->y();
+        last_mouse_x_ = static_cast<int>(event->position().x());
+        last_mouse_y_ = static_cast<int>(event->position().y());
     }
     QWidget::mouseMoveEvent(event);
 }

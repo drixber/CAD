@@ -1,12 +1,29 @@
 # Hydra CAD – Build unter Linux (Ubuntu, Debian, Fedora)
 
-Linux-Build ist **experimentell** und **im Hintergrund** – es gibt keine offiziellen Linux-Releases. Diese Anleitung ermöglicht das Bauen und Weiterentwickeln aus dem Quellcode.
-
 **Arch Linux:** Siehe [BUILD_ARCH.md](BUILD_ARCH.md) (Pacman, PKGBUILD).
 
 ---
 
-## Voraussetzungen
+## Installation von der Release-Seite (portable Tarball)
+
+Wenn auf der [GitHub-Release-Seite](https://github.com/drixber/CAD/releases) ein **hydracad-linux-portable.tar.gz** liegt:
+
+1. **Tarball herunterladen** und entpacken:
+   ```bash
+   tar xzf hydracad-linux-portable.tar.gz
+   cd hydracad-linux-portable   # oder der entpackte Ordner
+   ```
+2. **Qt6 installieren** (falls noch nicht vorhanden):
+   - **Ubuntu/Debian:** `sudo apt install qt6-base-dev` (oder `libqt6core6` für nur Laufzeit)
+   - **Fedora:** `sudo dnf install qt6-qtbase`
+   - **Arch:** `sudo pacman -S qt6-base`
+3. **Starten:** `./run.sh` (oder `usr/bin/cad_desktop`)
+
+Die Datei **README.txt** im Ordner enthält dieselbe Kurzanleitung.
+
+---
+
+## Aus dem Quellcode bauen (Voraussetzungen)
 
 ### Ubuntu / Debian
 
@@ -79,8 +96,15 @@ sudo cmake --install .
 
 ---
 
+## Troubleshooting
+
+- **„cannot open shared object file“ / Qt-Bibliotheken fehlen:** Qt6 installieren (siehe oben). `./run.sh` setzt `LD_LIBRARY_PATH` auf typische Lib-Pfade; bei eigener Qt-Installation ggf. `export LD_LIBRARY_PATH=/pfad/zu/qt/lib` vor `./run.sh`.
+- **Kein Start / schwarzes Fenster:** Grafiktreiber und OpenGL prüfen; Logs unter **Settings → Diagnostics** in der App.
+
+---
+
 ## Verweise
 
 - [BUILD_ARCH.md](BUILD_ARCH.md) – Arch Linux (Pacman, PKGBUILD)
 - [INSTALLATION.md](INSTALLATION.md) – Allgemeine Installation
-- [TODO_LINUX.md](TODO_LINUX.md) – Linux-Status (im Hintergrund, nicht produktionsfertig)
+- [TODO_LINUX.md](TODO_LINUX.md) – Linux-Status
