@@ -42,6 +42,7 @@ bool AppController::initializeWithLogin() {
                     if (remember) {
                         user_auth_service_.saveSession(username.toStdString(), true);
                     }
+                    login_dialog.accept();
                 } else {
                     QMessageBox::warning(&login_dialog, QObject::tr("Login Failed"), 
                                        QString::fromStdString(result.error_message));
@@ -91,8 +92,6 @@ bool AppController::initializeWithLogin() {
     return requireLogin();
     #endif
     
-    // Initialize application after successful login
-    initialize();
     return true;
 }
 

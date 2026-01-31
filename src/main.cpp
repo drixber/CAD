@@ -4,6 +4,10 @@
 #include <QTranslator>
 #include <QCoreApplication>
 #include <QIcon>
+#include <QColor>
+#include <QPainter>
+#include <QPixmap>
+#include <QSplashScreen>
 
 #include "app/AppController.h"
 #include "app/CADApplication.h"
@@ -34,6 +38,22 @@ int main(int argc, char** argv) {
         return 1;  // User cancelled login
     }
 
+    // Show a simple loading screen while initializing
+    QPixmap splash_pixmap(480, 260);
+    splash_pixmap.fill(QColor(20, 20, 20));
+    QPainter painter(&splash_pixmap);
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 20, QFont::Bold));
+    painter.drawText(splash_pixmap.rect().adjusted(0, -20, 0, -20), Qt::AlignCenter, "Hydra CAD");
+    painter.setFont(QFont("Arial", 12));
+    painter.drawText(splash_pixmap.rect().adjusted(0, 50, 0, 0), Qt::AlignCenter, "Loading...");
+    painter.end();
+
+    QSplashScreen splash(splash_pixmap);
+    splash.setWindowFlag(Qt::WindowStaysOnTopHint, true);
+    splash.show();
+    qt_app.processEvents();
+
     // Apply modern theme
     #ifdef CAD_USE_QT
     cad::ui::ThemeManager& theme = cad::ui::ThemeManager::instance();
@@ -45,12 +65,15 @@ int main(int argc, char** argv) {
     }
     #endif
 
+    controller.initialize();
+
     cad::ui::MainWindow& main_window = controller.mainWindow();
 #ifdef CAD_USE_QT
     if (main_window.hasNativeWindow()) {
         main_window.nativeWindow()->show();
     }
 #endif
+    splash.finish(main_window.hasNativeWindow() ? main_window.nativeWindow() : nullptr);
 
     int result = qt_app.exec();
     application.shutdown();

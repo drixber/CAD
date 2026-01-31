@@ -146,17 +146,20 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     });
 
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
+    browserDock->setObjectName("dock_model_browser");
     browserDock->setWidget(browser_tree_);
     addDockWidget(Qt::LeftDockWidgetArea, browserDock);
     browserDock->setMinimumWidth(220);
 
     QDockWidget* propertyDock = new QDockWidget(tr("Properties"), this);
+    propertyDock->setObjectName("dock_properties");
     propertyDock->setWidget(property_panel_);
     addDockWidget(Qt::RightDockWidgetArea, propertyDock);
     propertyDock->setMinimumWidth(280);
     propertyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     QDockWidget* agentDock = new QDockWidget(tr("AI Console"), this);
+    agentDock->setObjectName("dock_ai_console");
     agentDock->setWidget(agent_console_);
     addDockWidget(Qt::RightDockWidgetArea, agentDock);
     agentDock->setMinimumWidth(280);
@@ -165,6 +168,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     // AI Chat Panel (new modern chat interface)
     ai_chat_panel_ = new QtAIChatPanel(this);
     QDockWidget* aiChatDock = new QDockWidget(tr("AI Chat"), this);
+    aiChatDock->setObjectName("dock_ai_chat");
     aiChatDock->setWidget(ai_chat_panel_);
     addDockWidget(Qt::RightDockWidgetArea, aiChatDock);
     aiChatDock->setMinimumWidth(320);
@@ -173,11 +177,13 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     aiChatDock->raise(); // Show AI Chat by default
 
     QDockWidget* thoughtsDock = new QDockWidget(tr("Agent Thoughts"), this);
+    thoughtsDock->setObjectName("dock_agent_thoughts");
     thoughtsDock->setWidget(agent_thoughts_);
     addDockWidget(Qt::BottomDockWidgetArea, thoughtsDock);
     thoughtsDock->setAllowedAreas(Qt::BottomDockWidgetArea);
 
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
+    logDock->setObjectName("dock_log");
     logDock->setWidget(log_panel_);
     addDockWidget(Qt::BottomDockWidgetArea, logDock);
     logDock->setAllowedAreas(Qt::BottomDockWidgetArea);
@@ -218,6 +224,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     // Layout will be saved in closeEvent
 
     QDockWidget* perfDock = new QDockWidget(tr("Performance"), this);
+    perfDock->setObjectName("dock_performance");
     perfDock->setWidget(perf_panel_);
     addDockWidget(Qt::BottomDockWidgetArea, perfDock);
     perfDock->setAllowedAreas(Qt::BottomDockWidgetArea);
