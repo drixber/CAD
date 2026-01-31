@@ -85,6 +85,7 @@ jobs:
             throw "Qt6_DIR not set by install-qt-action."
           }
           $candidateBins = @(
+            (Join-Path $env:Qt6_DIR "bin"),
             (Join-Path $env:Qt6_DIR "..\\..\\..\\bin"),
             (Join-Path $env:Qt6_DIR "..\\..\\bin"),
             (Join-Path $env:Qt6_DIR "..\\bin")

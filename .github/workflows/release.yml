@@ -83,6 +83,7 @@ jobs:
           exit 1
         }
         $candidateBins = @(
+          (Join-Path $env:Qt6_DIR "bin"),
           (Join-Path $env:Qt6_DIR "..\\..\\..\\bin"),
           (Join-Path $env:Qt6_DIR "..\\..\\bin"),
           (Join-Path $env:Qt6_DIR "..\\bin")
