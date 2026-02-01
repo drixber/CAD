@@ -52,8 +52,13 @@ build() {
 
 package() {
   cd "\${srcdir}/${GITHUB_REPO}-\${pkgver}"
-  install -Dm755 build/${BINNAME} -t "\${pkgdir}/usr/bin"
-  ln -s ${BINNAME} "\${pkgdir}/usr/bin/${PKGNAME}"
+  if [ -f packaging/linux/cad_desktop.wrapper ]; then
+    install -Dm755 build/${BINNAME} -t "\${pkgdir}/usr/lib/hydracad"
+    install -Dm755 packaging/linux/cad_desktop.wrapper "\${pkgdir}/usr/bin/cad_desktop"
+  else
+    install -Dm755 build/${BINNAME} -t "\${pkgdir}/usr/bin"
+  fi
+  ln -s cad_desktop "\${pkgdir}/usr/bin/${PKGNAME}"
   install -Dm644 packaging/linux/HydraCAD.desktop -t "\${pkgdir}/usr/share/applications"
   install -Dm644 installer/license.txt "\${pkgdir}/usr/share/licenses/\${pkgname}/LICENSE"
 }

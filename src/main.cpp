@@ -21,6 +21,7 @@
 #include <string>
 #include <exception>
 #include <cstdlib>
+#include <cstdio>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -125,6 +126,8 @@ bool preflightCheckWindows(const std::filesystem::path& exe_dir) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    fprintf(stderr, "Hydra CAD: main() start\n");
+    fflush(stderr);
     std::filesystem::path exe_dir;
     try {
         std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
