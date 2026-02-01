@@ -12,8 +12,9 @@
 #include "geometry3d/CylinderSurface.h"
 #include "geometry3d/SphereSurface.h"
 #include "math/Transform3.h"
-#include <memory>
+#include <algorithm>
 #include <cmath>
+#include <memory>
 #include <vector>
 
 namespace cad {

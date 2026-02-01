@@ -2,6 +2,7 @@
 #include "topology/Face.h"
 #include "topology/Edge.h"
 #include "topology/Vertex.h"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 

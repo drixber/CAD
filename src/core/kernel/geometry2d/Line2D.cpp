@@ -1,4 +1,5 @@
 #include "geometry2d/Line2D.h"
+#include <algorithm>
 #include <cmath>
 
 namespace cad {
