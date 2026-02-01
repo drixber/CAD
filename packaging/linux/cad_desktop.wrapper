@@ -1,0 +1,12 @@
+#!/bin/sh
+# Hydra CAD – ein Launcher: Build nutzen wenn vorhanden, sonst installierte Version.
+# Wayland: XCB erzwingen, damit SoQt/Coin3D 3D-Viewport funktioniert.
+if [ -z "$QT_QPA_PLATFORM" ] && [ -n "$WAYLAND_DISPLAY" ]; then
+  export QT_QPA_PLATFORM=xcb
+fi
+BUILD="${HYDRACAD_BUILD:-$HOME/GitHub/CAD/build}"
+if [ -x "$BUILD/cad_desktop" ]; then
+  cd "$BUILD" && exec ./cad_desktop "$@"
+fi
+# Immer ins Binary-Verzeichnis wechseln, damit Start aus Menü/Launcher funktioniert (CWD sonst oft $HOME).
+cd /usr/lib/hydracad && exec ./cad_desktop "$@"

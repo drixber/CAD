@@ -21,7 +21,12 @@
 #include <string>
 #include <exception>
 #include <cstdlib>
+#include <cstdio>
 
+#ifdef __linux__
+#include <unistd.h>
+#include <stdlib.h>  /* setenv, getenv (POSIX) */
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -122,20 +127,72 @@ bool preflightCheckWindows(const std::filesystem::path& exe_dir) {
     return true;
 }
 #endif
+
+#ifdef __linux__
+// Resolve real executable path so the app works when started from desktop/launcher
+// (argv[0] may be just "cad_desktop" or a path relative to wrong CWD).
+std::filesystem::path getLinuxExeDir() {
+    char buf[4096];
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n <= 0) return {};
+    buf[n] = '\0';
+    std::filesystem::path exe_path(buf);
+    return exe_path.parent_path();
+}
+#endif
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef __linux__
+    (void)write(2, "Hydra CAD: main() start\n", 23);
+    (void)write(2, "Hydra CAD: before path\n", 22);
+#endif
     std::filesystem::path exe_dir;
+#ifdef __linux__
+    (void)write(2, "Hydra CAD: after path\n", 21);
+#endif
     try {
-        std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
-        exe_dir = exe_path.parent_path();
-        const QByteArray plugin_root = QByteArray::fromStdString(exe_dir.string());
-        const QByteArray platform_path = QByteArray::fromStdString((exe_dir / "platforms").string());
-        qputenv("QT_PLUGIN_PATH", plugin_root);
-        qputenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path);
+#ifdef __linux__
+        (void)write(2, "Hydra CAD: in try, getLinuxExeDir\n", 34);
+#endif
+#ifdef __linux__
+        exe_dir = getLinuxExeDir();
+        fprintf(stderr, "Hydra CAD: exe_dir from /proc/self/exe = %s\n", exe_dir.empty() ? "(empty)" : exe_dir.string().c_str());
+        fflush(stderr);
+        if (exe_dir.empty())
+#endif
+        {
+            std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
+            exe_dir = exe_path.parent_path();
+            fprintf(stderr, "Hydra CAD: exe_dir from argv[0] = %s\n", exe_dir.string().c_str());
+            fflush(stderr);
+        }
+        const std::filesystem::path platform_path = exe_dir / "platforms";
+        // Only override Qt plugin paths when we ship our own (e.g. portable/Windows).
+        if (std::filesystem::is_directory(platform_path)) {
+            const std::string plugin_root = exe_dir.string();
+            const std::string platform_path_env = platform_path.string();
+            setenv("QT_PLUGIN_PATH", plugin_root.c_str(), 1);
+            setenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path_env.c_str(), 1);
+        }
+    } catch (const std::exception& e) {
+        fprintf(stderr, "Hydra CAD: exception in path setup: %s\n", e.what());
+        fflush(stderr);
     } catch (...) {
-        // If path resolution fails, let Qt use default search paths.
+        fprintf(stderr, "Hydra CAD: unknown exception in path setup\n");
+        fflush(stderr);
     }
+
+    fprintf(stderr, "Hydra CAD: before Wayland check\n");
+    fflush(stderr);
+#ifdef __linux__
+    // SoQt/Coin3D often crash or fail to create OpenGL context on native Wayland.
+    if (!getenv("QT_QPA_PLATFORM") && getenv("WAYLAND_DISPLAY")) {
+        setenv("QT_QPA_PLATFORM", "xcb", 1);
+    }
+#endif
+    fprintf(stderr, "Hydra CAD: before QApplication\n");
+    fflush(stderr);
 
 #ifdef _WIN32
     if (!exe_dir.empty() && !preflightCheckWindows(exe_dir)) {
@@ -143,11 +200,19 @@ int main(int argc, char** argv) {
     }
 #endif
 
+    fprintf(stderr, "Hydra CAD: before QApplication\n");
+    fflush(stderr);
     QApplication qt_app(argc, argv);
+    fprintf(stderr, "Hydra CAD: after QApplication, CWD=%s\n", QDir::currentPath().toUtf8().constData());
+    fflush(stderr);
     // Ensure working directory is the application directory so plugins, resources and
     // relative paths resolve correctly regardless of how the app was started (shortcut,
-    // installer "Run", etc.). Fixes black window / "run as admin" required after update.
-    QDir::setCurrent(QCoreApplication::applicationDirPath());
+    // file manager, launcher with argv[0] just the program name, etc.).
+    if (!exe_dir.empty()) {
+        QDir::setCurrent(QString::fromStdString(exe_dir.string()));
+    } else {
+        QDir::setCurrent(QCoreApplication::applicationDirPath());
+    }
     setupStartupLogging();
 
     std::set_terminate([]() {
@@ -162,6 +227,8 @@ int main(int argc, char** argv) {
                 message = "Unhandled exception: unknown";
             }
         }
+        fprintf(stderr, "Hydra CAD FATAL: %s\n", message.toUtf8().constData());
+        fflush(stderr);
         writeCrashLog(message);
         std::_Exit(1);
     });
@@ -192,10 +259,16 @@ int main(int argc, char** argv) {
     cad::app::AppController controller;
     application.setController(&controller);
     
+    fprintf(stderr, "Hydra CAD: before initializeWithLogin\n");
+    fflush(stderr);
     // Require login before initializing
     if (!controller.initializeWithLogin()) {
+        fprintf(stderr, "Hydra CAD: initializeWithLogin returned false, exiting\n");
+        fflush(stderr);
         return 1;  // User cancelled login
     }
+    fprintf(stderr, "Hydra CAD: after initializeWithLogin\n");
+    fflush(stderr);
 
     // Show a simple loading screen while initializing
     QPixmap splash_pixmap(480, 260);
@@ -232,10 +305,22 @@ int main(int argc, char** argv) {
     cad::ui::MainWindow& main_window = controller.mainWindow();
 #ifdef CAD_USE_QT
     if (main_window.hasNativeWindow()) {
-        main_window.nativeWindow()->show();
+        QWidget* win = main_window.nativeWindow();
+        win->show();
+        win->raise();
+        win->activateWindow();
     }
 #endif
     splash.finish(main_window.hasNativeWindow() ? main_window.nativeWindow() : nullptr);
+#ifdef CAD_USE_QT
+    // Ensure main window stays visible after splash (e.g. under XWayland)
+    if (main_window.hasNativeWindow()) {
+        QWidget* win = main_window.nativeWindow();
+        win->raise();
+        win->activateWindow();
+        qt_app.processEvents();
+    }
+#endif
 
     int result = qt_app.exec();
     application.shutdown();

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Hydra CAD
+Comment=Hydra CAD – startet aus dem Build-Verzeichnis
+Exec=/home/herd/GitHub/CAD/build/cad_desktop %F
+Path=/home/herd/GitHub/CAD/build
+TryExec=/home/herd/GitHub/CAD/build/cad_desktop
+Icon=HydraCAD
+Categories=Graphics;Engineering;
+Terminal=false

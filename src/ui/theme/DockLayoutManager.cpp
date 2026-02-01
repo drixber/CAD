@@ -93,28 +93,23 @@ QString DockLayoutManager::getLayoutKey(const QString& layoutName) const {
 
 void DockLayoutManager::applyInventorLayout(QMainWindow* window) {
     if (!window) return;
-    
-    // Inventor-style: Browser left, Properties right, Viewport center
-    // This is already the default, but we ensure it's set correctly
-    restoreDefaultLayout(window);
+    if (!restoreDefaultLayout(window)) {
+        saveDefaultLayout(window);
+    }
 }
 
 void DockLayoutManager::applySolidWorksLayout(QMainWindow* window) {
     if (!window) return;
-    
-    // SolidWorks-style: FeatureManager left, Properties right, TaskPane right
-    // Similar to Inventor but with different panel organization
-    restoreDefaultLayout(window);
-    // Additional customization can be added here
+    if (!restoreDefaultLayout(window)) {
+        saveDefaultLayout(window);
+    }
 }
 
 void DockLayoutManager::applyCATIALayout(QMainWindow* window) {
     if (!window) return;
-    
-    // CATIA-style: Specification tree left, Properties bottom
-    // Different organization with more emphasis on tree view
-    restoreDefaultLayout(window);
-    // Additional customization can be added here
+    if (!restoreDefaultLayout(window)) {
+        saveDefaultLayout(window);
+    }
 }
 
 QStringList DockLayoutManager::getAvailableTemplates() const {

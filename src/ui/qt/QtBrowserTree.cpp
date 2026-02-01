@@ -4,6 +4,20 @@
 #include <QIcon>
 #include <QMenu>
 #include <QTreeWidgetItem>
+#include <QAbstractItemView>
+
+namespace {
+void setItemVisibility(QTreeWidgetItem* item, const QString& filter) {
+    if (!item) return;
+    bool childVisible = false;
+    for (int i = 0; i < item->childCount(); ++i) {
+        setItemVisibility(item->child(i), filter);
+        if (!item->child(i)->isHidden()) childVisible = true;
+    }
+    bool match = filter.isEmpty() || item->text(0).contains(filter, Qt::CaseInsensitive);
+    item->setHidden(!match && !childVisible);
+}
+}  // namespace
 
 namespace cad {
 namespace ui {
@@ -21,7 +35,10 @@ QtBrowserTree::QtBrowserTree(QWidget* parent) : QTreeWidget(parent) {
     setHeaderHidden(true);
     setColumnWidth(1, 24);
     setContextMenuPolicy(Qt::CustomContextMenu);
+    setSelectionMode(QAbstractItemView::SingleSelection);
+    setSelectionBehavior(QAbstractItemView::SelectItems);
     connect(this, &QTreeWidget::customContextMenuRequested, this, &QtBrowserTree::showContextMenu);
+    connect(this, &QTreeWidget::itemSelectionChanged, this, &QtBrowserTree::onSelectionChanged);
 
     QIcon eyeIcon = QIcon::fromTheme("view-visible");
     if (eyeIcon.isNull() && QFile::exists(":/icons/view/shaded.svg")) {
@@ -134,6 +151,25 @@ QtBrowserTree::QtBrowserTree(QWidget* parent) : QTreeWidget(parent) {
     connect(this, &QTreeWidget::itemDoubleClicked, this, &QtBrowserTree::onItemDoubleClicked);
 }
 
+void QtBrowserTree::onSelectionChanged() {
+    QList<QTreeWidgetItem*> selected = selectedItems();
+    if (selected.isEmpty()) {
+        emit nodeSelectionChanged(QString(), QString());
+        return;
+    }
+    QTreeWidgetItem* item = selected.first();
+    QStringList path;
+    for (QTreeWidgetItem* p = item; p; p = p->parent()) {
+        QString text = p->text(0);
+        if (!text.isEmpty()) {
+            path.prepend(text);
+        }
+    }
+    QString breadcrumb = path.join(" > ");
+    QString nodeName = item->text(0);
+    emit nodeSelectionChanged(breadcrumb, nodeName);
+}
+
 void QtBrowserTree::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
     Q_UNUSED(column);
     if (!item || !command_handler_) return;
@@ -146,6 +182,11 @@ void QtBrowserTree::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
 
 void QtBrowserTree::setCommandHandler(const std::function<void(const QString&)>& handler) {
     command_handler_ = handler;
+}
+
+void QtBrowserTree::setFilterText(const QString& text) {
+    if (!root_) return;
+    setItemVisibility(root_, text);
 }
 
 void QtBrowserTree::showContextMenu(const QPoint& pos) {

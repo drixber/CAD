@@ -19,10 +19,17 @@ public:
     void setWorkPlanes(const QStringList& names);
     void setWorkAxes(const QStringList& names);
     void setWorkPoints(const QStringList& names);
+    /** Filter tree by text (case-insensitive); empty string shows all. */
+    void setFilterText(const QString& text);
+
+signals:
+    /** Emitted when the user selects an item (single click). breadcrumb = path like "Model > Sketches", nodeName = selected item text. */
+    void nodeSelectionChanged(const QString& breadcrumb, const QString& nodeName);
 
 private slots:
     void showContextMenu(const QPoint& pos);
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
+    void onSelectionChanged();
 
 private:
     std::function<void(const QString&)> command_handler_;

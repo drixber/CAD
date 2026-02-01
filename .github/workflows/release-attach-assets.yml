@@ -14,9 +14,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag (z. B. v3.0.16) – nur bei manueller Ausführung'
+        description: 'Tag (z. B. v3.0.20) – nur bei manueller Ausführung'
         required: true
-        default: 'v3.0.16'
+        default: 'v3.0.20'
 
 jobs:
   build-windows:

@@ -36,7 +36,7 @@ QtRibbon::QtRibbon(QWidget* parent) : QTabWidget(parent) {
          {{tr("Create"), {"Line", "Rectangle", "Circle", "Arc"}},
           {tr("Constraints"), {"Constraint"}}},
          tr("Create sketches and constraints")},
-        {tr("3D Model"),
+        {tr("Part"),
          {{tr("Features"), {"Extrude", "Revolve", "Loft", "Hole", "HoleThroughAll", "Fillet", "Chamfer", "Shell", "Mirror"}},
           {tr("Sheet Metal"), {"Flange", "Bend", "Unfold", "Refold", "Punch", "Bead", "SheetMetalRules", "ExportFlatDXF"}},
           {tr("Pattern"), {"RectangularPattern", "CircularPattern", "CurvePattern", "FacePattern"}},
@@ -447,12 +447,15 @@ QWidget* QtRibbon::buildCommandTab(const QString& title,
 QWidget* QtRibbon::buildGroup(const QString& name, const QStringList& command_ids) {
     QFrame* frame = new QFrame(this);
     frame->setObjectName("ribbonGroup");
+    frame->setMinimumHeight(100);
+    frame->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
     QVBoxLayout* layout = new QVBoxLayout(frame);
     layout->setContentsMargins(8, 6, 8, 6);
     layout->setSpacing(4);
     QLabel* groupLabel = new QLabel(name, frame);
     groupLabel->setObjectName("ribbonGroupLabel");
     layout->addWidget(groupLabel, 0, Qt::AlignHCenter);
+    // Every button (all tabs: Sketch, Part, Assembly, Drawing, Inspect, Manage, View) gets explicit clicked connect
     for (const auto& id : command_ids) {
         if (id == "Extrude") {
             QToolButton* dropdown = new QToolButton(frame);
@@ -462,11 +465,26 @@ QWidget* QtRibbon::buildGroup(const QString& name, const QStringList& command_id
             dropdown->setIconSize(QSize(32, 32));
             dropdown->setMinimumSize(56, 52);
             dropdown->setPopupMode(QToolButton::MenuButtonPopup);
+            connect(dropdown, &QToolButton::clicked, this, [this]() {
+                if (command_handler_) command_handler_(QStringLiteral("Extrude"));
+            });
             QMenu* menu = new QMenu(dropdown);
-            menu->addAction(registerAction("Extrude", tr("Normal")));
-            menu->addAction(registerAction("ExtrudeReverse", tr("Reverse")));
-            menu->addAction(registerAction("ExtrudeBoth", tr("Both")));
+            QAction* actNormal = registerAction("Extrude", tr("Normal"));
+            QAction* actReverse = registerAction("ExtrudeReverse", tr("Reverse"));
+            QAction* actBoth = registerAction("ExtrudeBoth", tr("Both"));
+            menu->addAction(actNormal);
+            menu->addAction(actReverse);
+            menu->addAction(actBoth);
             dropdown->setMenu(menu);
+            connect(actNormal, &QAction::triggered, this, [this]() {
+                if (command_handler_) command_handler_(QStringLiteral("Extrude"));
+            });
+            connect(actReverse, &QAction::triggered, this, [this]() {
+                if (command_handler_) command_handler_(QStringLiteral("ExtrudeReverse"));
+            });
+            connect(actBoth, &QAction::triggered, this, [this]() {
+                if (command_handler_) command_handler_(QStringLiteral("ExtrudeBoth"));
+            });
             layout->addWidget(dropdown, 0, Qt::AlignHCenter);
             continue;
         }
@@ -476,6 +494,11 @@ QWidget* QtRibbon::buildGroup(const QString& name, const QStringList& command_id
         button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
         button->setIconSize(QSize(32, 32));
         button->setMinimumSize(56, 52);
+        connect(button, &QToolButton::clicked, this, [this, id]() {
+            if (command_handler_) {
+                command_handler_(id);
+            }
+        });
         layout->addWidget(button, 0, Qt::AlignHCenter);
     }
     frame->setLayout(layout);
