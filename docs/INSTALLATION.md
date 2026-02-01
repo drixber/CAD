@@ -203,6 +203,14 @@ ctest --test-dir build -C Release
 - Visual C++ Redistributable (z. B. VC++ 2015–2022) installieren
 - Logs prüfen: **Settings → Diagnostics → Open Logs Folder** bzw. **Show Startup Log**
 
+### Fenster erscheint nicht unter Wayland (Linux)
+
+Unter Wayland nutzt Hydra CAD automatisch **XCB** (XWayland), damit der 3D-Viewport (SoQt/Coin3D) zuverlässig startet. Dafür setzt die Anwendung bei erkanntem Wayland `QT_QPA_PLATFORM=xcb`, sofern Sie es nicht selbst gesetzt haben. Die Desktop-Datei setzt ebenfalls `env QT_QPA_PLATFORM=xcb`. Wenn das Fenster trotzdem nicht erscheint, starten Sie manuell mit:
+
+```bash
+QT_QPA_PLATFORM=xcb /usr/bin/cad_desktop
+```
+
 ### Schwarzes Fenster / nur Terminal nach Update – „Als Administrator“ nötig
 
 Wenn nach einem Update nur ein schwarzes Fenster erscheint und die Anwendung erst nach „Als Administrator ausführen“ startet, lag das an einem falschen Arbeitsverzeichnis beim Start. Ab der aktuellen Version:

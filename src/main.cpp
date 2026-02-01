@@ -137,6 +137,14 @@ int main(int argc, char** argv) {
         // If path resolution fails, let Qt use default search paths.
     }
 
+#ifdef __linux__
+    // SoQt/Coin3D often crash or fail to create OpenGL context on native Wayland.
+    // Force XCB (XWayland) when in a Wayland session so the 3D viewport works.
+    if (qgetenv("QT_QPA_PLATFORM").isEmpty() && !qgetenv("WAYLAND_DISPLAY").isEmpty()) {
+        qputenv("QT_QPA_PLATFORM", "xcb");
+    }
+#endif
+
 #ifdef _WIN32
     if (!exe_dir.empty() && !preflightCheckWindows(exe_dir)) {
         return 1;
@@ -232,10 +240,22 @@ int main(int argc, char** argv) {
     cad::ui::MainWindow& main_window = controller.mainWindow();
 #ifdef CAD_USE_QT
     if (main_window.hasNativeWindow()) {
-        main_window.nativeWindow()->show();
+        QWidget* win = main_window.nativeWindow();
+        win->show();
+        win->raise();
+        win->activateWindow();
     }
 #endif
     splash.finish(main_window.hasNativeWindow() ? main_window.nativeWindow() : nullptr);
+#ifdef CAD_USE_QT
+    // Ensure main window stays visible after splash (e.g. under XWayland)
+    if (main_window.hasNativeWindow()) {
+        QWidget* win = main_window.nativeWindow();
+        win->raise();
+        win->activateWindow();
+        qt_app.processEvents();
+    }
+#endif
 
     int result = qt_app.exec();
     application.shutdown();

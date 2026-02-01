@@ -1,0 +1,7 @@
+#!/bin/sh
+# Hydra CAD launcher: force XCB on Wayland so SoQt/Coin3D 3D viewport works.
+# Use this as /usr/bin/cad_desktop so the app starts from menu and terminal.
+if [ -z "$QT_QPA_PLATFORM" ] && [ -n "$WAYLAND_DISPLAY" ]; then
+  export QT_QPA_PLATFORM=xcb
+fi
+exec /usr/lib/hydracad/cad_desktop "$@"

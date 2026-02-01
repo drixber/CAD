@@ -2,7 +2,7 @@
 Type=Application
 Name=Hydra CAD
 Comment=Professional CAD Application
-Exec=cad_desktop
+Exec=cad_desktop %F
 TryExec=cad_desktop
 Icon=HydraCAD
 Categories=Graphics;Engineering;

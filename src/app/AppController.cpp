@@ -510,6 +510,7 @@ void AppController::syncAssemblyTransformsToViewport() {
         cad::core::Transform t = active_assembly_.getDisplayTransform(components[i].id);
         vp->setComponentTransform(comp_ids[i], t.tx, t.ty, t.tz);
     }
+    vp->updateView();
 #endif
 }
 
@@ -731,6 +732,7 @@ void AppController::executeCommand(const std::string& command) {
         welding_service_.addWeld("MainAssembly", weld);
         main_window_.setIntegrationStatus("Weld added: " + weld.symbol);
         main_window_.setViewportStatus("Schweißnaht: Kehlnaht 5 mm");
+        syncAssemblyTransformsToViewport();
     } else if (command == "WeldBOM") {
         std::vector<cad::modules::WeldBomItem> bom = welding_service_.getWeldBom("MainAssembly");
         if (bom.empty()) {
@@ -1146,6 +1148,7 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("Mate constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
             updateAssemblyConstraintStatus();
+            syncAssemblyTransformsToViewport();
         }
     } else if (command == "LoadAssembly") {
         assembly_manager_.enqueueLoad("MainAssembly");
@@ -1455,6 +1458,7 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("Flush constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
             updateAssemblyConstraintStatus();
+            syncAssemblyTransformsToViewport();
         } else {
             main_window_.setIntegrationStatus("Flush: Need at least 2 components");
             main_window_.setViewportStatus("Add components first");
@@ -1471,6 +1475,7 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("Angle constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
             updateAssemblyConstraintStatus();
+            syncAssemblyTransformsToViewport();
         } else {
             main_window_.setIntegrationStatus("Angle: Need at least 2 components");
             main_window_.setViewportStatus("Add components first");
@@ -1486,6 +1491,7 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("Parallel constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
             updateAssemblyConstraintStatus();
+            syncAssemblyTransformsToViewport();
         } else {
             main_window_.setIntegrationStatus("Parallel: Need at least 2 components");
             main_window_.setViewportStatus("Add components first");
@@ -1501,6 +1507,7 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setViewportStatus("Distance constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
             updateAssemblyConstraintStatus();
+            syncAssemblyTransformsToViewport();
         } else {
             main_window_.setIntegrationStatus("Distance: Need at least 2 components");
             main_window_.setViewportStatus("Add components first");
