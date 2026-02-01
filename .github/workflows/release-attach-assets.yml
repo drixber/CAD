@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+            TAG=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
             echo "tag=$TAG" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.event.release.tag_name || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
@@ -208,7 +208,7 @@ jobs:
         id: tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+            TAG=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
             echo "tag=$TAG" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.event.release.tag_name || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
@@ -253,7 +253,7 @@ jobs:
         id: tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+            TAG=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
             echo "tag=$TAG" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.event.release.tag_name || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
@@ -318,7 +318,7 @@ jobs:
         id: tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            TAG=$(gh release view --json tagName -q .tagName 2>/dev/null || gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null)
+            TAG=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName 2>/dev/null || gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null)
           else
             TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
           fi
@@ -405,10 +405,11 @@ jobs:
             exit 1
           fi
           echo "Uploading assets for tag: $TAG"
+          REPO="${{ github.repository }}"
           for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip upload/update.json upload/SHA256SUMS.txt; do
             if [ -f "$f" ]; then
               echo "  -> $f"
-              gh release upload "$TAG" "$f" --clobber
+              gh release upload "$TAG" "$f" --repo "$REPO" --clobber
             fi
           done
           echo "Done. Assets at: https://github.com/${{ github.repository }}/releases/expanded_assets/$TAG"
@@ -418,9 +419,10 @@ jobs:
       - name: Release-Assets prüfen (EXE muss sichtbar sein)
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
+          REPO="${{ github.repository }}"
           echo "=== Assets auf dem Release $TAG ==="
-          gh release view "$TAG" --json assets -q '.assets[] | "\(.name) (\(.size) bytes)"' || true
-          if ! gh release view "$TAG" --json assets -q '.assets[] | select(.name == "HydraCADSetup.exe") | .name' 2>/dev/null | grep -q HydraCADSetup.exe; then
+          gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) (\(.size) bytes)"' || true
+          if ! gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | select(.name == "HydraCADSetup.exe") | .name' 2>/dev/null | grep -q HydraCADSetup.exe; then
             echo "::warning::HydraCADSetup.exe ist nicht unter den Release-Assets – bitte Log prüfen."
           fi
         env:
