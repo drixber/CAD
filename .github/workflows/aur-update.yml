@@ -12,7 +12,7 @@ on:
       tag_name:
         description: 'Tag (z. B. v3.0.20) – nur bei manueller Ausführung'
         required: true
-        default: 'v3.0.19'
+        default: 'v3.0.20'
 
 jobs:
   aur-push:

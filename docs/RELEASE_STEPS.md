@@ -1,70 +1,84 @@
-# Release-Schritte (manuell)
+# Release – Schritte (alle Versionen, inkl. AUR)
 
-Nach dem lokalen Commit und Tag musst du **Push und Release** mit deinen GitHub-Zugangsdaten ausführen.
+So erstellst du ein neues Release für **Windows, Linux, macOS** und aktualisierst **AUR** automatisch.
 
-## 1. Branch und Tag pushen
+## Ablauf (empfohlen)
+
+### 1. Alles auf main committen und pushen
 
 ```bash
+cd /home/herd/GitHub/CAD
+git status
+git add -A
+git commit -m "Release-Vorbereitung vX.Y.Z"   # oder konkrete Message
 git push origin main
-git push origin v3.0.6
 ```
 
-(Falls du SSH nutzt und `origin` auf `git@github.com:...` zeigt, reicht das. Bei HTTPS ggf. Token oder Credential-Helper einrichten.)
+### 2. Neuen Tag setzen und pushen
 
-- **Push zu main** löst den Workflow „Build Windows (Push)“ aus → Installer und Portable-ZIP werden gebaut und als Artifacts hochgeladen (7 Tage).
-- **Push des Tags** markiert den Stand als Release-Version v3.0.6.
+```bash
+# Beispiel: v3.0.21
+git tag v3.0.21
+git push origin v3.0.21
+```
 
-## 2. GitHub Release anlegen – EXE/ZIP automatisch anhängen
+- Der Workflow **„Release bei Tag-Push erstellen“** läuft automatisch und erstellt das GitHub-Release für den Tag (mit generierten Release-Notes).
+- Durch **Publish** des Releases wird das Event `release: published` ausgelöst.
 
-Damit die **neueste Release-Seite** wieder **HydraCADSetup.exe** und **app-windows.zip** (wie bei v3.0.4) anzeigt:
+### 3. Was danach automatisch läuft
 
-1. **Tag pushen** (falls noch nicht geschehen): `git push origin v3.0.7`
-2. Auf GitHub: **Releases** → **Draft a new release** (oder **Create release from tag** beim Tag)
-3. **Choose tag:** z. B. `v3.0.7` auswählen
-4. **Release title:** z. B. `Hydra CAD 3.0.7`
-5. **Describe:** Changelog/Highlights (z. B. aus CHANGELOG.md), Installation (Download `HydraCADSetup.exe`, Doppelklick, Assistent folgen), Features
-6. **Publish release** klicken
+| Workflow | Trigger | Aktion |
+|----------|---------|--------|
+| **Release – Assets anhängen** | `release: published` (oder manuell) | Baut Windows (Installer + Portable), Linux (Tarball), macOS; hängt HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz, HydraCAD-macos.zip, update.json, SHA256SUMS.txt ans Release. |
+| **AUR – Update** | `release: published` (oder manuell) | Erzeugt PKGBUILD + .SRCINFO für die Release-Version und pusht ins AUR (hydracad). |
 
-**Danach:** Der Workflow **„Release – Assets anhängen“** (`release-attach-assets.yml`) startet automatisch. Er baut Windows (Installer + Portable-ZIP) und Linux (Tarball) und **hängt die Dateien an dieses Release** an. Nach wenigen Minuten erscheinen unter dem Release:
+**Voraussetzung für AUR:** Repository-Secret **AUR_SSH_PRIVATE_KEY** (privater SSH-Key für deinen AUR-Account) unter **Settings → Secrets and variables → Actions** anlegen. Ohne Secret überspringt der AUR-Workflow das Pushen (ohne Fehler).
 
-- **HydraCADSetup.exe**
-- **app-windows.zip**
-- **hydracad-linux-portable.tar.gz**
+### 4. Manuell nachziehen (falls nötig)
 
-Du musst die EXE/ZIP nicht mehr manuell aus den Workflow-Artifacts holen – sie landen direkt auf der Release-Seite.
+- **Assets fehlen am Release?**  
+  **Actions** → **Release – Assets anhängen** → **Run workflow** → **tag_name:** z. B. `v3.0.21` → Run.
+
+- **AUR nicht aktualisiert?**  
+  **Actions** → **AUR – Update** → **Run workflow** → **tag_name:** z. B. `v3.0.21` → Run.  
+  Oder lokal: `./packaging/arch/aur-upload.sh 3.0.21`
+
+### 5. Prüfen
+
+- **Release-Seite:** https://github.com/drixber/CAD/releases – HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz, HydraCAD-macos.zip, update.json, SHA256SUMS.txt.
+- **AUR:** https://aur.archlinux.org/packages/hydracad – Version und `hydracad`-Befehl (Symlink).
+
+---
+
+## Kurz-Checkliste
+
+1. [ ] Alles auf main committen & pushen  
+2. [ ] `git tag vX.Y.Z && git push origin vX.Y.Z`  
+3. [ ] Release wird erstellt (Tag-Push-Workflow)  
+4. [ ] „Release – Assets anhängen“ läuft (automatisch oder manuell)  
+5. [ ] „AUR – Update“ läuft (automatisch wenn AUR_SSH_PRIVATE_KEY gesetzt; sonst manuell)  
+6. [ ] Release-Seite und AUR prüfen  
 
 ---
 
 ## 401 / „Authentifizierung fehlgeschlagen“ (HTTPS)
 
-Wenn `git push origin main` oder `git push origin v3.0.6` mit **401** oder **Missing or invalid credentials** abbricht:
+Wenn `git push origin main` oder `git push origin vX.Y.Z` mit **401** oder **Missing or invalid credentials** abbricht:
 
-- **Ursache:** `origin` nutzt `https://github.com/drixber/CAD.git`. GitHub erlaubt für HTTPS **kein Passwort** mehr, nur noch einen **Personal Access Token (PAT)** oder **SSH**.
+- **Ursache:** `origin` nutzt HTTPS; GitHub erlaubt für HTTPS **kein Passwort** mehr, nur noch einen **Personal Access Token (PAT)** oder **SSH**.
 
-### Option A: Auf SSH umstellen (empfohlen, wenn du SSH-Keys hast)
+### Option A: Auf SSH umstellen (empfohlen)
 
 ```bash
-cd /home/herd/GitHub/CAD
 git remote set-url origin git@github.com:drixber/CAD.git
 git push origin main
-git push origin v3.0.6
+git push origin vX.Y.Z
 ```
 
-Vorher prüfen: `ls -la ~/.ssh` – es sollte z. B. `id_ed25519` / `id_rsa` geben und der Key bei GitHub unter **Settings → SSH and GPG keys** eingetragen sein. Keinen Key? Erzeugen mit `ssh-keygen -t ed25519 -C "deine@email"` und den öffentlichen Key bei GitHub hinzufügen.
+SSH-Key bei GitHub unter **Settings → SSH and GPG keys** eintragen.
 
 ### Option B: HTTPS mit Personal Access Token (PAT)
 
-1. Auf GitHub: **Settings → Developer settings → Personal access tokens → Tokens (classic)** → **Generate new token**. Scope mindestens **repo**.
-2. Token kopieren (nur einmal sichtbar).
-3. Beim nächsten `git push` Nutzername (dein GitHub-Username) und als Passwort den **Token** eingeben.
-4. Oder URL mit Token setzen (Token liegt dann in der Config – nur auf sicherem Rechner):
-
-   ```bash
-   git remote set-url origin https://DEIN_GITHUB_USERNAME:DEIN_TOKEN@github.com/drixber/CAD.git
-   ```
-
-   Danach `git push origin main` und `git push origin v3.0.6`.
-
----
-
-**Aktueller Stand:** Commit und Tag `v3.0.6` sind lokal erstellt. Sobald du mit gültigen Zugangsdaten (SSH oder PAT) `git push origin main` und `git push origin v3.0.6` ausführst, läuft der Windows-Build; danach kannst du bei Bedarf das Release wie oben anlegen.
+1. GitHub: **Settings → Developer settings → Personal access tokens → Tokens (classic)** → **Generate new token** (Scope mind. **repo**).
+2. Beim nächsten `git push`: Nutzername + **Token** als Passwort. Oder URL mit Token setzen:  
+   `git remote set-url origin https://DEIN_USER:DEIN_TOKEN@github.com/drixber/CAD.git`

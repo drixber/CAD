@@ -47,9 +47,10 @@ Die App prüft auf **GitHub Releases** als einzige Quelle für Updates. Ein neue
 
 ## Release-Prozess (Dev)
 
-1. **Tag setzen und pushen**: `git tag v3.0.17 && git push origin v3.0.17`
+1. **Tag setzen und pushen**: `git tag vX.Y.Z && git push origin vX.Y.Z`
 2. **Workflow „Release bei Tag-Push erstellen“**: Erstellt das GitHub-Release für den Tag.
-3. **Workflow „Release – Assets anhängen“**: Baut Windows (Installer + Portable), Linux (Tarball), optional macOS; erzeugt **update.json** und **SHA256SUMS.txt**; lädt alle Assets (inkl. update.json, SHA256SUMS.txt) an das Release hoch.
+3. **Workflow „Release – Assets anhängen“**: Baut Windows (Installer + Portable), Linux (Tarball), optional macOS; erzeugt **update.json** und **SHA256SUMS.txt**; lädt alle Assets an das Release hoch.
+4. **Workflow „AUR – Update“**: Bei `release: published` wird automatisch ins AUR (hydracad) gepusht, sofern das Secret **AUR_SSH_PRIVATE_KEY** gesetzt ist. Siehe **docs/RELEASE_STEPS.md**.
 
 ### CI-Asset-Namen (konstant)
 
