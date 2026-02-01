@@ -795,7 +795,7 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         log_panel_->appendLog(tr("Browser: %1").arg(command));
     });
-    connect(browser_tree_, &QtBrowserTree::selectionChanged, this, [this](const QString& breadcrumb, const QString& nodeName) {
+    connect(browser_tree_, &QtBrowserTree::nodeSelectionChanged, this, [this](const QString& breadcrumb, const QString& nodeName) {
         if (!breadcrumb.isEmpty()) {
             property_panel_->setBreadcrumb(breadcrumb);
             statusBar()->showMessage(tr("Selected: %1").arg(nodeName), 2000);
