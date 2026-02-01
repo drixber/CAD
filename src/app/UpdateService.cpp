@@ -1,6 +1,7 @@
 #include "UpdateService.h"
 #include "UpdateInstaller.h"
 #include "HttpClient.h"
+#include "core/updates/UpdateChecker.h"
 
 #include <fstream>
 #include <sstream>
@@ -19,6 +20,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QByteArray>
+#include <QFile>
+#include <QCryptographicHash>
 #endif
 
 namespace cad {
@@ -26,7 +29,7 @@ namespace app {
 
 UpdateService::UpdateService() {
     current_version_ = "v3.0.14";
-    update_server_url_ = "https://updates.hydracad.com/api/v1";
+    update_server_url_.clear();  // GitHub Releases as single source of truth
     http_client_ = std::make_unique<HttpClient>();
 }
 
@@ -35,23 +38,78 @@ UpdateService::~UpdateService() {
 
 bool UpdateService::checkForUpdates() {
     update_available_ = false;
-    
-    if (update_server_url_.empty()) {
+    last_error_.clear();
+    if (!update_server_url_.empty()) {
+        if (!fetchUpdateInfo()) {
+            last_error_ = "Update server unavailable";
+            return false;
+        }
+        if (latest_update_info_.version != current_version_) {
+            update_available_ = true;
+            return true;
+        }
         return false;
     }
-    
-    // Fetch update information from server
-    if (!fetchUpdateInfo()) {
+    return checkForUpdatesFromGitHub("drixber", "CAD");
+}
+
+bool UpdateService::checkForUpdatesFromGitHub(const std::string& owner, const std::string& repo) {
+    update_available_ = false;
+    last_error_.clear();
+    latest_update_info_ = UpdateInfo{};
+    if (owner.empty() || repo.empty()) {
+        last_error_ = "GitHub owner/repo not set";
         return false;
     }
-    
-    // Compare versions
-    if (latest_update_info_.version != current_version_) {
-        update_available_ = true;
-        return true;
+    std::string api_url = "https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest";
+    std::map<std::string, std::string> headers;
+    headers["Accept"] = "application/vnd.github.v3+json";
+    headers["User-Agent"] = "HydraCAD-UpdateCheck";
+    HttpResponse response = getHttpClient().get(api_url, headers);
+    if (!response.success) {
+        if (response.status_code == 403 || response.body.find("rate limit") != std::string::npos) {
+            last_error_ = "GitHub API rate limit exceeded. Please try again later.";
+        } else if (response.body.empty() && response.status_code == 0) {
+            last_error_ = "No connection. Check your network.";
+        } else {
+            last_error_ = "Could not check for updates (HTTP " + std::to_string(response.status_code) + ").";
+        }
+        return false;
     }
-    
-    return false;
+    cad::core::updates::UpdateInfo gh = cad::core::updates::parseGithubReleaseResponse(response.body, current_version_);
+    if (!gh.error.empty()) {
+        last_error_ = gh.error;
+        return false;
+    }
+    if (!gh.updateAvailable) {
+        return false;
+    }
+    latest_update_info_.version = gh.latestTag;
+    latest_update_info_.changelog = gh.body.empty() ? "See release page for changelog." : gh.body;
+    latest_update_info_.download_url = gh.assetDownloadUrl;
+    latest_update_info_.mandatory = false;
+    if (latest_update_info_.download_url.empty()) {
+        latest_update_info_.download_url = gh.releaseUrl;
+    }
+    std::string update_json_url = cad::core::updates::getAssetUrlFromReleaseJson(response.body, "update.json");
+    if (!update_json_url.empty()) {
+        HttpResponse json_resp = getHttpClient().get(update_json_url, headers);
+        if (json_resp.success && !json_resp.body.empty()) {
+            auto checksums = cad::core::updates::parseUpdateJsonChecksums(json_resp.body);
+            std::string asset_name = "HydraCADSetup.exe";
+#if defined(__APPLE__)
+            asset_name = "HydraCAD-macos.zip";
+#elif !defined(_WIN32)
+            asset_name = "hydracad-linux-portable.tar.gz";
+#endif
+            auto it = checksums.find(asset_name);
+            if (it != checksums.end()) {
+                latest_update_info_.checksum = it->second;
+            }
+        }
+    }
+    update_available_ = true;
+    return true;
 }
 
 UpdateInfo UpdateService::getLatestUpdateInfo() const {
@@ -94,6 +152,10 @@ bool UpdateService::downloadUpdate(const UpdateInfo& update_info,
     }
     
     return success;
+}
+
+bool UpdateService::verifyDownloadedUpdate(const std::string& file_path) const {
+    return verifyUpdateFile(file_path, latest_update_info_.checksum);
 }
 
 bool UpdateService::installUpdate(const std::string& update_file_path) {
@@ -260,30 +322,37 @@ bool UpdateService::fetchUpdateInfo() {
 }
 
 bool UpdateService::verifyUpdateFile(const std::string& file_path, const std::string& checksum) const {
+    if (checksum.empty()) {
+        return true;  // No checksum available (e.g. update.json not present); skip verification
+    }
     return verifyUpdateChecksum(file_path, checksum);
 }
 
 bool UpdateService::verifyUpdateChecksum(const std::string& update_file_path, const std::string& expected_checksum) const {
-    std::string calculated_checksum = calculateFileChecksum(update_file_path);
-    
-    if (calculated_checksum.empty()) {
+#ifdef CAD_USE_QT
+    std::string expected_hex = expected_checksum;
+    if (expected_hex.size() >= 7 && expected_hex.compare(0, 7, "sha256:") == 0) {
+        expected_hex = expected_hex.substr(7);
+    }
+    if (expected_hex.size() == 64u) {
+        QFile f(QString::fromStdString(update_file_path));
+        if (!f.open(QIODevice::ReadOnly)) return false;
+        QByteArray data = f.readAll();
+        f.close();
+        QByteArray hash = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
+        QString hex = QString::fromUtf8(hash.toHex());
+        if (QString::fromStdString(expected_hex).compare(hex, Qt::CaseInsensitive) == 0) {
+            return true;
+        }
         return false;
     }
-    
+#endif
+    std::string calculated_checksum = calculateFileChecksum(update_file_path);
+    if (calculated_checksum.empty()) return false;
     if (expected_checksum.find("sha256:") == 0) {
         return calculated_checksum == expected_checksum;
     }
-    
-    std::ifstream file(update_file_path, std::ios::binary);
-    if (!file.good()) {
-        return false;
-    }
-    
-    file.seekg(0, std::ios::end);
-    std::streampos file_size = file.tellg();
-    file.close();
-    
-    return file_size > 1024 * 1024;
+    return false;
 }
 
 std::string UpdateService::calculateFileChecksum(const std::string& file_path) const {

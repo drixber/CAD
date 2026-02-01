@@ -32,16 +32,21 @@ public:
     UpdateService();
     ~UpdateService();
     
-    // Update checking
+    // Update checking (GitHub Releases as primary source)
     bool checkForUpdates();
+    /** Check GitHub releases/latest; fills latest_update_info_ and update_available_. Returns true if newer version found. */
+    bool checkForUpdatesFromGitHub(const std::string& owner, const std::string& repo);
     UpdateInfo getLatestUpdateInfo() const;
     bool isUpdateAvailable() const;
+    std::string getLastError() const { return last_error_; }
     
     // Update downloading. If target_file_path is non-empty, download there (e.g. user writable dir);
     // otherwise save as "update_<version>.exe" in current directory.
     bool downloadUpdate(const UpdateInfo& update_info,
                        std::function<void(const UpdateProgress&)> progress_callback = nullptr,
                        const std::string& target_file_path = std::string());
+    /** Verify downloaded file with latest_update_info_.checksum (if set). Returns true if no checksum or match. */
+    bool verifyDownloadedUpdate(const std::string& file_path) const;
     bool installUpdate(const std::string& update_file_path);
     
     // In-place update installation (without full reinstall)
@@ -72,6 +77,7 @@ private:
     std::string update_server_url_;
     UpdateInfo latest_update_info_;
     bool update_available_{false};
+    std::string last_error_;
     bool auto_update_enabled_{true};
     int auto_update_check_interval_days_{7};
     mutable std::unique_ptr<class HttpClient> http_client_;

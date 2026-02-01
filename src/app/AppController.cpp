@@ -4,6 +4,7 @@
 #include "UpdateInstaller.h"
 #include "HttpClient.h"
 #include "core/updates/UpdateChecker.h"
+#include <cstdlib>
 #include <sstream>
 #include <map>
 #ifdef CAD_USE_QT
@@ -28,6 +29,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QDesktopServices>
+#include <QUrl>
 #endif
 
 namespace cad {
@@ -43,125 +46,14 @@ AppController::~AppController() {
 }
 
 bool AppController::initializeWithLogin() {
-    #ifdef CAD_USE_QT
-    user_auth_service_.loadSavedSession();
-    if (user_auth_service_.isLoggedIn()) {
-        return true;
-    }
-    QSettings settings("HydraCAD", "HydraCAD");
-    QString remembered_username = settings.value("auth/remember_username").toString();
-    if (!remembered_username.isEmpty()) {
-        cad::ui::QtLoginDialog login_dialog;
-        login_dialog.setRememberedUsername(remembered_username);
-            
-            bool login_success = false;
-            QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested, &login_dialog,
-                   [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
-                cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString(), remember);
-                if (result.success) {
-                    login_success = true;
-                    user_auth_service_.saveSession(username.toStdString(), remember);
-                    login_dialog.accept();
-                } else {
-                    QMessageBox::warning(&login_dialog, QObject::tr("Login Failed"), 
-                                       QString::fromStdString(result.error_message));
-                }
-            });
-            
-            QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, &login_dialog, [this, &login_dialog]() {
-                login_dialog.hide();
-                cad::ui::QtRegisterDialog register_dialog;
-                
-                QObject::connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested, &register_dialog,
-                       [this, &register_dialog](const QString& username, const QString& email,
-                                               const QString& password, const QString& confirm) {
-                    if (password != confirm) {
-                        register_dialog.setError(QObject::tr("Passwords do not match"));
-                        return;
-                    }
-                    
-                    cad::app::RegisterResult result = user_auth_service_.registerUser(
-                        username.toStdString(), email.toStdString(), password.toStdString());
-                    
-                    if (result.success) {
-                        QMessageBox::information(&register_dialog, QObject::tr("Registration Successful"),
-                                               QObject::tr("Account created successfully. You can now login."));
-                        register_dialog.accept();
-                    } else {
-                        register_dialog.setError(QString::fromStdString(result.error_message));
-                    }
-                });
-                
-                if (register_dialog.exec() == QDialog::Accepted) {
-                    login_dialog.show();
-                }
-            });
-            
-        if (login_dialog.exec() != QDialog::Accepted || !login_success) {
-            return false;
-        }
-    } else {
-        return requireLogin();
-    }
-    #else
-    // Non-Qt: Simple login check
-    return requireLogin();
-    #endif
-    
+    // Offline/local-only mode: no cloud login required; app runs on hardware only.
+    (void)user_auth_service_;
     return true;
 }
 
 bool AppController::requireLogin() {
-    #ifdef CAD_USE_QT
-    cad::ui::QtLoginDialog login_dialog;
-    bool login_success = false;
-    
-    QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested, &login_dialog,
-           [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
-        cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString(), remember);
-        if (result.success) {
-            login_success = true;
-            user_auth_service_.saveSession(username.toStdString(), remember);
-            login_dialog.accept();
-        } else {
-            login_dialog.setError(QString::fromStdString(result.error_message));
-        }
-    });
-    
-    QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::registerRequested, &login_dialog, [this, &login_dialog]() {
-        login_dialog.hide();
-        cad::ui::QtRegisterDialog register_dialog;
-        
-        QObject::connect(&register_dialog, &cad::ui::QtRegisterDialog::registerRequested, &register_dialog,
-               [this, &register_dialog](const QString& username, const QString& email,
-                                       const QString& password, const QString& confirm) {
-            if (password != confirm) {
-                register_dialog.setError(QObject::tr("Passwords do not match"));
-                return;
-            }
-            
-            cad::app::RegisterResult result = user_auth_service_.registerUser(
-                username.toStdString(), email.toStdString(), password.toStdString());
-            
-            if (result.success) {
-                QMessageBox::information(&register_dialog, QObject::tr("Registration Successful"),
-                                       QObject::tr("Account created successfully. You can now login."));
-                register_dialog.accept();
-            } else {
-                register_dialog.setError(QString::fromStdString(result.error_message));
-            }
-        });
-        
-        if (register_dialog.exec() == QDialog::Accepted) {
-            login_dialog.show();
-        }
-    });
-    
-    return login_dialog.exec() == QDialog::Accepted && login_success;
-    #else
-    // Non-Qt: Always allow (no authentication)
+    // Offline mode: no login required.
     return true;
-    #endif
 }
 
 void AppController::initialize() {
@@ -240,46 +132,38 @@ void AppController::initialize() {
         // Initialize recent projects menu
         qt_window->updateRecentProjectsMenu(recent_projects_);
         
-        license_service_.setUserAuthService(&user_auth_service_);
-        license_service_.setHttpClient(&update_service_.getHttpClient());
-
-        // Setup user management
-        cad::app::User current_user = user_auth_service_.getCurrentUser();
-        if (!current_user.username.empty()) {
-            qt_window->setCurrentUser(current_user.username, current_user.email);
-        }
-        qt_window->setLogoutHandler([this]() {
-            logout();
-        });
-        qt_window->setProfileHandler([this, qt_window]() {
-            cad::app::User u = user_auth_service_.getCurrentUser();
-            if (u.username.empty()) {
-                QMessageBox::information(qt_window, QObject::tr("Profile"), QObject::tr("Not logged in."));
-                return;
-            }
-            QString text = QObject::tr("User: %1").arg(QString::fromStdString(u.username));
-            if (!u.email.empty()) {
-                text += QLatin1String("\n") + QObject::tr("Email: %1").arg(QString::fromStdString(u.email));
-            }
-            QMessageBox::information(qt_window, QObject::tr("Profile"), text);
-        });
+        // Offline mode: no license/user/community setup; app runs on hardware only.
 
         // AI Service integration
         setupAIService(qt_window);
-        
+
+        // Updates: check from server (optional) and install from local file
+        update_service_.enableAutoUpdate(false);  // No automatic cloud check by default
         qt_window->setCheckForUpdatesHandler([this, qt_window]() {
             checkForUpdates(qt_window, false);
         });
-        qt_window->setLicenseActivateHandler([this, qt_window]() {
-            cad::ui::QtLicenseDialog dlg(qt_window);
-            dlg.setActivateCallback([this](const std::string& key) {
-                return license_service_.activate(key);
-            });
-            dlg.exec();
+        qt_window->setInstallUpdateFromFileHandler([this, qt_window]() {
+            QString path = QFileDialog::getOpenFileName(qt_window, QObject::tr("Select Update Package"),
+                QString(), QObject::tr("Update packages (*.zip *.exe);;All files (*)"));
+            if (path.isEmpty()) return;
+            cad::ui::QtUpdateDialog* progress_dlg = new cad::ui::QtUpdateDialog(qt_window);
+            progress_dlg->setAttribute(Qt::WA_DeleteOnClose);
+            progress_dlg->show();
+            bool ok = update_service_.installInPlaceUpdate(path.toStdString(),
+                [progress_dlg](const cad::app::UpdateProgress& p) {
+                    if (progress_dlg) {
+                        progress_dlg->setProgress(p.percentage, QString::fromStdString(p.status_message));
+                        QApplication::processEvents();
+                    }
+                });
+            progress_dlg->close();
+            if (ok) {
+                QMessageBox::information(qt_window, QObject::tr("Update"), QObject::tr("Update installed. Restart the application to apply."));
+            } else {
+                QMessageBox::warning(qt_window, QObject::tr("Update"), QObject::tr("Update installation failed. Check the file and try again."));
+            }
         });
         setupAutoUpdate(qt_window);
-
-        community_service_->setDependencies(&user_auth_service_, &update_service_.getHttpClient());
 
         printer_service_.setHttpClient(&update_service_.getHttpClient());
         qt_window->setPrintersDialogHandler([this, qt_window]() {
@@ -335,34 +219,7 @@ void AppController::initialize() {
             }
         });
 
-        cad::ui::QtCommunityPanel* community_panel = qt_window->communityPanel();
-        if (community_panel) {
-            QObject::connect(community_panel, &cad::ui::QtCommunityPanel::downloadRequested, qt_window,
-                [this, qt_window](const QString& itemId) {
-                    std::string base = user_auth_service_.getApiBaseUrl();
-                    if (base.empty()) {
-                        QMessageBox::information(qt_window, QObject::tr("Community"), QObject::tr("Set API URL in settings to download from community."));
-                        return;
-                    }
-                    std::string token = user_auth_service_.getAccessToken();
-                    QString path = QDir::temp().filePath(QString("hydracad_community_%1.step").arg(itemId));
-                    if (community_service_->downloadToFile(base, itemId.toStdString(), token, path.toStdString())) {
-                        cad::interop::IoJob job;
-                        job.path = path.toStdString();
-                        job.format = "step";
-                        cad::interop::IoJobResult result = io_pipeline_.importJob(job);
-                        main_window_.setIntegrationStatus(result.message);
-                        main_window_.setViewportStatus("Import queued");
-                    } else {
-                        QMessageBox::warning(qt_window, QObject::tr("Download failed"), QObject::tr("Could not download item. Check API URL and connection."));
-                    }
-                });
-            std::string base = user_auth_service_.getApiBaseUrl();
-            if (!base.empty()) {
-                std::string json = community_service_->fetchFeed(base, "new", "");
-                community_panel->setFeedFromJson(QString::fromStdString(json));
-            }
-        }
+        // Community panel disabled in offline mode (no cloud).
         qt_window->setExportFileHandler([this](const std::string& path, const std::string& format) {
             cad::interop::IoJob job;
             job.path = path;
@@ -657,6 +514,19 @@ void AppController::syncAssemblyTransformsToViewport() {
 }
 
 void AppController::executeCommand(const std::string& command) {
+    // Parse command into base name and space-separated parameters (for sketch commands)
+    std::string base_cmd = command;
+    std::vector<std::string> param_strs;
+    {
+        std::istringstream iss(command);
+        std::string tok;
+        if (iss >> tok) {
+            base_cmd = tok;
+            while (iss >> tok)
+                param_strs.push_back(tok);
+        }
+    }
+
 #ifdef CAD_USE_QT
     if (command == "Shaded" || command == "Wireframe" || command == "HiddenLine") {
         cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
@@ -1295,75 +1165,97 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "SectionAnalysis") {
         main_window_.setIntegrationStatus("Section analysis ready");
         main_window_.setViewportStatus("Section analysis: select plane");
-    } else if (command == "Line") {
-        // Add a line to the active sketch
-        cad::core::Point2D start{0.0, 0.0};
-        cad::core::Point2D end{50.0, 50.0};
+    } else if (base_cmd == "Line") {
+        // Line requires 4 parameters: x1 y1 x2 y2. Without params: show hint only (no geometry).
+        const int required = 4;
+        if (param_strs.size() < static_cast<size_t>(required)) {
+            main_window_.setIntegrationStatus("Line: enter start and end in command line");
+            main_window_.setViewportStatus("Line: x1 y1 x2 y2 (e.g. Line 0 0 50 50)");
+            return;
+        }
+        double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        if (param_strs.size() >= 4u) {
+            x1 = std::strtod(param_strs[0].c_str(), nullptr);
+            y1 = std::strtod(param_strs[1].c_str(), nullptr);
+            x2 = std::strtod(param_strs[2].c_str(), nullptr);
+            y2 = std::strtod(param_strs[3].c_str(), nullptr);
+        }
+        cad::core::Point2D start{x1, y1};
+        cad::core::Point2D end{x2, y2};
         std::string geom_id = active_sketch_.addLine(start, end);
         main_window_.setIntegrationStatus("Line added: " + geom_id);
         main_window_.setViewportStatus("Line created");
-        
-        // Render in viewport
-        #ifdef CAD_USE_QT
+#ifdef CAD_USE_QT
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
-        if (qt_window && qt_window->viewport3D()) {
+        if (qt_window && qt_window->viewport3D())
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
-        }
-        #endif
+#endif
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
         updateSketchConstraintStatus();
-    } else if (command == "Rectangle") {
-        // Add a rectangle to the active sketch
-        cad::core::Point2D corner{0.0, 0.0};
-        double width = 100.0;
-        double height = 50.0;
-        std::string geom_id = active_sketch_.addRectangle(corner, width, height);
+    } else if (base_cmd == "Rectangle") {
+        const int required = 4;  // corner_x corner_y width height
+        if (param_strs.size() < static_cast<size_t>(required)) {
+            main_window_.setIntegrationStatus("Rectangle: enter corner and size in command line");
+            main_window_.setViewportStatus("Rectangle: x y width height (e.g. Rectangle 0 0 100 50)");
+            return;
+        }
+        double cx = std::strtod(param_strs[0].c_str(), nullptr);
+        double cy = std::strtod(param_strs[1].c_str(), nullptr);
+        double w  = std::strtod(param_strs[2].c_str(), nullptr);
+        double h  = std::strtod(param_strs[3].c_str(), nullptr);
+        cad::core::Point2D corner{cx, cy};
+        std::string geom_id = active_sketch_.addRectangle(corner, w, h);
         main_window_.setIntegrationStatus("Rectangle added: " + geom_id);
         main_window_.setViewportStatus("Rectangle created");
-        
-        // Render in viewport
-        #ifdef CAD_USE_QT
+#ifdef CAD_USE_QT
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
-        if (qt_window && qt_window->viewport3D()) {
+        if (qt_window && qt_window->viewport3D())
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
-        }
-        #endif
+#endif
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
         updateSketchConstraintStatus();
-    } else if (command == "Circle") {
-        // Add a circle to the active sketch
-        cad::core::Point2D center{25.0, 25.0};
-        double radius = 20.0;
-        std::string geom_id = active_sketch_.addCircle(center, radius);
+    } else if (base_cmd == "Circle") {
+        const int required = 3;  // center_x center_y radius
+        if (param_strs.size() < static_cast<size_t>(required)) {
+            main_window_.setIntegrationStatus("Circle: enter center and radius in command line");
+            main_window_.setViewportStatus("Circle: cx cy radius (e.g. Circle 25 25 20)");
+            return;
+        }
+        double cx = std::strtod(param_strs[0].c_str(), nullptr);
+        double cy = std::strtod(param_strs[1].c_str(), nullptr);
+        double r  = std::strtod(param_strs[2].c_str(), nullptr);
+        cad::core::Point2D center{cx, cy};
+        std::string geom_id = active_sketch_.addCircle(center, r);
         main_window_.setIntegrationStatus("Circle added: " + geom_id);
         main_window_.setViewportStatus("Circle created");
-        
-        // Render in viewport
-        #ifdef CAD_USE_QT
+#ifdef CAD_USE_QT
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
-        if (qt_window && qt_window->viewport3D()) {
+        if (qt_window && qt_window->viewport3D())
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
-        }
-        #endif
+#endif
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
         updateSketchConstraintStatus();
-    } else if (command == "Arc") {
-        // Add an arc to the active sketch
-        cad::core::Point2D center{25.0, 25.0};
-        double radius = 20.0;
-        double start_angle = 0.0;
-        double end_angle = 90.0;
-        std::string geom_id = active_sketch_.addArc(center, radius, start_angle, end_angle);
+    } else if (base_cmd == "Arc") {
+        const int required = 5;  // center_x center_y radius start_angle end_angle
+        if (param_strs.size() < static_cast<size_t>(required)) {
+            main_window_.setIntegrationStatus("Arc: enter center, radius and angles in command line");
+            main_window_.setViewportStatus("Arc: cx cy radius start_angle end_angle (e.g. Arc 25 25 20 0 90)");
+            return;
+        }
+        double cx   = std::strtod(param_strs[0].c_str(), nullptr);
+        double cy   = std::strtod(param_strs[1].c_str(), nullptr);
+        double r    = std::strtod(param_strs[2].c_str(), nullptr);
+        double sang = std::strtod(param_strs[3].c_str(), nullptr);
+        double eang = std::strtod(param_strs[4].c_str(), nullptr);
+        cad::core::Point2D center{cx, cy};
+        std::string geom_id = active_sketch_.addArc(center, r, sang, eang);
         main_window_.setIntegrationStatus("Arc added: " + geom_id);
         main_window_.setViewportStatus("Arc created");
-        
-        // Render in viewport
-        #ifdef CAD_USE_QT
+#ifdef CAD_USE_QT
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
-        if (qt_window && qt_window->viewport3D()) {
+        if (qt_window && qt_window->viewport3D())
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
-        }
-        #endif
+#endif
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
         updateSketchConstraintStatus();
     } else if (command == "Constraint") {
@@ -1395,6 +1287,52 @@ void AppController::executeCommand(const std::string& command) {
             #endif
         } else {
             main_window_.setIntegrationStatus("Extrude: No sketch geometry available");
+            main_window_.setViewportStatus("Create sketch first");
+        }
+    } else if (command == "ExtrudeReverse") {
+        if (!active_sketch_.geometry().empty()) {
+            cad::core::Part part = modeler_.createPart(active_sketch_);
+            double depth = -10.0;  // Reverse direction
+            modeler_.applyExtrude(part, active_sketch_.name(), depth);
+#ifdef CAD_USE_EIGENER_KERN
+            if (eigen_kernel_ && eigen_kernel_->isAvailable()) {
+                std::map<std::string, cad::core::Sketch> sketches;
+                sketches.insert(std::make_pair(active_sketch_.name(), active_sketch_));
+                eigen_kernel_->buildPartFromPart(part, &sketches);
+            }
+#endif
+            main_window_.setIntegrationStatus("Extrude (Reverse) created: depth=" + std::to_string(depth));
+            main_window_.setViewportStatus("Extrude reverse applied");
+#ifdef CAD_USE_QT
+            cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+            if (qt_window && qt_window->viewport3D())
+                qt_window->viewport3D()->renderGeometry("extrude_" + active_sketch_.name(), nullptr);
+#endif
+        } else {
+            main_window_.setIntegrationStatus("Extrude (Reverse): No sketch geometry available");
+            main_window_.setViewportStatus("Create sketch first");
+        }
+    } else if (command == "ExtrudeBoth") {
+        if (!active_sketch_.geometry().empty()) {
+            cad::core::Part part = modeler_.createPart(active_sketch_);
+            double depth = 10.0;
+            modeler_.applyExtrude(part, active_sketch_.name(), depth, true);  // symmetric = true
+#ifdef CAD_USE_EIGENER_KERN
+            if (eigen_kernel_ && eigen_kernel_->isAvailable()) {
+                std::map<std::string, cad::core::Sketch> sketches;
+                sketches.insert(std::make_pair(active_sketch_.name(), active_sketch_));
+                eigen_kernel_->buildPartFromPart(part, &sketches);
+            }
+#endif
+            main_window_.setIntegrationStatus("Extrude (Both) created: depth=" + std::to_string(depth) + " symmetric");
+            main_window_.setViewportStatus("Extrude both directions applied");
+#ifdef CAD_USE_QT
+            cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+            if (qt_window && qt_window->viewport3D())
+                qt_window->viewport3D()->renderGeometry("extrude_" + active_sketch_.name(), nullptr);
+#endif
+        } else {
+            main_window_.setIntegrationStatus("Extrude (Both): No sketch geometry available");
             main_window_.setViewportStatus("Create sketch first");
         }
     } else if (command == "Revolve") {
@@ -2247,38 +2185,15 @@ void AppController::checkForUpdates(cad::ui::QtMainWindow* qt_window, bool auto_
     }
     
     if (!have_update) {
-        std::string current_tag = update_service_.getCurrentVersion();
-        if (current_tag.empty()) {
-            current_tag = "v0.0.0";
-        }
-        cad::core::updates::UpdateInfo gh;
-        #ifdef CAD_USE_QT_NETWORK
-        const std::string api_url = "https://api.github.com/repos/drixber/CAD/releases/latest";
-        cad::app::HttpResponse api_resp = update_service_.getHttpClient().get(api_url, {{"Accept", "application/vnd.github.v3+json"}});
-        if (api_resp.success && !api_resp.body.empty()) {
-            gh = cad::core::updates::parseGithubReleaseResponse(api_resp.body, current_tag);
-        } else {
-            gh = cad::core::updates::checkGithubLatestRelease("drixber", "CAD", current_tag);
-        }
-        #else
-        gh = cad::core::updates::checkGithubLatestRelease("drixber", "CAD", current_tag);
-        #endif
-        if (gh.updateAvailable && !gh.releaseUrl.empty()) {
-            update_info.version = gh.latestTag;
-            update_info.changelog = !gh.body.empty() ? gh.body : QObject::tr("See release page for changelog.").toStdString();
-            update_info.download_url = !gh.assetDownloadUrl.empty() ? gh.assetDownloadUrl : gh.releaseUrl;
-            update_info.mandatory = false;
-            have_update = true;
-        } else {
-            if (qt_window->statusBar()) {
-                if (!gh.error.empty()) {
-                    qt_window->statusBar()->showMessage(QString::fromStdString(gh.error), 5000);
-                } else {
-                    qt_window->statusBar()->showMessage(QObject::tr("No updates available. You are using the latest version."), 4000);
-                }
+        if (qt_window->statusBar()) {
+            std::string err = update_service_.getLastError();
+            if (!err.empty()) {
+                qt_window->statusBar()->showMessage(QString::fromStdString(err), 5000);
+            } else {
+                qt_window->statusBar()->showMessage(QObject::tr("No updates available. You are using the latest version."), 4000);
             }
-            return;
         }
+        return;
     }
     
     cad::ui::QtUpdateDialog dialog(qt_window);
@@ -2358,6 +2273,17 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
         return;
     }
 
+    if (!update_info.checksum.empty() && !update_service_.verifyDownloadedUpdate(target_path)) {
+        progress_dialog.setCompleted(false, QObject::tr("Verification failed"));
+        progress_dialog.close();
+        QMessageBox::warning(qt_window, QObject::tr("Update Failed"),
+                             QObject::tr("Checksum verification failed. The download may be corrupted. Please try again or download from the release page."));
+        return;
+    }
+    if (update_info.checksum.empty() && qt_window->statusBar()) {
+        qt_window->statusBar()->showMessage(QObject::tr("Checksum not available; installer started without verification."), 4000);
+    }
+
     QString download_path_qt = QString::fromStdString(target_path);
 
     progress_dialog.setProgress(90, QObject::tr("Starting installer..."));
@@ -2370,6 +2296,7 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
         run_installer = QProcess::startDetached(download_path_qt, QStringList(), QFileInfo(download_path_qt).absolutePath());
     }
     #else
+    // On Linux/macOS we do not run .exe; for tarball/zip we only inform the user where the file is.
     if (QFileInfo::exists(download_path_qt) && is_exe) {
         run_installer = QProcess::startDetached(download_path_qt, QStringList());
     }
@@ -2382,14 +2309,21 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
                                 QObject::tr("The installer has been started. Complete the setup and restart the application."));
         QApplication::quit();
     } else {
-        progress_dialog.setCompleted(true, QObject::tr("Download complete."));
+        if (is_exe) {
+            progress_dialog.setCompleted(false, QObject::tr("Could not start installer"));
+        } else {
+            progress_dialog.setCompleted(true, QObject::tr("Download complete."));
+        }
         progress_dialog.exec();
         if (is_exe) {
             QMessageBox::warning(qt_window, QObject::tr("Update"),
                                  QObject::tr("Could not start the installer. You can run it manually: %1").arg(download_path_qt));
         } else {
             QMessageBox::information(qt_window, QObject::tr("Update"),
-                                    QObject::tr("Update package downloaded to: %1\nPlease extract or run the installer manually.").arg(download_path_qt));
+                                    QObject::tr("Update package downloaded to: %1\nOn Linux: extract the archive and run the contained executable, or install the new version via your package manager (e.g. yay -S hydracad).").arg(download_path_qt));
+            #ifndef _WIN32
+            QDesktopServices::openUrl(QUrl::fromLocalFile(download_dir));
+            #endif
         }
     }
     #endif
