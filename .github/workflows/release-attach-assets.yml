@@ -1,30 +1,47 @@
 # Bei jedem veröffentlichten Release: Windows, Linux und macOS bauen und
 # HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz, HydraCAD-macos.zip ans Release hängen.
-# Wird durch release: published getriggert (z. B. nach create-release-on-tag).
-# Falls am Release nur Source-Code steht: Actions → "Release – Assets anhängen" → Run workflow → tag_name: v3.0.14 (bzw. Tag) eingeben.
+# Trigger: release: published ODER workflow_run (nach "Release bei Tag-Push erstellen") ODER manuell (workflow_dispatch).
+# Falls am Release nur Source-Code steht: Actions → "Release – Assets anhängen" → Run workflow → tag_name eingeben.
 
 name: Release – Assets anhängen
 
 on:
   release:
     types: [published]
+  workflow_run:
+    workflows: ["Release bei Tag-Push erstellen"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag (z. B. v3.0.12) – nur bei manueller Ausführung'
+        description: 'Tag (z. B. v3.0.15) – nur bei manueller Ausführung'
         required: true
-        default: 'v3.0.14'
+        default: 'v3.0.15'
 
 jobs:
   build-windows:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: windows-latest
     env:
       WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
       WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
     steps:
+      - name: Tag ermitteln
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.event.release.tag_name || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+          echo "Using tag: ${{ steps.tag.outputs.tag }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
@@ -52,7 +69,7 @@ jobs:
         id: version
         shell: powershell
         run: |
-          $tag = "${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          $tag = "${{ steps.tag.outputs.tag }}"
           $ver = $tag -replace '^v', ''
           if (-not $ver) { $ver = "3.0.14" }
           $parts = $ver.Split('.')
@@ -183,11 +200,24 @@ jobs:
           path: app-windows.zip
 
   build-linux:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
+      - name: Tag ermitteln
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.event.release.tag_name || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: ${{ steps.tag.outputs.tag }}
 
       - run: |
           sudo apt-get update
@@ -215,17 +245,31 @@ jobs:
           path: hydracad-linux-portable.tar.gz
 
   build-macos:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: macos-14
     steps:
+      - name: Tag ermitteln
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.event.release.tag_name || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Install Qt 6
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.5.3'
-          cache: true
+          # cache: false auf macOS, um "Cache service 400" / "Failed to save" zu vermeiden
+          cache: false
 
       - name: Create .icns from PNG
         run: |
@@ -263,11 +307,35 @@ jobs:
 
   # Nur Windows + Linux erforderlich – EXE/ZIP/Tarball werden so auch bei macOS-Fehler angehängt
   upload-release-assets:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Tag ermitteln
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            TAG=$(gh release view --json tagName -q .tagName 2>/dev/null || gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null)
+          else
+            TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::Could not determine release tag."
+            exit 1
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Using tag: $TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Repository auschecken (für gh release upload)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+
       - name: Artifacts für Release sammeln
         uses: actions/download-artifact@v4
         with:
@@ -278,6 +346,12 @@ jobs:
           mkdir -p upload
           echo "=== Artifact-Struktur ==="
           find release-assets -type f
+          # Aus bekannten Artifact-Ordnern kopieren (Pfad kann installer/ oder direkt sein)
+          cp release-assets/release-windows-installer/installer/HydraCADSetup.exe upload/ 2>/dev/null || cp release-assets/release-windows-installer/HydraCADSetup.exe upload/ 2>/dev/null || true
+          cp release-assets/release-windows-portable/app-windows.zip upload/ 2>/dev/null || true
+          cp release-assets/release-linux-portable/hydracad-linux-portable.tar.gz upload/ 2>/dev/null || true
+          cp release-assets/release-macos/HydraCAD-macos.zip upload/ 2>/dev/null || true
+          # Fallback: find
           find release-assets -name 'HydraCADSetup.exe' -exec cp {} upload/ \;
           find release-assets -name 'app-windows.zip' -exec cp {} upload/ \;
           find release-assets -name '*.tar.gz' -exec cp {} upload/ \;
@@ -295,7 +369,7 @@ jobs:
 
       - name: Assets ans Release hängen
         run: |
-          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          TAG="${{ steps.tag.outputs.tag }}"
           if [ -z "$TAG" ]; then
             echo "::error::Release tag is empty. Set tag_name when running manually."
             exit 1
