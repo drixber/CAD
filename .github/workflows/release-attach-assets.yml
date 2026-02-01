@@ -1,6 +1,7 @@
 # Bei jedem veröffentlichten Release: Windows, Linux und macOS bauen und
 # HydraCADSetup.exe, app-windows.zip, hydracad-linux-portable.tar.gz, HydraCAD-macos.zip ans Release hängen.
-# workflow_dispatch: manuell ausführen, wenn ein Release keine EXE/ZIP hat (Tag angeben).
+# Wird durch release: published getriggert (z. B. nach create-release-on-tag).
+# Falls am Release nur Source-Code steht: Actions → "Release – Assets anhängen" → Run workflow → tag_name: v3.0.14 (bzw. Tag) eingeben.
 
 name: Release – Assets anhängen
 
@@ -275,10 +276,13 @@ jobs:
       - name: Dateien für Upload vorbereiten
         run: |
           mkdir -p upload
+          echo "=== Artifact-Struktur ==="
+          find release-assets -type f
           find release-assets -name 'HydraCADSetup.exe' -exec cp {} upload/ \;
           find release-assets -name 'app-windows.zip' -exec cp {} upload/ \;
           find release-assets -name '*.tar.gz' -exec cp {} upload/ \;
           find release-assets -name 'HydraCAD-macos.zip' -exec cp {} upload/ \;
+          echo "=== Upload-Ordner ==="
           ls -la upload/
           if [ ! -f upload/HydraCADSetup.exe ]; then
             echo "::error::HydraCADSetup.exe missing – Windows build/installer failed."
@@ -296,8 +300,13 @@ jobs:
             echo "::error::Release tag is empty. Set tag_name when running manually."
             exit 1
           fi
+          echo "Uploading assets for tag: $TAG"
           for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip; do
-            [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber
+            if [ -f "$f" ]; then
+              echo "  -> $f"
+              gh release upload "$TAG" "$f" --clobber
+            fi
           done
+          echo "Done. Assets at: https://github.com/${{ github.repository }}/releases/expanded_assets/$TAG"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -54,7 +54,7 @@ Wenn **main** bereits gepusht ist und die Version in `CMakeLists.txt` stimmt (z.
 
 - [ ] **4.1** Unter **Releases** erscheint „Hydra CAD X.Y.Z“ (Latest).
 - [ ] **4.2** Unter dem Release stehen die **Assets**: **HydraCADSetup.exe**, **app-windows.zip**, **hydracad-linux-portable.tar.gz**.
-- [ ] **4.3** Wenn **keine EXE/ZIP** am Release: [TODO_UPDATE_AND_RELEASE.md](TODO_UPDATE_AND_RELEASE.md) Phase C (Troubleshooting) durchgehen – z. B. **Release – Assets anhängen** → **Run workflow** → `tag_name: vX.Y.Z`.
+- [ ] **4.3** Wenn **keine EXE/ZIP** am Release: **Actions** → **„Release – Assets anhängen“** → **Run workflow** → Branch **main**, **tag_name:** `v3.0.14` (bzw. das jeweilige Tag) → **Run workflow**. Nach ~10–15 Min erscheinen die Assets. Siehe [TODO_UPDATE_AND_RELEASE.md](TODO_UPDATE_AND_RELEASE.md) Phase C.
 
 ---
 
