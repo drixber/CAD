@@ -26,7 +26,7 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 - **Erster Start**: Account registrieren, danach einloggen (optional: „Remember me“).
 - **Projekt**: File → New Project / Open Project (Strg+O) / Save Project (Strg+S).
 - **Sprache**: Settings → Language → Deutsch, English, 中文, 日本語 (wirkt nach Neustart).
-- **Updates**: Settings → Check for Updates… (öffnet die Release-Seite bei neuer Version).
+- **Updates**: Settings → Check for Updates… prüft GitHub Releases (Tag vX.Y.Z); bei neuer Version: Download (z. B. HydraCADSetup.exe), optional SHA256-Prüfung, Start des Installers. Details: [docs/UPDATES.md](docs/UPDATES.md).
 
 ---
 
@@ -41,7 +41,7 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 - **User & Profil**: Login, Registrierung, Session, User → Profile (Anzeige Nutzer/E-Mail).
 - **Checkpoints**: File → Manage Checkpoints… – Liste, Öffnen, Löschen.
 - **Sprachen**: Deutsch, English, 中文, 日本語 (Übersetzungen in der App).
-- **Automatische Updates**: Settings → Check for Updates… – lädt bei neuer Version den Installer herunter und startet ihn; danach Setup abschließen, App neu starten. Kein manuelles Neu-Installieren nötig.
+- **Automatische Updates**: Settings → Check for Updates… – GitHub Releases als Quelle; bei neuer Version Download des Installers (z. B. HydraCADSetup.exe), optional SHA256-Verifikation (update.json), Start des Installers, App beendet sich; Setup abschließen, App neu starten. Siehe [docs/UPDATES.md](docs/UPDATES.md).
 
 ### Weitere Module (Build-Optionen)
 
