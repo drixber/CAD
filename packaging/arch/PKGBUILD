@@ -12,7 +12,12 @@ license=('custom')
 depends=('qt6-base' 'qt6-tools' 'qt6-translations')
 optdepends=('qt6-network: in-app updates without curl')
 makedepends=('cmake' 'git')
-source=("git+${url}.git#tag=v${pkgver}")
+# Lokaler Build: ./build-local.sh erzeugt CAD-${pkgver}.tar.gz, dann wird das genutzt.
+if [[ -f "CAD-${pkgver}.tar.gz" ]]; then
+  source=("CAD-${pkgver}.tar.gz")
+else
+  source=("git+${url}.git#tag=v${pkgver}")
+fi
 sha256sums=('SKIP')
 
 build() {
@@ -28,17 +33,31 @@ package() {
   if [ -f packaging/linux/cad_desktop.wrapper ]; then
     install -Dm755 packaging/linux/cad_desktop.wrapper "$pkgdir/usr/bin/cad_desktop"
   else
-    # Fallback if wrapper not in source (e.g. old tag): gleicher einheitlicher Launcher inline.
+    # Fallback if wrapper not in source (e.g. old tag): gleicher Launcher inline.
     _wrap="$srcdir/cad_desktop.wrapper.in"
     printf '%s\n' \
       '#!/bin/sh' \
       'if [ -z "$QT_QPA_PLATFORM" ] && [ -n "$WAYLAND_DISPLAY" ]; then export QT_QPA_PLATFORM=xcb; fi' \
       'BUILD="${HYDRACAD_BUILD:-$HOME/GitHub/CAD/build}"' \
       'if [ -x "$BUILD/cad_desktop" ]; then cd "$BUILD" && exec ./cad_desktop "$@"; fi' \
-      'exec /usr/lib/hydracad/cad_desktop "$@"' > "$_wrap"
+      'cd /usr/lib/hydracad && exec ./cad_desktop "$@"' > "$_wrap"
     install -Dm755 "$_wrap" "$pkgdir/usr/bin/cad_desktop"
   fi
   ln -s cad_desktop "$pkgdir/usr/bin/hydracad"
-  install -Dm644 packaging/linux/HydraCAD.desktop -t "$pkgdir/usr/share/applications"
-  install -Dm644 installer/license.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  if [ -f packaging/linux/HydraCAD.desktop ]; then
+    install -Dm644 packaging/linux/HydraCAD.desktop -t "$pkgdir/usr/share/applications"
+  else
+    _desktop="$srcdir/HydraCAD.desktop.in"
+    printf '%s\n' \
+      '[Desktop Entry]' 'Type=Application' 'Name=Hydra CAD' 'Comment=Professional CAD Application' \
+      'Exec=/usr/bin/cad_desktop %F' 'TryExec=/usr/bin/cad_desktop' 'Path=/usr/lib/hydracad' \
+      'Icon=HydraCAD' 'Categories=Graphics;Engineering;' 'Terminal=false' > "$_desktop"
+    install -Dm644 "$_desktop" "$pkgdir/usr/share/applications/HydraCAD.desktop"
+  fi
+  if [ -f installer/license.txt ]; then
+    install -Dm644 installer/license.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  else
+    echo "Hydra CAD - see project for license." > "$srcdir/LICENSE.in"
+    install -Dm644 "$srcdir/LICENSE.in" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  fi
 }

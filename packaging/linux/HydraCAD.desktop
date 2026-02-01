@@ -4,6 +4,7 @@ Name=Hydra CAD
 Comment=Professional CAD Application
 Exec=/usr/bin/cad_desktop %F
 TryExec=/usr/bin/cad_desktop
+Path=/usr/lib/hydracad
 Icon=HydraCAD
 Categories=Graphics;Engineering;
 Terminal=false

@@ -25,6 +25,7 @@
 
 #ifdef __linux__
 #include <unistd.h>
+#include <stdlib.h>  /* setenv, getenv (POSIX) */
 #endif
 #ifdef _WIN32
 #include <windows.h>
@@ -142,49 +143,56 @@ std::filesystem::path getLinuxExeDir() {
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef __linux__
+    (void)write(2, "Hydra CAD: main() start\n", 23);
+    (void)write(2, "Hydra CAD: before path\n", 22);
+#endif
     std::filesystem::path exe_dir;
+#ifdef __linux__
+    (void)write(2, "Hydra CAD: after path\n", 21);
+#endif
     try {
 #ifdef __linux__
+        (void)write(2, "Hydra CAD: in try, getLinuxExeDir\n", 34);
+#endif
+#ifdef __linux__
         exe_dir = getLinuxExeDir();
+        fprintf(stderr, "Hydra CAD: exe_dir from /proc/self/exe = %s\n", exe_dir.empty() ? "(empty)" : exe_dir.string().c_str());
+        fflush(stderr);
         if (exe_dir.empty())
 #endif
         {
             std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
             exe_dir = exe_path.parent_path();
+            fprintf(stderr, "Hydra CAD: exe_dir from argv[0] = %s\n", exe_dir.string().c_str());
+            fflush(stderr);
         }
         const std::filesystem::path platform_path = exe_dir / "platforms";
         // Only override Qt plugin paths when we ship our own (e.g. portable/Windows).
-        // On Linux system install (e.g. /usr/lib/hydracad) there is no platforms/,
-        // so Qt must use system paths (/usr/lib/qt/plugins etc.); setting them
-        // to a non-existent directory would prevent the app from starting.
         if (std::filesystem::is_directory(platform_path)) {
-            const QByteArray plugin_root = QByteArray::fromStdString(exe_dir.string());
-            const QByteArray platform_path_env = QByteArray::fromStdString(platform_path.string());
-            qputenv("QT_PLUGIN_PATH", plugin_root);
-            qputenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path_env);
+            const std::string plugin_root = exe_dir.string();
+            const std::string platform_path_env = platform_path.string();
+            setenv("QT_PLUGIN_PATH", plugin_root.c_str(), 1);
+            setenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path_env.c_str(), 1);
         }
+    } catch (const std::exception& e) {
+        fprintf(stderr, "Hydra CAD: exception in path setup: %s\n", e.what());
+        fflush(stderr);
     } catch (...) {
-        // If path resolution fails, let Qt use default search paths.
+        fprintf(stderr, "Hydra CAD: unknown exception in path setup\n");
+        fflush(stderr);
     }
 
-    // So Qt's applicationDirPath() is correct when started from launcher (argv[0] may be just the program name).
-    static std::string exe_path_for_argv;
-    if (!exe_dir.empty()) {
-#ifdef _WIN32
-        exe_path_for_argv = (exe_dir / "cad_desktop.exe").string();
-#else
-        exe_path_for_argv = (exe_dir / "cad_desktop").string();
-#endif
-        argv[0] = const_cast<char*>(exe_path_for_argv.c_str());
-    }
-
+    fprintf(stderr, "Hydra CAD: before Wayland check\n");
+    fflush(stderr);
 #ifdef __linux__
     // SoQt/Coin3D often crash or fail to create OpenGL context on native Wayland.
-    // Force XCB (XWayland) when in a Wayland session so the 3D viewport works.
-    if (qgetenv("QT_QPA_PLATFORM").isEmpty() && !qgetenv("WAYLAND_DISPLAY").isEmpty()) {
-        qputenv("QT_QPA_PLATFORM", "xcb");
+    if (!getenv("QT_QPA_PLATFORM") && getenv("WAYLAND_DISPLAY")) {
+        setenv("QT_QPA_PLATFORM", "xcb", 1);
     }
 #endif
+    fprintf(stderr, "Hydra CAD: before QApplication\n");
+    fflush(stderr);
 
 #ifdef _WIN32
     if (!exe_dir.empty() && !preflightCheckWindows(exe_dir)) {
@@ -192,7 +200,11 @@ int main(int argc, char** argv) {
     }
 #endif
 
+    fprintf(stderr, "Hydra CAD: before QApplication\n");
+    fflush(stderr);
     QApplication qt_app(argc, argv);
+    fprintf(stderr, "Hydra CAD: after QApplication, CWD=%s\n", QDir::currentPath().toUtf8().constData());
+    fflush(stderr);
     // Ensure working directory is the application directory so plugins, resources and
     // relative paths resolve correctly regardless of how the app was started (shortcut,
     // file manager, launcher with argv[0] just the program name, etc.).
@@ -215,6 +227,8 @@ int main(int argc, char** argv) {
                 message = "Unhandled exception: unknown";
             }
         }
+        fprintf(stderr, "Hydra CAD FATAL: %s\n", message.toUtf8().constData());
+        fflush(stderr);
         writeCrashLog(message);
         std::_Exit(1);
     });
@@ -245,10 +259,16 @@ int main(int argc, char** argv) {
     cad::app::AppController controller;
     application.setController(&controller);
     
+    fprintf(stderr, "Hydra CAD: before initializeWithLogin\n");
+    fflush(stderr);
     // Require login before initializing
     if (!controller.initializeWithLogin()) {
+        fprintf(stderr, "Hydra CAD: initializeWithLogin returned false, exiting\n");
+        fflush(stderr);
         return 1;  // User cancelled login
     }
+    fprintf(stderr, "Hydra CAD: after initializeWithLogin\n");
+    fflush(stderr);
 
     // Show a simple loading screen while initializing
     QPixmap splash_pixmap(480, 260);

@@ -7,12 +7,26 @@ Dieses Verzeichnis enthält den **PKGBUILD** für Hydra CAD. Damit kannst du:
 
 **Installation (lokal):**
 
+- **Wichtig:** `makepkg` **nicht als root** ausführen (normale Benutzer-Shell).
+
 ```bash
 sudo pacman -S --needed base-devel cmake qt6-base qt6-tools git
 git clone https://github.com/drixber/CAD.git
 cd CAD/packaging/arch
 makepkg -si
 ```
+
+**Build aus lokalem Repo (ohne GitHub-Tag):**
+
+Wenn du im Repo Änderungen hast und direkt bauen willst (ohne Tag/Push):
+
+```bash
+cd ~/GitHub/CAD/packaging/arch
+chmod +x build-local.sh
+./build-local.sh
+```
+
+Das Skript erzeugt einen Tarball aus dem aktuellen Stand und führt danach `makepkg -si` aus.
 
 - **Weiterentwicklung auf Arch:** [docs/BUILD_ARCH.md](../../docs/BUILD_ARCH.md)
 - **pacman/yay und AUR:** [docs/INSTALL_ARCH_PACMAN_YAY.md](../../docs/INSTALL_ARCH_PACMAN_YAY.md)
