@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## [3.0.16] - 2026-01-31
+
 ### Added
 - **Referenz-Inventor/darius.txt – umgesetzte Punkte:**
   - **Navigationssystem:** Zoom auf Auswahl (fitToSelection) – Button „Zoom Selection“ in Viewport-Toolbar; SoQtViewerIntegration/Viewport3D rahmen Auswahl per Bounding Box.
@@ -17,6 +23,9 @@
   - **App an API (Phase 2):** `UserAuthService::registerViaApi`/`loginViaApi` mit HttpClient (Qt Network); Token in QSettings; Auto-Login per Refresh/Me beim Start; `getAccessToken()`, `saveSession`/`clearStoredTokens`, Logout löscht Tokens.
   - **App Lizenzen (Phase 4):** `LicenseService` (check, activate, isAllowed, Machine-ID in QSettings); UI „Lizenz aktivieren“ (Settings → Activate License), `QtLicenseDialog`.
 - Doku: `docs/TODO_USER_BACKEND_LICENSES.md` auf Stand (Phasen 1–4 erledigt); `backend/README.md` (API, Env, Lizenzschlüssel anlegen).
+
+### Fixed
+- **Release-Assets-Workflow:** `actions/checkout` im Upload-Job (behebt „not a git repository“ bei `gh release upload`); `shell: bash` für Schritt „Tag ermitteln“ unter Windows (PowerShell-ParserError vermieden).
 
 ---
 
