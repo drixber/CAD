@@ -368,6 +368,36 @@ jobs:
             exit 1
           fi
 
+      - name: Checksums und update.json erzeugen
+        id: checksums
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+          NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "notes_url=${NOTES_URL}" >> $GITHUB_OUTPUT
+          echo '{"version":"'$TAG'","notes_url":"'$NOTES_URL'","assets":[' > upload/update.json
+          first=1
+          for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip; do
+            if [ -f "$f" ]; then
+              name=$(basename "$f")
+              size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null)
+              sha=$(sha256sum "$f" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$f" 2>/dev/null | awk '{print $1}')
+              [ -z "$sha" ] && sha=""
+              [ $first -eq 0 ] && echo -n "," >> upload/update.json
+              echo -n '{"name":"'$name'","url":"'$BASE_URL/$name'","size":'$size',"sha256":"'$sha'"}' >> upload/update.json
+              first=0
+            fi
+          done
+          echo "]}" >> upload/update.json
+          echo "=== update.json ==="
+          cat upload/update.json
+          echo ""
+          echo "=== SHA256SUMS.txt ==="
+          (cd upload && for f in HydraCADSetup.exe app-windows.zip hydracad-linux-portable.tar.gz HydraCAD-macos.zip; do [ -f "$f" ] && sha256sum "$f" 2>/dev/null || shasum -a 256 "$f" 2>/dev/null; done) > upload/SHA256SUMS.txt
+          cat upload/SHA256SUMS.txt
+
       - name: Assets ans Release hängen
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
@@ -376,7 +406,7 @@ jobs:
             exit 1
           fi
           echo "Uploading assets for tag: $TAG"
-          for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip; do
+          for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip upload/update.json upload/SHA256SUMS.txt; do
             if [ -f "$f" ]; then
               echo "  -> $f"
               gh release upload "$TAG" "$f" --clobber
