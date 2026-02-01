@@ -8,8 +8,9 @@ set -euo pipefail
 
 # ========== ANPASSEN ==========
 PKGNAME="hydracad"
-PKGVER="3.0.14"
-PKGREL="1"
+# Version: 1. Argument (z. B. ./aur-upload.sh 3.0.20) oder Umgebungsvariable PKGVER
+PKGVER="${1:-${PKGVER:-3.0.16}}"
+PKGREL="${PKGREL:-1}"
 PKGDESC="Professional CAD application (C++/Qt6)"
 ARCH="x86_64"
 LICENSE="custom"
@@ -52,6 +53,7 @@ build() {
 package() {
   cd "\${srcdir}/${GITHUB_REPO}-\${pkgver}"
   install -Dm755 build/${BINNAME} -t "\${pkgdir}/usr/bin"
+  ln -s ${BINNAME} "\${pkgdir}/usr/bin/${PKGNAME}"
   install -Dm644 packaging/linux/HydraCAD.desktop -t "\${pkgdir}/usr/share/applications"
   install -Dm644 installer/license.txt "\${pkgdir}/usr/share/licenses/\${pkgname}/LICENSE"
 }

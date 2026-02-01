@@ -1,0 +1,107 @@
+# Bei jedem veröffentlichten Release: PKGBUILD + .SRCINFO ins AUR pushen.
+# Voraussetzung: Repository-Secret AUR_SSH_PRIVATE_KEY (privater SSH-Key für AUR-Account).
+# Trigger: release: published ODER manuell (workflow_dispatch mit tag_name).
+
+name: AUR – Update
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag (z. B. v3.0.20) – nur bei manueller Ausführung'
+        required: true
+        default: 'v3.0.19'
+
+jobs:
+  aur-push:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Tag / Version ermitteln
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ github.event.inputs.tag_name }}"
+          fi
+          # v3.0.20 -> 3.0.20
+          PKGVER="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "pkgver=$PKGVER" >> $GITHUB_OUTPUT
+          echo "Using tag: $TAG, pkgver: $PKGVER"
+
+      - name: PKGBUILD erzeugen
+        run: |
+          PKGVER="${{ steps.version.outputs.pkgver }}"
+          mkdir -p aur-build && cd aur-build
+          cat > PKGBUILD << 'EOF'
+          pkgname=hydracad
+          pkgver=PKGVER_PLACEHOLDER
+          pkgrel=1
+          pkgdesc="Professional CAD application (C++/Qt6)"
+          arch=('x86_64')
+          url="https://github.com/drixber/CAD"
+          license=('custom')
+          depends=('qt6-base' 'qt6-tools' 'qt6-translations')
+          optdepends=('qt6-network: in-app updates without curl')
+          makedepends=('cmake' 'git')
+          source=("${pkgname}-${pkgver}.tar.gz::https://github.com/drixber/CAD/archive/refs/tags/v${pkgver}.tar.gz")
+          sha256sums=('SKIP')
+          build() {
+            cd "${srcdir}/CAD-${pkgver}"
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCAD_USE_QT=ON
+            cmake --build build -j"$(nproc)"
+          }
+          package() {
+            cd "${srcdir}/CAD-${pkgver}"
+            install -Dm755 build/cad_desktop -t "$pkgdir/usr/bin"
+            ln -s cad_desktop "$pkgdir/usr/bin/hydracad"
+            install -Dm644 packaging/linux/HydraCAD.desktop -t "$pkgdir/usr/share/applications"
+            install -Dm644 installer/license.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+          }
+          EOF
+          sed -i 's/PKGVER_PLACEHOLDER/'"$PKGVER"'/' PKGBUILD
+          sed -i 's/^          //' PKGBUILD
+
+      - name: .SRCINFO erzeugen (Arch-Container)
+        run: |
+          cd aur-build
+          docker run --rm -v "$PWD":/mnt -w /mnt archlinux:latest bash -c \
+            "pacman -Sy --noconfirm base-devel && makepkg --printsrcinfo > .SRCINFO"
+          cat .SRCINFO
+
+      - name: SSH für AUR einrichten
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
+          chmod 600 ~/.ssh/aur_key
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null || true
+          printf 'Host aur.archlinux.org\n  IdentityFile ~/.ssh/aur_key\n  User aur\n' >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: AUR-Repo klonen und pushen
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$AUR_SSH_PRIVATE_KEY" ] || [ "$AUR_SSH_PRIVATE_KEY" = "" ]; then
+            echo "::warning::AUR_SSH_PRIVATE_KEY nicht gesetzt – AUR-Update übersprungen."
+            echo "::notice::Secret unter Settings → Secrets and variables → Actions anlegen."
+            exit 0
+          fi
+          cd aur-build
+          git clone --depth 1 ssh://aur@aur.archlinux.org/hydracad.git aur-repo
+          cd aur-repo
+          git config user.name "Hydra CAD"
+          git config user.email "noreply@hydracad.local"
+          cp ../PKGBUILD ../.SRCINFO .
+          git add PKGBUILD .SRCINFO
+          if git diff --staged --quiet; then
+            echo "[!] Keine Änderungen, nichts zu pushen."
+            exit 0
+          fi
+          git commit -m "Update to ${{ steps.version.outputs.pkgver }}"
+          git push
+          echo "AUR-Update abgeschlossen: https://aur.archlinux.org/packages/hydracad"
