@@ -194,7 +194,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows-installer
-          path: installer/HydraCADSetup.exe
+          path: installer/
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows-portable
@@ -347,20 +347,19 @@ jobs:
           mkdir -p upload
           echo "=== Artifact-Struktur ==="
           find release-assets -type f
-          # Aus bekannten Artifact-Ordnern kopieren (Pfad kann installer/ oder direkt sein)
-          cp release-assets/release-windows-installer/installer/HydraCADSetup.exe upload/ 2>/dev/null || cp release-assets/release-windows-installer/HydraCADSetup.exe upload/ 2>/dev/null || true
-          cp release-assets/release-windows-portable/app-windows.zip upload/ 2>/dev/null || true
-          cp release-assets/release-linux-portable/hydracad-linux-portable.tar.gz upload/ 2>/dev/null || true
-          cp release-assets/release-macos/HydraCAD-macos.zip upload/ 2>/dev/null || true
-          # Fallback: find
+          # Artifact-Struktur: path "installer/HydraCADSetup.exe" → je nach Runner
+          # release-windows-installer/HydraCADSetup.exe oder .../installer/HydraCADSetup.exe
+          ( cp release-assets/release-windows-installer/HydraCADSetup.exe upload/ 2>/dev/null || \
+            cp release-assets/release-windows-installer/installer/HydraCADSetup.exe upload/ 2>/dev/null ) || true
+          cp release-assets/release-windows-portable/app-windows.zip upload/ 2>/dev/null || find release-assets -name 'app-windows.zip' -exec cp {} upload/ \; || true
+          cp release-assets/release-linux-portable/hydracad-linux-portable.tar.gz upload/ 2>/dev/null || find release-assets -name 'hydracad-linux-portable.tar.gz' -exec cp {} upload/ \; || true
+          cp release-assets/release-macos/HydraCAD-macos.zip upload/ 2>/dev/null || find release-assets -name 'HydraCAD-macos.zip' -exec cp {} upload/ \; || true
+          # Garantiert EXE im Upload: find-Fallback (wichtig für Release-Seite)
           find release-assets -name 'HydraCADSetup.exe' -exec cp {} upload/ \;
-          find release-assets -name 'app-windows.zip' -exec cp {} upload/ \;
-          find release-assets -name '*.tar.gz' -exec cp {} upload/ \;
-          find release-assets -name 'HydraCAD-macos.zip' -exec cp {} upload/ \;
-          echo "=== Upload-Ordner ==="
+          echo "=== Upload-Ordner (vor Prüfung) ==="
           ls -la upload/
           if [ ! -f upload/HydraCADSetup.exe ]; then
-            echo "::error::HydraCADSetup.exe missing – Windows build/installer failed."
+            echo "::error::HydraCADSetup.exe missing – Windows build/installer failed or wrong artifact path."
             exit 1
           fi
           if [ ! -f upload/hydracad-linux-portable.tar.gz ]; then
@@ -413,5 +412,16 @@ jobs:
             fi
           done
           echo "Done. Assets at: https://github.com/${{ github.repository }}/releases/expanded_assets/$TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release-Assets prüfen (EXE muss sichtbar sein)
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          echo "=== Assets auf dem Release $TAG ==="
+          gh release view "$TAG" --json assets -q '.assets[] | "\(.name) (\(.size) bytes)"' || true
+          if ! gh release view "$TAG" --json assets -q '.assets[] | select(.name == "HydraCADSetup.exe") | .name' 2>/dev/null | grep -q HydraCADSetup.exe; then
+            echo "::warning::HydraCADSetup.exe ist nicht unter den Release-Assets – bitte Log prüfen."
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
