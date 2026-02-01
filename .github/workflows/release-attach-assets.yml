@@ -12,7 +12,7 @@ on:
       tag_name:
         description: 'Tag (z. B. v3.0.12) – nur bei manueller Ausführung'
         required: true
-        default: 'v3.0.12'
+        default: 'v3.0.14'
 
 jobs:
   build-windows:
@@ -53,9 +53,16 @@ jobs:
         run: |
           $tag = "${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
           $ver = $tag -replace '^v', ''
-          if (-not $ver) { $ver = "2.0.0" }
+          if (-not $ver) { $ver = "3.0.14" }
+          $parts = $ver.Split('.')
+          $major = if ($parts.Length -gt 0) { $parts[0] } else { "3" }
+          $minor = if ($parts.Length -gt 1) { $parts[1] } else { "0" }
+          $patch = if ($parts.Length -gt 2) { $parts[2] } else { "0" }
           echo "version=$ver" >> $env:GITHUB_OUTPUT
           echo "vversion=v$ver" >> $env:GITHUB_OUTPUT
+          echo "version_major=$major" >> $env:GITHUB_OUTPUT
+          echo "version_minor=$minor" >> $env:GITHUB_OUTPUT
+          echo "version_patch=$patch" >> $env:GITHUB_OUTPUT
 
       - run: |
           if (Test-Path build) { Remove-Item build -Recurse -Force }
@@ -68,6 +75,7 @@ jobs:
         run: |
           $QtDir = $env:Qt6_DIR
           $appVer = "${{ steps.version.outputs.vversion }}"
+          if (-not $appVer) { $appVer = "v3.0.14" }
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DCAD_USE_QT=ON -DCAD_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release `
             -DAPP_VERSION="$appVer" -DQt6_DIR="$QtDir" -DCMAKE_PREFIX_PATH="$QtDir"
@@ -76,18 +84,74 @@ jobs:
       - run: cmake --build build --config Release --parallel
         shell: powershell
 
+      - name: Verify EXE exists
+        run: |
+          if (-not (Test-Path "build\Release\cad_desktop.exe")) {
+            Write-Error "cad_desktop.exe not found after build."
+            exit 1
+          }
+        shell: powershell
+
       - name: windeployqt
         run: |
-          $qtBin = (Join-Path $env:Qt6_DIR "bin")
-          & (Join-Path $qtBin "windeployqt.exe") build\Release\cad_desktop.exe
+          if (-not $env:Qt6_DIR) {
+            Write-Error "Qt6_DIR not set by install-qt-action."
+            exit 1
+          }
+          $candidateBins = @(
+            (Join-Path $env:Qt6_DIR "bin"),
+            (Join-Path $env:Qt6_DIR "..\..\..\bin"),
+            (Join-Path $env:Qt6_DIR "..\..\bin"),
+            (Join-Path $env:Qt6_DIR "..\bin")
+          )
+          $qtBin = $candidateBins | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $qtBin) {
+            Write-Error "Qt bin directory not found for Qt6_DIR=$env:Qt6_DIR"
+            exit 1
+          }
+          $windeployqt = Join-Path $qtBin "windeployqt.exe"
+          if (-not (Test-Path $windeployqt)) {
+            Write-Error "windeployqt not found: $windeployqt"
+            exit 1
+          }
+          & $windeployqt build\Release\cad_desktop.exe
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "windeployqt failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+          if (-not (Test-Path "build\Release\Qt6Gui.dll")) {
+            Write-Error "Qt6Gui.dll not found after windeployqt. Packaging would be broken."
+            exit 1
+          }
         shell: powershell
 
       - name: NSIS Installer
         run: |
           $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
           if (-not (Test-Path $nsis)) { $nsis = "C:\Program Files\NSIS\makensis.exe" }
+          if (-not (Test-Path $nsis)) {
+            choco install nsis -y --no-progress
+            Start-Sleep -Seconds 15
+            $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          }
           $ver = "${{ steps.version.outputs.version }}"
-          & $nsis /DINSTALLER_VERSION="$ver" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
+          $major = "${{ steps.version.outputs.version_major }}"
+          $minor = "${{ steps.version.outputs.version_minor }}"
+          $patch = "${{ steps.version.outputs.version_patch }}"
+          & $nsis /DINSTALLER_VERSION="$ver" /DVERSION_MAJOR="$major" /DVERSION_MINOR="$minor" /DVERSION_PATCH="$patch" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS build failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+        shell: powershell
+
+      - name: Verify Installer
+        run: |
+          if (-not (Test-Path "installer\HydraCADSetup.exe")) {
+            Write-Error "HydraCADSetup.exe not found after NSIS build."
+            exit 1
+          }
+          (Get-Item "installer\HydraCADSetup.exe").Length
         shell: powershell
 
       - name: Code Sign (optional)
@@ -213,10 +277,22 @@ jobs:
           find release-assets -name '*.tar.gz' -exec cp {} upload/ \;
           find release-assets -name 'HydraCAD-macos.zip' -exec cp {} upload/ \;
           ls -la upload/
+          if [ ! -f upload/HydraCADSetup.exe ]; then
+            echo "::error::HydraCADSetup.exe missing – Windows build/installer failed."
+            exit 1
+          fi
+          if [ ! -f upload/hydracad-linux-portable.tar.gz ]; then
+            echo "::error::hydracad-linux-portable.tar.gz missing – Linux build failed."
+            exit 1
+          fi
 
       - name: Assets ans Release hängen
         run: |
           TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          if [ -z "$TAG" ]; then
+            echo "::error::Release tag is empty. Set tag_name when running manually."
+            exit 1
+          fi
           for f in upload/HydraCADSetup.exe upload/app-windows.zip upload/hydracad-linux-portable.tar.gz upload/HydraCAD-macos.zip; do
             [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber
           done

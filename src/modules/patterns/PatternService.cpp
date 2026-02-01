@@ -30,11 +30,46 @@ PatternResult PatternService::createPattern(const PatternRequest& request) const
             return createCircularPattern(request);
         case PatternType::CurveDriven:
             return createCurvePattern(request);
+        case PatternType::Face:
+            return createFacePattern(request);
         default:
             result.success = false;
             result.message = "Unknown pattern type";
             return result;
     }
+}
+
+PatternResult PatternService::createFacePattern(const PatternRequest& request) const {
+    PatternResult result;
+    result.success = true;
+    result.message = "Face pattern (Flächenmuster) created";
+    result.pattern_type = PatternType::Face;
+    result.pattern_id = request.targetFeature + "_face_pattern";
+    result.instances = generateFaceInstances(request.face_params);
+    result.total_instances = result.instances.size();
+    patterns_[result.pattern_id] = result;
+    return result;
+}
+
+std::vector<PatternInstance> PatternService::generateFaceInstances(const FacePatternParams& params) const {
+    std::vector<PatternInstance> instances;
+    const double rad = params.angle * M_PI / 180.0;
+    const double cx = std::cos(rad);
+    const double sx = std::sin(rad);
+    for (int i = 0; i < params.count_x; ++i) {
+        for (int j = 0; j < params.count_y; ++j) {
+            PatternInstance inst;
+            inst.instance_id = "face_" + std::to_string(i) + "_" + std::to_string(j);
+            double u = i * params.spacing_x;
+            double v = j * params.spacing_y;
+            inst.x = u * cx - v * sx;
+            inst.y = u * sx + v * cx;
+            inst.z = 0.0;
+            inst.rotation = params.angle;
+            instances.push_back(inst);
+        }
+    }
+    return instances;
 }
 
 PatternResult PatternService::createRectangularPattern(const PatternRequest& request) const {

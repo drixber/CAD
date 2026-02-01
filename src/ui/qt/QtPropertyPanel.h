@@ -11,7 +11,6 @@
 #include <QStackedWidget>
 #include <QTableWidget>
 #include <QVariantMap>
-#include <QWidget>
 
 namespace cad {
 namespace ui {
@@ -42,10 +41,13 @@ public:
     void setConstraintCount(int count);
     void setParameterCount(int count);
     void setParameterSummary(const QString& summary);
+    /** Zentrale Parameter-Tabelle: Zeilen = Name, Wert, Formel. */
+    void setParameterTable(const QList<QStringList>& rows);
     void setIntegrationStatus(const QString& status);
     void setMateCount(int count);
     void setContextPlaceholder(const QString& context);
     void setContextCategory(const QString& category);
+    void setBreadcrumb(const QString& breadcrumb);
     void setBomItems(const QList<BomItem>& items);
     void setStylePresets(const QStringList& presets);
     void setCurrentStylePreset(const QString& preset);
@@ -62,6 +64,12 @@ signals:
     void annotationChanged(const QString& annotation_id, const QVariantMap& properties);
     void annotationPositionChanged(const QString& annotation_id, double x, double y);
     void annotationLeaderChanged(const QString& annotation_id, const QList<QPointF>& leader_points);
+    void applyRequested();
+    void cancelRequested();
+    void applyAndNewRequested();
+    void closePanelRequested();
+    void visibilityToggled();
+    void newConfigurationRequested();
 
 private slots:
     void onStyleTableDoubleClicked(int row, int column);
@@ -77,9 +85,11 @@ private:
     QLabel* constraints_label_{nullptr};
     QLabel* parameters_label_{nullptr};
     QLabel* parameters_summary_{nullptr};
+    QTableWidget* parameters_table_{nullptr};
     QLabel* integration_status_{nullptr};
     QLabel* mates_label_{nullptr};
     QLabel* context_label_{nullptr};
+    QLabel* breadcrumb_label_{nullptr};
     QStackedWidget* context_stack_{nullptr};
     QTableWidget* bom_table_{nullptr};
     QTableWidget* annotation_table_{nullptr};

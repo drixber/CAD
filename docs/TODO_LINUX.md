@@ -13,8 +13,6 @@ Linux ist **vollständig unterstützt**: Build, portable Tarballs, AppImage, CI 
 | **Packaging** | ✅ | Arch: PKGBUILD. Ubuntu/Debian: README + optionale .deb-Hinweise. Linux: HydraCAD.desktop, HydraCAD.png, AppImage/Tarball in release.yml |
 | **CI** | ✅ | release.yml: Linux-Job baut AppImage + portable Tarball; release-attach-assets.yml hängt hydracad-linux-portable.tar.gz ans Release |
 | **Icon** | ✅ | packaging/linux/HydraCAD.png (256×256); Desktop-Eintrag Icon=HydraCAD; in AppDir und Tarball eingebunden |
-| **FreeCAD** | ✅ | Doku: CAD_USE_FREECAD unter Ubuntu/Arch mit System-FreeCAD (BUILD_LINUX.md, BUILD_ARCH.md) |
-
 ---
 
 ## Erledigt
@@ -25,7 +23,6 @@ Linux ist **vollständig unterstützt**: Build, portable Tarballs, AppImage, CI 
 - [x] **Linux-CI:** release.yml und release-attach-assets.yml bauen Linux (AppImage + Tarball) und hängen den Tarball ans Release
 - [x] **Packaging Linux:** HydraCAD.desktop, HydraCAD.png; Icon in AppDir und portable Tarball; linuxdeploy --icon-file
 - [x] **Icon:** packaging/linux/HydraCAD.png (256×256) für AppImage/Desktop
-- [x] **FreeCAD unter Linux:** Doku in BUILD_LINUX.md und BUILD_ARCH.md – CAD_USE_FREECAD mit System-FreeCAD (Ubuntu/Arch)
 - [x] **.deb/.rpm:** Optionale Hinweise in packaging/ubuntu/README.md und packaging/debian/README.md (kein offizielles .deb-Release)
 
 ---

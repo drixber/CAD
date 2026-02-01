@@ -77,6 +77,7 @@ struct DrawingStyleProfile {
 enum class StylePreset {
     Default,
     ISO,
+    DIN,
     ANSI,
     JIS,
     Custom

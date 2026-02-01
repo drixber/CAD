@@ -24,6 +24,10 @@ public:
     HttpResponse post(const std::string& url, const std::string& body, const std::map<std::string, std::string>& headers = {}) const;
     bool downloadFile(const std::string& url, const std::string& file_path,
                      std::function<void(int percentage, std::size_t bytes_downloaded, std::size_t total_bytes)> progress_callback = nullptr) const;
+
+    /** Upload file via multipart/form-data (field name "file"). Only when CAD_USE_QT_NETWORK. */
+    HttpResponse uploadFile(const std::string& url, const std::string& file_path,
+                           const std::map<std::string, std::string>& headers = {}) const;
     
     void setTimeout(int seconds);
     void setUserAgent(const std::string& user_agent);

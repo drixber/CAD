@@ -7,13 +7,24 @@
 namespace cad {
 namespace modules {
 
+/** Blechregeln pro Part: Dicke, Biegeradius, K-Faktor, Eckbehandlung, Biegetabelle. */
+struct SheetMetalRules {
+    double thickness{1.0};
+    double bend_radius_default{2.0};
+    double k_factor{0.5};
+    std::string corner_relief{"Square"};  // "None", "Square", "Round"
+    std::string bend_table_name{};
+};
+
 enum class SheetMetalOperation {
     Flange,
     Face,
     Cut,
     Bend,
     Unfold,
-    Refold
+    Refold,
+    Punch,   // Stanzung
+    Bead     // Sicke
 };
 
 struct BendLine {
@@ -71,6 +82,8 @@ public:
     SheetMetalResult createFace(const SheetMetalRequest& request) const;
     SheetMetalResult unfoldSheet(const SheetMetalRequest& request) const;
     SheetMetalResult refoldSheet(const SheetMetalRequest& request) const;
+    SheetMetalResult createPunch(const SheetMetalRequest& request) const;
+    SheetMetalResult createBead(const SheetMetalRequest& request) const;
     
     // Flat pattern generation
     SheetMetalResult generateFlatPattern(const std::string& part_id) const;
@@ -83,9 +96,17 @@ public:
     void setKFactor(const std::string& part_id, double k_factor);
     double getKFactor(const std::string& part_id) const;
     
+    // Blechregeln (Dicke, Biegeradius, K-Faktor, Eckbehandlung, Biegetabelle)
+    void setRules(const std::string& part_id, const SheetMetalRules& rules);
+    SheetMetalRules getRules(const std::string& part_id) const;
+    
+    /** Abwicklung als DXF exportieren (Kontur + Biegelinien). */
+    bool exportFlatPatternToDxf(const std::string& part_id, const std::string& path) const;
+    
 private:
     std::map<std::string, double> material_thicknesses_;
     std::map<std::string, double> k_factors_;
+    std::map<std::string, SheetMetalRules> rules_;
     
     double calculateBendLength(double angle, double radius, double thickness, double k_factor) const;
 };

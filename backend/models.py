@@ -45,3 +45,18 @@ class LicenseStatusResponse(BaseModel):
     license_type: Optional[str] = None
     expires_at: Optional[str] = None
     error: Optional[str] = None
+
+
+class CommunityFeedItem(BaseModel):
+    id: str
+    title: str
+    author: str
+    likes: int = 0
+    downloads: int = 0
+    description: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class CommunityItemDetail(CommunityFeedItem):
+    file_url: Optional[str] = None  # relative path for download

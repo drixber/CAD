@@ -174,19 +174,21 @@ bool QtCommandLine::validateCommand(ParsedCommand& parsed) const {
 
 void QtCommandLine::initializeValidCommands() {
     valid_commands_ = QStringList({
+        "New", "Open", "Save", "Import", "Export", "GetStarted", "Documentation",
         "Parameters", "Line", "Rectangle", "Circle", "Arc", "Constraint",
-        "Extrude", "Revolve", "Loft", "Hole", "Fillet",
-        "Flange", "Bend", "Unfold", "Refold",
-        "RectangularPattern", "CircularPattern", "CurvePattern",
+        "Extrude", "Revolve", "Loft", "Hole", "HoleThroughAll", "Fillet", "Chamfer", "Shell", "Mirror",
+        "Flange", "Bend", "Unfold", "Refold", "Punch", "Bead", "SheetMetalRules", "ExportFlatDXF",
+        "RectangularPattern", "CircularPattern", "CurvePattern", "FacePattern",
         "DirectEdit", "Freeform",
-        "LoadAssembly", "Place", "Mate", "Flush", "Angle", "Pattern",
-        "RigidPipe", "FlexibleHose", "BentTube", "Simplify",
-        "BaseView", "Section", "Dimension", "PartsList",
+        "LoadAssembly", "Place", "Mate", "Flush", "Angle", "Parallel", "Distance", "Pattern", "ExplosionView",
+        "RigidPipe", "FlexibleHose", "BentTube", "RouteBOM", "Weld", "WeldBOM", "Simplify",
+        "BaseView", "Section", "DetailView", "Dimension", "PartsList",
         "Measure", "Interference", "SectionAnalysis",
-        "Simulation", "StressAnalysis",
+        "Simulation", "StressAnalysis", "ExportFEAReport", "ExportMotionReport",
         "Styles", "AddIns", "Import", "Export", "ExportRFA", "MbdNote",
         "Visibility", "Appearance", "Environment",
-        "Illustration", "Rendering", "Animation", "MBDView"
+        "Illustration", "Rendering", "Animation", "MBDView", "MbdView",
+        "Shaded", "Wireframe", "HiddenLine", "Undo", "Redo"
     });
     
     // Update completer model
@@ -261,19 +263,25 @@ void QtCommandLine::initializeCommandDefinitions() {
     dimension.max_parameters = 0;
     command_definitions_["dimension"] = dimension;
     
-    // Mate command
+    // Mate command: type (required) + optional value (for Distance, Angle, Parallel offset)
     CommandDefinition mate;
     mate.name = "Mate";
-    mate.description = tr("Create a mate constraint");
+    mate.description = tr("Create a mate constraint (type and optional value, e.g. Mate Distance 25)");
     mate.min_parameters = 1;
-    mate.max_parameters = 1;
+    mate.max_parameters = 2;
     CommandParameter mate_type;
     mate_type.name = "type";
     mate_type.type = "enum";
     mate_type.description = tr("Mate type");
     mate_type.required = true;
-    mate_type.enum_values = QStringList({"Coincident", "Parallel", "Perpendicular", "Tangent", "Concentric"});
+    mate_type.enum_values = QStringList({"Coincident", "Parallel", "Perpendicular", "Tangent", "Concentric", "Distance"});
     mate.parameters.append(mate_type);
+    CommandParameter mate_value;
+    mate_value.name = "value";
+    mate_value.type = "double";
+    mate_value.description = tr("Distance (mm) or angle (deg), optional");
+    mate_value.required = false;
+    mate.parameters.append(mate_value);
     command_definitions_["mate"] = mate;
 }
 

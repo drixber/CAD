@@ -5,19 +5,26 @@
 #include <Inventor/Qt/SoQtExaminerViewer.h>
 #include <Inventor/nodes/SoSeparator.h>
 #include <Inventor/nodes/SoPerspectiveCamera.h>
+#include <Inventor/nodes/SoOrthographicCamera.h>
 #include <Inventor/nodes/SoDirectionalLight.h>
 #include <Inventor/nodes/SoMaterial.h>
 #include <Inventor/nodes/SoDrawStyle.h>
+#include <Inventor/nodes/SoTransform.h>
 #include <Inventor/nodes/SoCoordinate3.h>
 #include <Inventor/nodes/SoLineSet.h>
 #include <Inventor/nodes/SoBaseColor.h>
 #include <Inventor/SoDB.h>
 #include <Inventor/SbVec3f.h>
+#include <Inventor/actions/SoGetBoundingBoxAction.h>
+#include <Inventor/SoViewportRegion.h>
 #include <QWidget>
 #endif
 #endif
 
 #include <cmath>
+#include <vector>
+#include <algorithm>
+#include <cstring>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -170,6 +177,30 @@ void SoQtViewerIntegration::removeGeometryNode(const std::string& geometry_id) {
 void SoQtViewerIntegration::updateGeometryNode(const std::string& geometry_id, void* coin_node) {
     removeGeometryNode(geometry_id);
     addGeometryNode(geometry_id, coin_node);
+}
+
+void SoQtViewerIntegration::updateNodeTransform(const std::string& geometry_id, double tx, double ty, double tz) {
+    if (!scene_root_) {
+        return;
+    }
+    auto it = geometry_nodes_.find(geometry_id);
+    if (it == geometry_nodes_.end() || !it->second) {
+        return;
+    }
+    SoSeparator* node = it->second;
+    SoTransform* so_transform = nullptr;
+    for (int i = 0; i < node->getNumChildren(); ++i) {
+        SoNode* child = node->getChild(i);
+        if (child->isOfType(SoTransform::getClassTypeId())) {
+            so_transform = static_cast<SoTransform*>(child);
+            break;
+        }
+    }
+    if (!so_transform) {
+        so_transform = new SoTransform;
+        node->insertChild(so_transform, 0);
+    }
+    so_transform->translation.setValue(static_cast<float>(tx), static_cast<float>(ty), static_cast<float>(tz));
 }
 
 void SoQtViewerIntegration::setDisplayMode(int mode) {
@@ -356,11 +387,126 @@ void SoQtViewerIntegration::fitToView() {
     }
 }
 
+void SoQtViewerIntegration::fitToSelection(const std::vector<std::string>& geometry_ids) {
+#ifdef CAD_USE_COIN3D
+#ifdef CAD_USE_QT
+    if (!viewer_ || !camera_ || !scene_root_) {
+        return;
+    }
+    if (geometry_ids.empty()) {
+        fitToView();
+        return;
+    }
+    SbViewportRegion vp = viewer_->getViewportRegion();
+    SoGetBoundingBoxAction bbox_action(vp);
+    SbBox3f selection_box;
+    bool has_any = false;
+    for (const std::string& id : geometry_ids) {
+        auto it = geometry_nodes_.find(id);
+        if (it == geometry_nodes_.end() || !it->second) {
+            continue;
+        }
+        bbox_action.apply(it->second);
+        SbBox3f node_box = bbox_action.getBoundingBox();
+        if (node_box.hasVolume() || node_box.getSize().length() > 1e-7f) {
+            if (!has_any) {
+                selection_box = node_box;
+                has_any = true;
+            } else {
+                selection_box.extendBy(node_box);
+            }
+        }
+        bbox_action.reset();
+    }
+    if (!has_any || !selection_box.hasVolume()) {
+        fitToView();
+        return;
+    }
+    SbVec3f center = selection_box.getCenter();
+    SbVec3f size = selection_box.getSize();
+    float max_extent = std::max({size[0], size[1], size[2]});
+    if (max_extent < 1e-6f) {
+        max_extent = 1.0f;
+    }
+    float vfov = camera_->heightAngle.getValue();
+    float margin = 1.2f;
+    float distance = margin * (max_extent * 0.5f) / std::tan(vfov * 0.5f);
+    SbVec3f cam_pos = camera_->position.getValue();
+    SbVec3f dir = cam_pos - center;
+    float len = dir.length();
+    if (len < 1e-6f) {
+        dir = SbVec3f(0.0f, 0.0f, 1.0f);
+    } else {
+        dir /= len;
+    }
+    SbVec3f new_pos = center + dir * distance;
+    camera_->position.setValue(new_pos);
+    camera_->pointAt(center);
+    camera_->focalDistance = distance;
+#endif
+#endif
+}
+
 void SoQtViewerIntegration::resetCamera() {
     if (camera_) {
         camera_->position.setValue(0.0f, 0.0f, 10.0f);
         camera_->pointAt(SbVec3f(0.0f, 0.0f, 0.0f));
         camera_->focalDistance = 10.0f;
+    }
+    if (viewer_) {
+        viewer_->viewAll();
+    }
+}
+
+void SoQtViewerIntegration::setStandardView(const char* view) {
+    if (!camera_) {
+        return;
+    }
+    const double d = 10.0;
+    const double iso = d / std::sqrt(3.0);
+    SbVec3f pos(0.0f, 0.0f, static_cast<float>(d));
+    SbVec3f up(0.0f, 1.0f, 0.0f);
+    const SbVec3f target(0.0f, 0.0f, 0.0f);
+
+    if (std::strcmp(view, "Top") == 0) {
+        pos = SbVec3f(0.0f, static_cast<float>(d), 0.0f);
+        up = SbVec3f(0.0f, 0.0f, -1.0f);
+    } else if (std::strcmp(view, "Bottom") == 0) {
+        pos = SbVec3f(0.0f, static_cast<float>(-d), 0.0f);
+        up = SbVec3f(0.0f, 0.0f, 1.0f);
+    } else if (std::strcmp(view, "Front") == 0) {
+        pos = SbVec3f(0.0f, 0.0f, static_cast<float>(d));
+        up = SbVec3f(0.0f, 1.0f, 0.0f);
+    } else if (std::strcmp(view, "Back") == 0) {
+        pos = SbVec3f(0.0f, 0.0f, static_cast<float>(-d));
+        up = SbVec3f(0.0f, 1.0f, 0.0f);
+    } else if (std::strcmp(view, "Right") == 0) {
+        pos = SbVec3f(static_cast<float>(d), 0.0f, 0.0f);
+        up = SbVec3f(0.0f, 1.0f, 0.0f);
+    } else if (std::strcmp(view, "Left") == 0) {
+        pos = SbVec3f(static_cast<float>(-d), 0.0f, 0.0f);
+        up = SbVec3f(0.0f, 1.0f, 0.0f);
+    } else if (std::strcmp(view, "Isometric") == 0) {
+        pos = SbVec3f(static_cast<float>(iso), static_cast<float>(iso), static_cast<float>(iso));
+        up = SbVec3f(0.0f, 1.0f, 0.0f);
+    }
+
+    camera_->position.setValue(pos);
+    camera_->pointAt(target);
+    camera_->focalDistance = pos.getLength();
+    if (viewer_) {
+        viewer_->viewAll();
+    }
+}
+
+void SoQtViewerIntegration::setProjectionType(bool orthographic) {
+    if (!viewer_) {
+        return;
+    }
+    if (orthographic) {
+        viewer_->setCameraType(SoOrthographicCamera::getClassTypeId());
+    } else {
+        viewer_->setCameraType(SoPerspectiveCamera::getClassTypeId());
     }
     if (viewer_) {
         viewer_->viewAll();

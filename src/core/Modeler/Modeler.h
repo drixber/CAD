@@ -14,6 +14,8 @@ public:
 
     bool validateSketch(const Sketch& sketch) const;
     bool evaluateParameters(Sketch& sketch) const;
+    bool evaluatePartParameters(Part& part) const;
+    bool evaluatePartRules(Part& part) const;
     bool solveConstraints(Sketch& sketch) const;
     
     // Constraint validation
@@ -23,7 +25,8 @@ public:
     int getDegreesOfFreedom(const Sketch& sketch) const;
     
     // Part feature operations
-    Part applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric = false) const;
+    Part applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric = false,
+                      ExtrudeMode mode = ExtrudeMode::Join) const;
     Part applyRevolve(Part& part, const std::string& sketch_id, double angle, const std::string& axis = "Z") const;
     Part applyLoft(Part& part, const std::vector<std::string>& sketch_ids) const;
     Part applySweep(Part& part, const std::string& profile_sketch_id, const std::string& path_sketch_id,
@@ -38,6 +41,12 @@ public:
                    const std::vector<std::string>& face_ids = {}) const;
     Part applyMirror(Part& part, const std::string& base_feature, const std::string& mirror_plane,
                     bool merge_result = true) const;
+    Part applyCircularPattern(Part& part, const std::string& base_feature, int count, double angle_deg = 360.0,
+                              const std::string& axis = "Z") const;
+    Part applyPathPattern(Part& part, const std::string& base_feature, const std::string& path_sketch_id,
+                         int count = 4, bool equal_spacing = true) const;
+    Part applyThinExtrude(Part& part, const std::string& sketch_id, double depth, double wall_thickness,
+                         bool symmetric = false, ExtrudeMode mode = ExtrudeMode::Join) const;
     Part applyThread(Part& part, const std::string& thread_standard, double pitch, bool internal = false) const;
     Part applyRib(Part& part, double thickness, const std::string& rib_plane, const std::string& sketch_id) const;
 };

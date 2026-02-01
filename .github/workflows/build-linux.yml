@@ -25,7 +25,8 @@ jobs:
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCAD_USE_QT=ON \
-            -DCAD_BUILD_TESTS=OFF
+            -DCAD_BUILD_TESTS=OFF \
+            -DCAD_USE_EIGENER_KERN=ON
 
       - name: Build
         run: |

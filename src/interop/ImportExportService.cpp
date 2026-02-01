@@ -47,8 +47,12 @@ IoResult ImportExportService::exportModel(const ExportRequest& request) const {
 
 std::vector<FileFormat> ImportExportService::supportedFormats() const {
     return {FileFormat::Step, FileFormat::Iges, FileFormat::Stl, FileFormat::Dwg,
-            FileFormat::Dxf, FileFormat::Sat, FileFormat::Rfa, FileFormat::Obj,
-            FileFormat::Ply, FileFormat::ThreeMf, FileFormat::Gltf, FileFormat::Glb};
+            FileFormat::Dxf, FileFormat::Sat, FileFormat::Parasolid, FileFormat::Jt,
+            FileFormat::Pdf, FileFormat::Fbx, FileFormat::Rfa, FileFormat::Obj,
+            FileFormat::Ply, FileFormat::ThreeMf, FileFormat::Gltf, FileFormat::Glb,
+            FileFormat::SldPrt, FileFormat::SldAsm, FileFormat::SldDrw,
+            FileFormat::CreoPrt, FileFormat::CreoAsm, FileFormat::CreoDrw,
+            FileFormat::CatPart, FileFormat::CatProduct, FileFormat::CatDrawing};
 }
 
 std::string ImportExportService::formatLabel(FileFormat format) const {
@@ -65,6 +69,14 @@ std::string ImportExportService::formatLabel(FileFormat format) const {
             return "DXF";
         case FileFormat::Sat:
             return "SAT";
+        case FileFormat::Parasolid:
+            return "Parasolid (x_t/x_b)";
+        case FileFormat::Jt:
+            return "JT";
+        case FileFormat::Pdf:
+            return "PDF";
+        case FileFormat::Fbx:
+            return "FBX";
         case FileFormat::Rfa:
             return "RFA";
         case FileFormat::Obj:
@@ -77,6 +89,15 @@ std::string ImportExportService::formatLabel(FileFormat format) const {
             return "GLTF";
         case FileFormat::Glb:
             return "GLB";
+        case FileFormat::SldPrt: return "SLDPRT";
+        case FileFormat::SldAsm: return "SLDASM";
+        case FileFormat::SldDrw: return "SLDDRW";
+        case FileFormat::CreoPrt: return "PRT (Creo)";
+        case FileFormat::CreoAsm: return "ASM (Creo)";
+        case FileFormat::CreoDrw: return "DRW (Creo)";
+        case FileFormat::CatPart: return "CATPart";
+        case FileFormat::CatProduct: return "CATProduct";
+        case FileFormat::CatDrawing: return "CATDrawing";
         default:
             return "UNKNOWN";
     }
@@ -85,6 +106,9 @@ std::string ImportExportService::formatLabel(FileFormat format) const {
 bool ImportExportService::supportsImport(FileFormat format) const {
     switch (format) {
         case FileFormat::Rfa:
+        case FileFormat::SldPrt: case FileFormat::SldAsm: case FileFormat::SldDrw:
+        case FileFormat::CreoPrt: case FileFormat::CreoAsm: case FileFormat::CreoDrw:
+        case FileFormat::CatPart: case FileFormat::CatProduct: case FileFormat::CatDrawing:
             return false;
         default:
             return true;
@@ -1696,6 +1720,92 @@ IoResult ImportExportService::exportPartToStl(const std::string& path, const cad
         result.message += " (ASCII mode)";
     }
     return result;
+}
+
+IoResult ImportExportService::importSldPrt(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "SolidWorks SLDPRT import not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::importSldAsm(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "SolidWorks SLDASM import not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::exportSldPrt(const std::string& path, const cad::core::Part& part) const {
+    (void)path; (void)part;
+    IoResult r; r.success = false; r.message = "SolidWorks SLDPRT export not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::exportSldAsm(const std::string& path, const cad::core::Assembly& assembly) const {
+    (void)path; (void)assembly;
+    IoResult r; r.success = false; r.message = "SolidWorks SLDASM export not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::importCreoPrt(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "Creo PRT import not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::importCreoAsm(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "Creo ASM import not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::exportCreoPrt(const std::string& path, const cad::core::Part& part) const {
+    (void)path; (void)part;
+    IoResult r; r.success = false; r.message = "Creo PRT export not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::exportCreoAsm(const std::string& path, const cad::core::Assembly& assembly) const {
+    (void)path; (void)assembly;
+    IoResult r; r.success = false; r.message = "Creo ASM export not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::importCatPart(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "CATIA CATPart import not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::importCatProduct(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "CATIA CATProduct import not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::exportCatPart(const std::string& path, const cad::core::Part& part) const {
+    (void)path; (void)part;
+    IoResult r; r.success = false; r.message = "CATIA CATPart export not implemented (use STEP)"; return r;
+}
+IoResult ImportExportService::exportCatProduct(const std::string& path, const cad::core::Assembly& assembly) const {
+    (void)path; (void)assembly;
+    IoResult r; r.success = false; r.message = "CATIA CATProduct export not implemented (use STEP)"; return r;
+}
+
+IoResult ImportExportService::importSat(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "SAT import stub (use STEP)"; return r;
+}
+IoResult ImportExportService::exportSat(const std::string& path, const cad::core::Part& part) const {
+    (void)path; (void)part;
+    IoResult r; r.success = false; r.message = "SAT export stub (use STEP)"; return r;
+}
+IoResult ImportExportService::importParasolid(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "Parasolid import stub (use STEP)"; return r;
+}
+IoResult ImportExportService::exportParasolid(const std::string& path, const cad::core::Part& part, bool binary) const {
+    (void)path; (void)part; (void)binary;
+    IoResult r; r.success = false; r.message = "Parasolid export stub (use STEP)"; return r;
+}
+IoResult ImportExportService::importJt(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "JT import stub (use STEP)"; return r;
+}
+IoResult ImportExportService::exportJt(const std::string& path, const cad::core::Assembly& assembly) const {
+    (void)path; (void)assembly;
+    IoResult r; r.success = false; r.message = "JT export stub (use STEP)"; return r;
+}
+IoResult ImportExportService::exportPdf(const std::string& path, const cad::core::Part& part) const {
+    (void)path; (void)part;
+    IoResult r; r.success = false; r.message = "3D PDF export stub"; return r;
+}
+IoResult ImportExportService::importFbx(const std::string& path) const {
+    (void)path;
+    IoResult r; r.success = false; r.message = "FBX import stub (use OBJ/GLTF)"; return r;
+}
+IoResult ImportExportService::exportFbx(const std::string& path, const cad::core::Part& part) const {
+    (void)path; (void)part;
+    IoResult r; r.success = false; r.message = "FBX export stub (use OBJ/GLTF)"; return r;
 }
 
 }  // namespace interop

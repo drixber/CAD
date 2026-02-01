@@ -10,6 +10,9 @@
 namespace cad {
 namespace ui {
 
+class QtViewCubeWidget;
+class QtViewportAxesWidget;
+
 class QtViewport : public QFrame {
     Q_OBJECT
 
@@ -24,8 +27,14 @@ public:
 signals:
     void fpsUpdated(double fps);
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
     Viewport3D* viewport_3d_{nullptr};
+    QtViewCubeWidget* viewcube_widget_{nullptr};
+    QtViewportAxesWidget* axes_widget_{nullptr};
+    QWidget* viewport_container_{nullptr};
     QLabel* status_label_{nullptr};
     QLabel* nav_label_{nullptr};
     QLabel* fps_label_{nullptr};

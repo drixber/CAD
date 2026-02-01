@@ -36,6 +36,7 @@ struct MotionResult {
     double simulation_time{0.0};
 };
 
+/** Joint-Antrieb für dynamische Simulation (17.7): Gelenkname -> Winkelgeschwindigkeit [rad/s] oder Geschwindigkeit [m/s]. */
 struct SimulationRequest {
     std::string targetAssembly;
     SimulationType type;
@@ -43,6 +44,8 @@ struct SimulationRequest {
     double time_step{0.01};
     double duration{1.0};
     std::map<std::string, double> material_properties;
+    /** Antriebe pro Gelenk (z.B. "Revolute1" -> 1.0 für 1 rad/s). */
+    std::map<std::string, double> joint_drives;
 };
 
 struct SimulationResult {
@@ -62,7 +65,11 @@ public:
     SimulationResult runDeflectionAnalysis(const SimulationRequest& request) const;
     SimulationResult runOptimization(const SimulationRequest& request) const;
     SimulationResult runThermalAnalysis(const SimulationRequest& request) const;
-    
+    /** CFD (§21.7 NX): Strömungssimulation – Stub. */
+    SimulationResult runCfdAnalysis(const SimulationRequest& request) const;
+    /** Multiphysics (§21.7): gekoppelte Analyse – Stub. */
+    SimulationResult runMultiphysicsAnalysis(const SimulationRequest& request) const;
+
     // Material properties
     std::map<std::string, double> getDefaultMaterialProperties(const std::string& material_name) const;
     void setMaterialProperties(const std::string& part_id, const std::map<std::string, double>& properties);
@@ -74,6 +81,11 @@ public:
     // Results visualization
     std::vector<double> getStressValues(const std::string& part_id) const;
     std::vector<double> getDisplacementValues(const std::string& part_id) const;
+    
+    /** FEA-Bericht (Spannung, Verformung, Sicherheit) in Datei schreiben. */
+    bool exportFeaReport(const SimulationResult& result, const std::string& path) const;
+    /** Bewegungsdiagramm-Daten (Zeit, Position, Geschwindigkeit) exportieren. */
+    bool exportMotionReport(const SimulationResult& result, const std::string& path) const;
     
 private:
     mutable std::map<std::string, std::map<std::string, double>> material_properties_;

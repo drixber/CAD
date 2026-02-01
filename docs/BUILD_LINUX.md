@@ -36,7 +36,7 @@ Optional (Tests, Qt Network für Updates ohne curl):
 
 ```bash
 sudo apt install -y qt6-network-dev  # CAD_USE_QT_NETWORK
-# Optional: FreeCAD-Entwicklungspakete, Python-Dev für Bindings
+# Optional: Python-Dev für Bindings (CAD_BUILD_PYTHON=ON)
 ```
 
 ### Fedora
@@ -79,10 +79,11 @@ ctest --output-on-failure
 |--------|--------------|
 | `CAD_USE_QT=ON` | Qt-UI (empfohlen) |
 | `CAD_BUILD_TESTS=ON` | Tests bauen und ausführen |
-| `CAD_USE_FREECAD=ON` | FreeCAD-Integration (Entwicklungspakete nötig) |
+| `CAD_USE_EIGENER_KERN=ON` | **Standard.** Eigenen CAD-Kern nutzen. |
+| `CAD_USE_EIGENER_KERN=OFF` | Eigen-Kern ausschalten. |
 | `CAD_BUILD_PYTHON=ON` | Python-Bindings |
 
-**FreeCAD unter Linux:** Die FreeCAD-Integration funktioniert unter Ubuntu/Debian/Fedora/Arch mit dem System-FreeCAD, wenn die FreeCAD-Entwicklungspakete installiert sind (z. B. unter Ubuntu/Debian die passenden -dev-Pakete; unter Arch `freecad`). Build mit `-DCAD_USE_FREECAD=ON`; die App zeigt dann „FreeCAD on“, sofern die Bibliotheken gefunden werden.
+**Standard ist der Eigen-Kern.** Ohne Angabe wird mit eigenem CAD-Kern gebaut. TechDraw/Zeichnungsansichten nutzen den internen TechDrawBridge (kein externes Backend).
 
 Unter Ubuntu/Debian/Fedora setzt CMake Qt in der Regel automatisch voraus; `Qt6_DIR` nur bei manueller Qt-Installation nötig.
 
@@ -95,6 +96,17 @@ cd build
 sudo cmake --install .
 # cad_desktop liegt dann z. B. unter /usr/local/bin
 ```
+
+## .deb-Paket bauen (Ubuntu/Debian)
+
+Ein lokales .deb kann mit dem Packaging unter `packaging/ubuntu/` gebaut werden:
+
+```bash
+# Abhängigkeiten: build-essential cmake qt6-base-dev qt6-tools-dev debhelper dpkg-dev
+./packaging/ubuntu/build-deb.sh
+```
+
+Details: [packaging/ubuntu/README.md](../packaging/ubuntu/README.md).
 
 ---
 

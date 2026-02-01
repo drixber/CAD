@@ -45,7 +45,22 @@ RoutingResult RoutingService::createRigidPipe(const RoutingRequest& request) con
     // Generate segments
     result.segments = generateSegments(request.waypoints, RoutingType::RigidPipe, request);
     result.total_length = calculateRouteLength(result.segments);
-    result.fitting_count = request.rigid_pipe_params.fitting_ids.size();
+    result.fitting_count = static_cast<int>(request.rigid_pipe_params.fitting_ids.size());
+    for (const auto& fid : request.rigid_pipe_params.fitting_ids) {
+        FittingSpec spec;
+        spec.type = "Fitting";
+        spec.nominal_diameter = request.rigid_pipe_params.diameter;
+        spec.part_number = fid;
+        result.fittings_used.push_back(spec);
+    }
+    int bends = static_cast<int>(result.segments.size()) > 1 ? static_cast<int>(result.segments.size()) - 1 : 0;
+    for (int b = 0; b < bends; ++b) {
+        FittingSpec elbow;
+        elbow.type = "Elbow";
+        elbow.nominal_diameter = request.rigid_pipe_params.diameter;
+        result.fittings_used.push_back(elbow);
+    }
+    result.fitting_count = static_cast<int>(result.fittings_used.size());
     
     // Check for collisions
     if (!request.obstacle_ids.empty()) {
@@ -89,8 +104,16 @@ RoutingResult RoutingService::createBentTube(const RoutingRequest& request) cons
     result.segments = generateSegments(request.waypoints, RoutingType::BentTube, request);
     result.total_length = calculateRouteLength(result.segments);
     
+    int bend_count = static_cast<int>(result.segments.size()) > 1 ? static_cast<int>(result.segments.size()) - 1 : 0;
+    for (int b = 0; b < bend_count; ++b) {
+        FittingSpec elbow;
+        elbow.type = "Elbow";
+        elbow.nominal_diameter = request.bent_tube_params.diameter;
+        result.fittings_used.push_back(elbow);
+    }
+    result.fitting_count = static_cast<int>(result.fittings_used.size());
+    
     // Count bends
-    int bend_count = static_cast<int>(result.segments.size()) - 1;
     if (bend_count > request.bent_tube_params.bend_count && request.bent_tube_params.bend_count > 0) {
         result.warnings.push_back("Bend count exceeds specified limit");
     }
@@ -271,6 +294,41 @@ std::vector<RoutePoint> RoutingService::getRouteWaypoints(const std::string& rou
     return {};
 }
 
+std::vector<PipeBomItem> RoutingService::getRouteBom(const std::string& route_id) const {
+    std::vector<PipeBomItem> bom;
+    auto it = routes_.find(route_id);
+    if (it == routes_.end()) {
+        return bom;
+    }
+    const RoutingResult& route = it->second;
+    if (route.segments.empty()) {
+        return bom;
+    }
+    double diameter = route.segments.front().diameter;
+    PipeBomItem pipe_item;
+    pipe_item.description = "Pipe DN" + std::to_string(static_cast<int>(diameter)) + ", L=" +
+        std::to_string(static_cast<int>(route.total_length)) + " mm";
+    pipe_item.quantity = 1;
+    pipe_item.unit = "pcs";
+    bom.push_back(pipe_item);
+    std::map<std::string, int> fitting_counts;
+    for (const auto& f : route.fittings_used) {
+        std::string key = f.type + "_DN" + std::to_string(static_cast<int>(f.nominal_diameter));
+        fitting_counts[key]++;
+    }
+    for (const auto& fc : fitting_counts) {
+        size_t pos = fc.first.find("_DN");
+        std::string type = (pos != std::string::npos) ? fc.first.substr(0, pos) : fc.first;
+        std::string dn = (pos != std::string::npos) ? fc.first.substr(pos + 1) : "";
+        PipeBomItem item;
+        item.description = type + " " + dn;
+        item.quantity = fc.second;
+        item.unit = "pcs";
+        bom.push_back(item);
+    }
+    return bom;
+}
+
 std::vector<RouteSegment> RoutingService::generateSegments(const std::vector<RoutePoint>& waypoints,
                                                            RoutingType type, const RoutingRequest& request) const {
     std::vector<RouteSegment> segments;
@@ -292,14 +350,17 @@ std::vector<RouteSegment> RoutingService::generateSegments(const std::vector<Rou
             case RoutingType::RigidPipe:
                 segment.diameter = request.rigid_pipe_params.diameter;
                 segment.material = request.rigid_pipe_params.material;
+                segment.bend_radius = request.rigid_pipe_params.min_bend_radius;
                 break;
             case RoutingType::FlexibleHose:
                 segment.diameter = request.flexible_hose_params.diameter;
                 segment.material = request.flexible_hose_params.material;
+                segment.bend_radius = request.flexible_hose_params.min_bend_radius;
                 break;
             case RoutingType::BentTube:
                 segment.diameter = request.bent_tube_params.diameter;
                 segment.material = request.bent_tube_params.material;
+                segment.bend_radius = request.bent_tube_params.bend_radius;
                 break;
         }
         

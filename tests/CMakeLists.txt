@@ -187,22 +187,6 @@ if(CAD_BUILD_TESTS)
     )
     
     # Integration Tests
-    add_executable(freecad_integration_test
-        integration/FreeCADIntegrationTest.cpp
-    )
-    
-    target_link_libraries(freecad_integration_test
-        PRIVATE
-            cad_core
-            GTest::gtest
-            GTest::gtest_main
-    )
-    
-    target_include_directories(freecad_integration_test
-        PRIVATE
-            ${CMAKE_SOURCE_DIR}/src
-    )
-    
     add_executable(import_export_integration_test
         integration/ImportExportIntegrationTest.cpp
     )
@@ -229,6 +213,7 @@ if(CAD_BUILD_TESTS)
             target_link_libraries(viewport_integration_test
                 PRIVATE
                     cad_ui
+                    cad_app
                     cad_core
                     GTest::gtest
                     GTest::gtest_main
@@ -336,6 +321,17 @@ if(CAD_BUILD_TESTS)
             ${CMAKE_SOURCE_DIR}/src
     )
     
+    add_executable(crash_reporter_extended_test
+        core/CrashReporterExtendedTest.cpp
+    )
+    
+    target_link_libraries(crash_reporter_extended_test
+        PRIVATE
+            cad_core
+            GTest::gtest
+            GTest::gtest_main
+    )
+    
     add_executable(undo_stack_extended_test
         core/UndoStackExtendedTest.cpp
     )
@@ -352,19 +348,27 @@ if(CAD_BUILD_TESTS)
             ${CMAKE_SOURCE_DIR}/src
     )
     
-    add_executable(crash_reporter_extended_test
-        core/CrashReporterExtendedTest.cpp
-    )
-    
-    target_link_libraries(crash_reporter_extended_test
-        PRIVATE
-            cad_core
-            GTest::gtest
-            GTest::gtest_main
-    )
-    
     target_include_directories(crash_reporter_extended_test
         PRIVATE
             ${CMAKE_SOURCE_DIR}/src
     )
+    
+    # Eigen-Kern (Option 2) – nur wenn CAD_USE_EIGENER_KERN aktiv
+    if(CAD_USE_EIGENER_KERN)
+        add_executable(eigen_kernel_test
+            kernel/EigenKernelTest.cpp
+        )
+        target_link_libraries(eigen_kernel_test
+            PRIVATE
+                cad_eigen_kernel
+                cad_core
+                GTest::gtest
+                GTest::gtest_main
+        )
+        target_compile_definitions(eigen_kernel_test PRIVATE CAD_USE_EIGENER_KERN=1)
+        target_include_directories(eigen_kernel_test
+            PRIVATE
+                ${CMAKE_SOURCE_DIR}/src
+        )
+    endif()
 endif()

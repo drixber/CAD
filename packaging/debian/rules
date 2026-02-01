@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+# Debian rules for Hydra CAD
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CMAKE_BUILD_TYPE = Release
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	cmake -B build \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCAD_USE_QT=ON \
+		-DCAD_USE_EIGENER_KERN=ON \
+		-DCAD_BUILD_TESTS=OFF
+
+override_dh_auto_build:
+	$(MAKE) -C build -j$$(nproc)
+
+override_dh_auto_install:
+	dh_install
+
+override_dh_auto_clean:
+	rm -rf build
+	dh_auto_clean

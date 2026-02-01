@@ -2,13 +2,14 @@
 #include "theme/ThemeManager.h"
 #include "theme/DockLayoutManager.h"
 #include "QtAIChatPanel.h"
+#include "QtCommunityPanel.h"
 #include <QSettings>
 #include <QCloseEvent>
 
 #include <QDockWidget>
 #include <QSet>
-#include <QSettings>
 #include <QStatusBar>
+#include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QMenuBar>
@@ -27,9 +28,9 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QLabel>
 #include <QDialogButtonBox>
 #include <QPushButton>
-#include <QVBoxLayout>
 #include <QDialog>
 #include <QStandardPaths>
 #include <QTextStream>
@@ -44,15 +45,15 @@ namespace {
 QString categoryForCommand(const QString& command) {
     const QSet<QString> sketch = {"Line", "Rectangle", "Circle", "Arc", "Constraint"};
     const QSet<QString> part = {"Extrude", "Revolve", "Loft", "Hole", "Fillet",
-                                "Flange", "Bend", "Unfold", "Refold",
-                                "RectangularPattern", "CircularPattern", "CurvePattern",
+                                "Flange", "Bend", "Unfold", "Refold", "Punch", "Bead", "SheetMetalRules", "ExportFlatDXF",
+                                "RectangularPattern", "CircularPattern", "CurvePattern", "FacePattern",
                                 "DirectEdit", "Freeform"};
-    const QSet<QString> assembly = {"Place", "Mate", "Flush", "Angle", "Pattern",
-                                    "RigidPipe", "FlexibleHose", "BentTube", "Simplify"};
+    const QSet<QString> assembly = {"Place", "Mate", "Flush", "Angle", "Parallel", "Distance", "Pattern",
+                                    "RigidPipe", "FlexibleHose", "BentTube", "RouteBOM", "Weld", "WeldBOM", "Simplify"};
     const QSet<QString> drawing = {"BaseView", "Section", "Dimension", "PartsList"};
     const QSet<QString> inspect = {"Measure", "Interference", "SectionAnalysis",
-                                   "Simulation", "StressAnalysis"};
-    const QSet<QString> manage = {"Parameters", "Styles", "AddIns", "Import",
+                                   "Simulation", "StressAnalysis", "ExportFEAReport", "ExportMotionReport"};
+    const QSet<QString> manage = {"Parameters", "iLogic", "Styles", "AddIns", "Import",
                                   "Export", "ExportRFA", "MbdNote"};
     const QSet<QString> view = {"Visibility", "Appearance", "Environment",
                                 "Illustration", "Rendering", "Animation"};
@@ -122,7 +123,19 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     central->setObjectName("centralWorkspace");
     QVBoxLayout* layout = new QVBoxLayout(central);
     layout->setContentsMargins(2, 2, 2, 2);
-    layout->addWidget(ribbon_);
+    QWidget* ribbon_container = new QWidget(this);
+    QVBoxLayout* ribbon_v = new QVBoxLayout(ribbon_container);
+    ribbon_v->setContentsMargins(0, 0, 0, 0);
+    QHBoxLayout* ribbon_row = new QHBoxLayout();
+    ribbon_row->addWidget(ribbon_, 1);
+    if (ribbon_->searchLineEdit()) {
+        ribbon_row->addWidget(ribbon_->searchLineEdit(), 0, Qt::AlignVCenter);
+    }
+    ribbon_v->addLayout(ribbon_row);
+    if (ribbon_->documentTabBar()) {
+        ribbon_v->addWidget(ribbon_->documentTabBar());
+    }
+    layout->addWidget(ribbon_container);
     layout->addWidget(viewport_, 1);  // stretch so viewport gets remaining space
     setCentralWidget(central);
 
@@ -133,9 +146,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     QAction* tb_new = file_toolbar->addAction(tr("New"));
     QAction* tb_open = file_toolbar->addAction(tr("Open"));
     QAction* tb_save = file_toolbar->addAction(tr("Save"));
-    connect(tb_new, &QAction::triggered, this, [this]() {
-        if (new_project_handler_) { new_project_handler_(); }
-    });
+    connect(tb_new, &QAction::triggered, this, [this]() { showNewProjectDialog(); });
     connect(tb_open, &QAction::triggered, this, [this]() {
         QString path = QFileDialog::getOpenFileName(this, tr("Open Project"), "", tr("CAD Project (*.cad);;All Files (*)"));
         if (!path.isEmpty() && load_project_handler_) { load_project_handler_(path.toStdString()); }
@@ -204,6 +215,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         if (command.isEmpty()) {
             return;
         }
+        if (command_handler_) {
+            command_handler_(command.toStdString());
+        }
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         property_panel_->setContextPlaceholder(command);
         property_panel_->setContextCategory(categoryForCommand(command));
@@ -214,7 +228,22 @@ QtMainWindow::QtMainWindow(QWidget* parent)
 
     QDockWidget* browserDock = new QDockWidget(tr("Model Browser"), this);
     browserDock->setObjectName("dock_model_browser");
-    browserDock->setWidget(browser_tree_);
+    QWidget* browser_wrapper = new QWidget(this);
+    QVBoxLayout* browser_layout = new QVBoxLayout(browser_wrapper);
+    browser_layout->setContentsMargins(2, 2, 2, 2);
+    QHBoxLayout* browser_title = new QHBoxLayout();
+    QLineEdit* browser_filter = new QLineEdit(browser_wrapper);
+    browser_filter->setPlaceholderText(tr("Filter..."));
+    browser_filter->setClearButtonEnabled(true);
+    browser_filter->setMaximumHeight(24);
+    QPushButton* browser_add_btn = new QPushButton("+", browser_wrapper);
+    browser_add_btn->setToolTip(tr("Add"));
+    browser_add_btn->setFixedSize(24, 24);
+    browser_title->addWidget(browser_filter, 1);
+    browser_title->addWidget(browser_add_btn, 0);
+    browser_layout->addLayout(browser_title);
+    browser_layout->addWidget(browser_tree_, 1);
+    browserDock->setWidget(browser_wrapper);
     addDockWidget(Qt::LeftDockWidgetArea, browserDock);
     browserDock->setMinimumWidth(220);
 
@@ -224,6 +253,25 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     addDockWidget(Qt::RightDockWidgetArea, propertyDock);
     propertyDock->setMinimumWidth(280);
     propertyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    connect(property_panel_, &QtPropertyPanel::closePanelRequested, propertyDock, &QDockWidget::hide);
+    connect(property_panel_, &QtPropertyPanel::applyRequested, this, [this]() {
+        if (property_apply_handler_) property_apply_handler_();
+        if (statusBar()) statusBar()->showMessage(tr("Properties applied."), 2000);
+    });
+    connect(property_panel_, &QtPropertyPanel::cancelRequested, this, [this]() {
+        if (property_cancel_handler_) property_cancel_handler_();
+        if (statusBar()) statusBar()->showMessage(tr("Properties cancelled."), 2000);
+    });
+    connect(property_panel_, &QtPropertyPanel::applyAndNewRequested, this, [this]() {
+        if (property_apply_and_new_handler_) property_apply_and_new_handler_();
+        if (statusBar()) statusBar()->showMessage(tr("Applied & New – ready for next feature."), 2000);
+    });
+    connect(property_panel_, &QtPropertyPanel::visibilityToggled, this, [this]() {
+        if (statusBar()) statusBar()->showMessage(tr("Visibility toggled."), 1500);
+    });
+    connect(property_panel_, &QtPropertyPanel::newConfigurationRequested, this, [this]() {
+        if (statusBar()) statusBar()->showMessage(tr("New configuration."), 1500);
+    });
 
     QDockWidget* agentDock = new QDockWidget(tr("AI Console"), this);
     agentDock->setObjectName("dock_ai_console");
@@ -240,6 +288,19 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     addDockWidget(Qt::RightDockWidgetArea, aiChatDock);
     aiChatDock->setMinimumWidth(320);
     aiChatDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    community_panel_ = new QtCommunityPanel(this);
+    QDockWidget* communityDock = new QDockWidget(tr("Community"), this);
+    communityDock->setObjectName("dock_community");
+    communityDock->setWidget(community_panel_);
+    addDockWidget(Qt::RightDockWidgetArea, communityDock);
+    communityDock->setMinimumWidth(320);
+    communityDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    tabifyDockWidget(aiChatDock, communityDock);
+    communityDock->setFeatures(QDockWidget::DockWidgetMovable |
+                              QDockWidget::DockWidgetFloatable |
+                              QDockWidget::DockWidgetClosable);
+
     tabifyDockWidget(agentDock, aiChatDock);
     aiChatDock->raise(); // Show AI Chat by default
 
@@ -389,11 +450,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     
     QAction* new_action = file_menu->addAction(tr("&New Project"), this, [this]() {
         log_panel_->appendLog(tr("New Project"));
-        if (new_project_handler_) {
-            new_project_handler_();
-        } else {
-            setDocumentLabel("Untitled");
-        }
+        showNewProjectDialog();
     });
     new_action->setShortcut(QKeySequence::New);
     
@@ -432,6 +489,9 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     save_as_action->setShortcut(QKeySequence::SaveAs);
     
     file_menu->addAction(tr("Manage &Checkpoints..."), this, [this]() { showCheckpointsDialog(); });
+    QAction* send_to_printer_action = file_menu->addAction(tr("Send to 3D &Printer..."), this, [this]() {
+        if (send_to_printer_handler_) send_to_printer_handler_();
+    });
     
     file_menu->addSeparator();
     
@@ -490,6 +550,18 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         }
     });
 
+    QAction* license_activate_action = settings_menu->addAction(tr("Activate &License..."));
+    connect(license_activate_action, &QAction::triggered, this, [this]() {
+        if (license_activate_handler_) {
+            license_activate_handler_();
+        }
+    });
+
+    QAction* printers_dialog_action = settings_menu->addAction(tr("3D &Printers..."));
+    connect(printers_dialog_action, &QAction::triggered, this, [this]() {
+        if (printers_dialog_handler_) printers_dialog_handler_();
+    });
+
     QMenu* diagnostics_menu = settings_menu->addMenu(tr("&Diagnostics"));
     diagnostics_menu->addAction(tr("Open &Logs Folder"), this, [this]() {
         const QString logs_dir = logsDirectory();
@@ -520,6 +592,53 @@ QtMainWindow::QtMainWindow(QWidget* parent)
             return;
         }
         QMessageBox::information(this, tr("Crash Log"), preview);
+    });
+
+    // Help menu (Inventor-style: Tutorials, Sample Projects)
+    QMenu* help_menu = menu_bar->addMenu(tr("&Help"));
+    QAction* get_started_action = help_menu->addAction(tr("&Get Started"));
+    connect(get_started_action, &QAction::triggered, this, [this]() {
+        QString doc_path = QCoreApplication::applicationDirPath() + "/../share/doc/hydracad/INSTALLATION.md";
+        if (!QFile::exists(doc_path)) {
+            doc_path = QCoreApplication::applicationDirPath() + "/../docs/INSTALLATION.md";
+        }
+        if (!QFile::exists(doc_path)) {
+            QMessageBox::information(this, tr("Get Started"), tr("Documentation: see INSTALLATION.md in the project docs folder."));
+            return;
+        }
+        QDesktopServices::openUrl(QUrl::fromLocalFile(doc_path));
+    });
+    QAction* tutorials_action = help_menu->addAction(tr("&Tutorials"));
+    connect(tutorials_action, &QAction::triggered, this, [this]() {
+        QString docs = QCoreApplication::applicationDirPath() + "/../docs";
+        if (!QDir(docs).exists()) {
+            docs = QCoreApplication::applicationDirPath() + "/../share/doc/hydracad";
+        }
+        if (QDir(docs).exists()) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(docs));
+        } else {
+            QMessageBox::information(this, tr("Tutorials"), tr("Tutorials folder not found. See documentation in the project docs."));
+        }
+    });
+    QAction* sample_projects_action = help_menu->addAction(tr("&Sample Projects"));
+    connect(sample_projects_action, &QAction::triggered, this, [this]() {
+        QString examples = QCoreApplication::applicationDirPath() + "/../examples";
+        if (!QDir(examples).exists()) {
+            examples = QCoreApplication::applicationDirPath() + "/../share/hydracad/examples";
+        }
+        if (QDir(examples).exists()) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(examples));
+        } else {
+            QMessageBox::information(this, tr("Sample Projects"), tr("Sample projects folder not found. Create a project and save it to get started."));
+        }
+    });
+    help_menu->addSeparator();
+    QAction* about_action = help_menu->addAction(tr("&About Hydra CAD..."));
+    connect(about_action, &QAction::triggered, this, [this]() {
+        QMessageBox::about(this, tr("About Hydra CAD"),
+                           tr("Hydra CAD – parametrisches 3D-CAD\n\n"
+                              "Skizze → Feature → Verlauf → Zeichnung\n\n"
+                              "© Hydra CAD Project"));
     });
     
     // Setup auto-save timer
@@ -598,6 +717,19 @@ void QtMainWindow::setParameterSummary(const std::string& summary) {
     property_panel_->setParameterSummary(QString::fromStdString(summary));
 }
 
+void QtMainWindow::setParameterTable(const std::vector<std::string>& names, const std::vector<double>& values, const std::vector<std::string>& expressions) {
+    QList<QStringList> rows;
+    const size_t n = std::min(names.size(), std::min(values.size(), expressions.size()));
+    for (size_t i = 0; i < n; ++i) {
+        QStringList row;
+        row << QString::fromStdString(names[i])
+            << QString::number(values[i])
+            << QString::fromStdString(expressions[i]);
+        rows.append(row);
+    }
+    property_panel_->setParameterTable(rows);
+}
+
 void QtMainWindow::setIntegrationStatus(const std::string& status) {
     property_panel_->setIntegrationStatus(QString::fromStdString(status));
 }
@@ -626,6 +758,11 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         browser_tree_->appendRecentCommand(command);
         log_panel_->appendLog(tr("Command: %1").arg(command));
     });
+    browser_tree_->setCommandHandler([this](const QString& command) {
+        if (command_handler_) command_handler_(command.toStdString());
+        statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
+        log_panel_->appendLog(tr("Browser: %1").arg(command));
+    });
 }
 
 void QtMainWindow::executeCommand(const std::string& command) {
@@ -640,6 +777,14 @@ void QtMainWindow::setAssemblySummary(const std::string& summary) {
 
 void QtMainWindow::setMatesSummary(const std::string& summary) {
     browser_tree_->setMatesSummary(QString::fromStdString(summary));
+}
+
+void QtMainWindow::setReferenceGeometry(const QStringList& planeNames, const QStringList& axisNames, const QStringList& pointNames) {
+    if (browser_tree_) {
+        browser_tree_->setWorkPlanes(planeNames);
+        browser_tree_->setWorkAxes(axisNames);
+        browser_tree_->setWorkPoints(pointNames);
+    }
 }
 
 void QtMainWindow::setContextPlaceholder(const std::string& context) {
@@ -772,6 +917,18 @@ void QtMainWindow::setCheckForUpdatesHandler(const std::function<void()>& handle
     check_for_updates_handler_ = handler;
 }
 
+void QtMainWindow::setLicenseActivateHandler(const std::function<void()>& handler) {
+    license_activate_handler_ = handler;
+}
+
+void QtMainWindow::setPrintersDialogHandler(const std::function<void()>& handler) {
+    printers_dialog_handler_ = handler;
+}
+
+void QtMainWindow::setSendToPrinterHandler(const std::function<void()>& handler) {
+    send_to_printer_handler_ = handler;
+}
+
 QString QtMainWindow::currentProjectPath() const {
     return current_project_path_;
 }
@@ -868,6 +1025,89 @@ void QtMainWindow::triggerImportDialog() {
     statusBar()->showMessage(tr("Import: %1").arg(QString::fromStdString(pathStr)), 4000);
 }
 
+void QtMainWindow::triggerNewProject() {
+    showNewProjectDialog();
+}
+
+void QtMainWindow::setNewProjectFromTemplateHandler(const std::function<void(const std::string&)>& handler) {
+    new_project_from_template_handler_ = handler;
+}
+
+void QtMainWindow::setTemplateDirectory(const QString& path) {
+    template_directory_ = path;
+}
+
+void QtMainWindow::showNewProjectDialog() {
+    if (template_directory_.isEmpty()) {
+        if (new_project_handler_) { new_project_handler_(); }
+        else { setDocumentLabel("Untitled"); }
+        return;
+    }
+    QDir dir(template_directory_);
+    QStringList filters;
+    filters << "*.cad" << "*.hcad";
+    QStringList files = dir.entryList(filters, QDir::Files, QDir::Name);
+    if (files.isEmpty()) {
+        if (new_project_handler_) { new_project_handler_(); }
+        else { setDocumentLabel("Untitled"); }
+        return;
+    }
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("New Project"));
+    QVBoxLayout* layout = new QVBoxLayout(&dlg);
+    QLabel* label = new QLabel(tr("Create from:"), &dlg);
+    layout->addWidget(label);
+    QListWidget* list = new QListWidget(&dlg);
+    list->addItem(tr("Empty document"));
+    list->item(0)->setData(Qt::UserRole, QString());
+    for (const QString& name : files) {
+        QString path = dir.absoluteFilePath(name);
+        list->addItem(name);
+        list->item(list->count() - 1)->setData(Qt::UserRole, path);
+    }
+    list->setCurrentRow(0);
+    layout->addWidget(list);
+    QDialogButtonBox* bbox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    connect(bbox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(bbox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    layout->addWidget(bbox);
+    if (dlg.exec() != QDialog::Accepted) {
+        return;
+    }
+    QListWidgetItem* item = list->currentItem();
+    if (!item) {
+        if (new_project_handler_) { new_project_handler_(); }
+        return;
+    }
+    QString path = item->data(Qt::UserRole).toString();
+    if (path.isEmpty()) {
+        if (new_project_handler_) { new_project_handler_(); }
+    } else if (new_project_from_template_handler_) {
+        new_project_from_template_handler_(path.toStdString());
+    } else {
+        if (new_project_handler_) { new_project_handler_(); }
+    }
+}
+
+void QtMainWindow::triggerOpenProject() {
+    QString file_path = QFileDialog::getOpenFileName(this, tr("Open Project"), "", tr("CAD Project (*.cad);;All Files (*)"));
+    if (!file_path.isEmpty() && load_project_handler_) {
+        load_project_handler_(file_path.toStdString());
+    }
+}
+
+void QtMainWindow::triggerSaveProject() {
+    if (!current_project_path_.isEmpty() && save_project_handler_) {
+        save_project_handler_(current_project_path_.toStdString());
+        if (statusBar()) statusBar()->showMessage(tr("Project saved."), 3000);
+    } else {
+        QString file_path = QFileDialog::getSaveFileName(this, tr("Save Project"), "", tr("CAD Project (*.cad);;All Files (*)"));
+        if (!file_path.isEmpty() && save_project_handler_) {
+            save_project_handler_(file_path.toStdString());
+        }
+    }
+}
+
 void QtMainWindow::triggerExportDialog() {
     if (!export_file_handler_) {
         statusBar()->showMessage(tr("Export not available."), 3000);
@@ -888,6 +1128,18 @@ void QtMainWindow::setAskUnsavedChangesHandler(const std::function<UnsavedAction
 
 void QtMainWindow::setGetSavePathHandler(const std::function<std::string()>& handler) {
     get_save_path_handler_ = handler;
+}
+
+void QtMainWindow::setPropertyApplyHandler(const std::function<void()>& handler) {
+    property_apply_handler_ = handler;
+}
+
+void QtMainWindow::setPropertyCancelHandler(const std::function<void()>& handler) {
+    property_cancel_handler_ = handler;
+}
+
+void QtMainWindow::setPropertyApplyAndNewHandler(const std::function<void()>& handler) {
+    property_apply_and_new_handler_ = handler;
 }
 
 QtMainWindow::UnsavedAction QtMainWindow::askUnsavedChanges() const {

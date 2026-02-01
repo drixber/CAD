@@ -21,6 +21,15 @@ struct ProjectFileInfo {
     std::vector<std::string> part_ids;
 };
 
+/** Native formats: .hcad = Part, .hcasm = Assembly, .hcdrw = Drawing; .hcadproject = project config (see docs/NATIVE_FORMATS.md). */
+struct ProjectConfig {
+    std::string working_directory;
+    std::vector<std::string> search_paths;
+    std::vector<std::string> library_paths;
+    /** Optional: directory for document templates (.cad); empty = use app default. */
+    std::string template_directory;
+};
+
 class ProjectFileService {
 public:
     ProjectFileService();
@@ -42,6 +51,16 @@ public:
     // Project info
     ProjectFileInfo getProjectInfo(const std::string& file_path) const;
     bool projectExists(const std::string& file_path) const;
+
+    // Project configuration (.hcadproject): working directory, search paths, library paths
+    bool loadProjectConfig(const std::string& config_path, ProjectConfig& out) const;
+    bool saveProjectConfig(const std::string& config_path, const ProjectConfig& config) const;
+    /** Path to .hcadproject for a given .cad project path (same dir, same base name). */
+    static std::string projectConfigPathForProject(const std::string& project_file_path);
+
+    /** Family Table / Konfigurationstabellen (Creo/darius): Konfigurationen aus CSV laden. */
+    bool loadPartConfigurationsFromCsv(cad::core::Part& part, const std::string& csv_path) const;
+    bool savePartConfigurationsToCsv(const cad::core::Part& part, const std::string& csv_path) const;
     
     // Auto-save
     void enableAutoSave(bool enabled);

@@ -1,12 +1,9 @@
 name: CI/CD Pipeline
 
+# Nur bei Pull Requests – Release-Builds laufen über release.yml / release-attach-assets.yml
 on:
-  push:
-    branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master ]
-  release:
-    types: [ created ]
 
 jobs:
   build-windows:
@@ -86,12 +83,12 @@ jobs:
           $nsisPath = "C:\Program Files\NSIS\makensis.exe"
         }
         if (Test-Path $nsisPath) {
-          & $nsisPath installer\hydracad.nsi
+          & $nsisPath /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
         } else {
           Write-Host "NSIS not found, trying alternative method"
           choco install nsis -y
           Start-Sleep -Seconds 10
-          & "C:\Program Files (x86)\NSIS\makensis.exe" installer\hydracad.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
         }
       continue-on-error: true
     

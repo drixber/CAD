@@ -15,16 +15,18 @@ void RibbonLayout::configureDefaultTabs() {
     tabs_.push_back("View");
 
     commands_["Sketch"] = {"Line", "Rectangle", "Circle", "Arc", "Constraint"};
-    commands_["Part"] = {"Extrude", "Revolve", "Loft", "Hole", "Fillet",
-                         "Flange", "Bend", "Unfold", "Refold",
-                         "RectangularPattern", "CircularPattern", "CurvePattern",
+    commands_["Part"] = {"Extrude", "Revolve", "Loft", "Hole", "HoleThroughAll", "Fillet", "Chamfer", "Shell", "Mirror",
+                         "Flange", "Bend", "Unfold", "Refold", "Punch", "Bead",
+                         "SheetMetalRules", "ExportFlatDXF",
+                         "RectangularPattern", "CircularPattern", "CurvePattern", "FacePattern",
                          "DirectEdit", "Freeform"};
-    commands_["Assembly"] = {"LoadAssembly", "Place", "Mate", "Flush", "Angle", "Pattern",
-                             "RigidPipe", "FlexibleHose", "BentTube", "Simplify"};
-    commands_["Drawing"] = {"BaseView", "Section", "Dimension", "PartsList"};
+    commands_["Assembly"] = {"LoadAssembly", "Place", "Mate", "Flush", "Angle", "Parallel", "Distance", "Pattern", "ExplosionView",
+                             "RigidPipe", "FlexibleHose", "BentTube", "RouteBOM",
+                             "Weld", "WeldBOM", "Simplify"};
+    commands_["Drawing"] = {"BaseView", "Section", "DetailView", "Dimension", "PartsList"};
     commands_["Inspect"] = {"Measure", "Interference", "SectionAnalysis",
-                            "Simulation", "StressAnalysis"};
-    commands_["Manage"] = {"Parameters", "Styles", "AddIns", "Import", "Export", "ExportRFA", "MbdNote"};
+                            "Simulation", "StressAnalysis", "ExportFEAReport", "ExportMotionReport"};
+    commands_["Manage"] = {"Parameters", "iLogic", "Styles", "AddIns", "Import", "Export", "ExportRFA", "MbdNote"};
     commands_["View"] = {"Visibility", "Appearance", "Environment",
                          "Illustration", "Rendering", "Animation"};
 }

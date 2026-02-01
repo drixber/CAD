@@ -12,6 +12,23 @@ add_library(cad_modules
     visualization/VisualizationService.cpp
     mbd/MbdService.cpp
     simplify/SimplifyService.cpp
+    welding/WeldingService.cpp
+    frame/FrameService.cpp
+    harness/HarnessService.cpp
+    surface/SurfaceService.cpp
+    freeform/FreeformService.cpp
+    cam/CamService.cpp
+    vault/VaultService.cpp
+    automation/AutomationService.cpp
+    generative/GenerativeService.cpp
+    electronics/ElectronicsService.cpp
+    udf/UdfService.cpp
+    collaboration/CollaborationService.cpp
+    plastics/PlasticsService.cpp
+    composites/CompositesService.cpp
+    reuse/ReuseLibraryService.cpp
+    contentcenter/ContentCenterService.cpp
+    topology/TopologyOptimizationService.cpp
 )
 
 target_include_directories(cad_modules

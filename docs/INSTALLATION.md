@@ -13,6 +13,9 @@
 - Python 3.11+ (für Python-Bindings, `CAD_BUILD_PYTHON=ON`)
 - vcpkg (optional, für weitere Bibliotheken)
 
+### Eigen-Kern (Standard)
+- **Standard:** Eigen-Kern ist an (`CAD_USE_EIGENER_KERN=ON`). Extrude/Revolve laufen über den Eigen-Kern. Siehe `docs/PLAN_EIGENER_CAD_KERN.md`.
+
 **Hinweis:** Die Anwendung baut mit **Qt 6**; Qt 5 wird nicht mehr unterstützt.
 
 ## Build-Prozess (Windows)
@@ -141,7 +144,7 @@ Nach erfolgreichem Build und `windeployqt`:
 
 ```powershell
 # Im Projektroot
-& "C:\Program Files (x86)\NSIS\makensis.exe" /DINSTALLER_VERSION="2.0.0" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
+& "C:\Program Files (x86)\NSIS\makensis.exe" /DINSTALLER_VERSION="3.0.14" /DPROJECT_ROOT="$PWD" installer\hydracad.nsi
 ```
 
 Der Installer wird als `installer\HydraCADSetup.exe` erstellt.
@@ -167,8 +170,9 @@ Der Installer wird als `installer\HydraCADSetup.exe` erstellt.
 | `CAD_USE_QT` | Qt-UI aktivieren | OFF |
 | `CAD_BUILD_TESTS` | Tests bauen | OFF |
 | `CAD_BUILD_PYTHON` | Python-Bindings | OFF |
-| `CAD_USE_FREECAD` | FreeCAD-Integration | OFF |
 | `APP_VERSION` | Versionsstring (z. B. v1.0.0) | - |
+
+**Backend API (optional):** Wenn ein eigenes Auth/Lizenz-Backend genutzt werden soll, API-Basis-URL setzen (Umgebungsvariable `CAD_API_BASE_URL` oder `HYDRACAD_API_URL`, oder in der App unter Einstellungen). Backend starten: `cd backend && pip install -r requirements.txt && uvicorn main:app --reload --port 8000`. **Produktion:** API-URL in den Einstellungen auf die Produktions-URL setzen (z. B. `https://api.example.com`) oder `CAD_API_BASE_URL` beim Start/Installer setzen. Deployment: [backend/README.md](../backend/README.md) (Docker, systemd), [docs/PHASE5_TESTS_DEPLOYMENT.md](PHASE5_TESTS_DEPLOYMENT.md), [docs/TODO_USER_BACKEND_LICENSES.md](TODO_USER_BACKEND_LICENSES.md).
 
 Beispiel mit Tests:
 

@@ -14,7 +14,23 @@ DrawingResult DrawingService::createDrawing(const DrawingRequest& request) const
     return result;
 }
 
-DrawingDocument DrawingService::buildDocumentSkeleton(const std::string& title) const {
+std::vector<SheetFormat> DrawingService::getSheetFormats() const {
+    std::vector<SheetFormat> formats;
+    formats.push_back({"A4_Landscape", 297.0, 210.0, true, true, true});
+    formats.push_back({"A4_Portrait", 210.0, 297.0, false, true, true});
+    formats.push_back({"A3_Landscape", 420.0, 297.0, true, true, true});
+    formats.push_back({"A3_Portrait", 297.0, 420.0, false, true, true});
+    formats.push_back({"A2_Landscape", 594.0, 420.0, true, true, true});
+    formats.push_back({"A1_Landscape", 841.0, 594.0, true, true, true});
+    formats.push_back({"A0_Landscape", 1189.0, 841.0, true, true, true});
+    formats.push_back({"ANSI_A", 279.4, 215.9, true, true, true});
+    formats.push_back({"ANSI_B", 431.8, 279.4, true, true, true});
+    formats.push_back({"ANSI_C", 558.8, 431.8, true, true, true});
+    formats.push_back({"ANSI_D", 863.6, 558.8, true, true, true});
+    return formats;
+}
+
+DrawingDocument DrawingService::buildDocumentSkeleton(const std::string& title, const std::string& sheet_format_id) const {
     DrawingDocument document;
     document.title = title;
     document.source_model_id = title;
@@ -28,9 +44,22 @@ DrawingDocument DrawingService::buildDocumentSkeleton(const std::string& title) 
     document.profiles.push_back(profile);
     DrawingSheet sheet;
     sheet.name = "Sheet1";
-    sheet.template_name = "A3";
+    sheet.template_name = sheet_format_id.empty() ? "A3" : sheet_format_id;
+    sheet.format_id = sheet_format_id.empty() ? "A3_Landscape" : sheet_format_id;
     sheet.associative = true;
     sheet.scale_label = "1:1";
+    auto formats = getSheetFormats();
+    for (const auto& f : formats) {
+        if (f.name == sheet.format_id) {
+            sheet.width_mm = f.width_mm;
+            sheet.height_mm = f.height_mm;
+            break;
+        }
+    }
+    if (sheet.width_mm <= 0.0) {
+        sheet.width_mm = 420.0;
+        sheet.height_mm = 297.0;
+    }
     sheet.views.push_back({"Front", "Front", 1.0, document.source_model_id, true, "Default"});
     sheet.views.push_back({"Top", "Top", 1.0, document.source_model_id, true, "Default"});
     sheet.views.push_back({"Side", "Right", 1.0, document.source_model_id, true, "Default"});
@@ -47,6 +76,8 @@ DrawingStyleSet DrawingService::createStylePreset(StylePreset preset) const {
     switch (preset) {
         case StylePreset::ISO:
             return isoStyles();
+        case StylePreset::DIN:
+            return dinStyles();
         case StylePreset::ANSI:
             return ansiStyles();
         case StylePreset::JIS:
@@ -91,6 +122,32 @@ DrawingStyleSet DrawingService::isoStyles() const {
     steel_hatch.color = "black";
     styles.hatch_styles.push_back(steel_hatch);
     
+    return styles;
+}
+
+DrawingStyleSet DrawingService::dinStyles() const {
+    DrawingStyleSet styles;
+    styles.name = "DIN";
+    styles.line_styles.push_back(createLineStyle("Visible", 0.5, LineType::Solid, "black"));
+    styles.line_styles.push_back(createLineStyle("Hidden", 0.25, LineType::Dashed, "black"));
+    styles.line_styles.push_back(createLineStyle("Center", 0.25, LineType::CenterLine, "black"));
+    styles.line_styles.push_back(createLineStyle("Phantom", 0.25, LineType::Phantom, "black"));
+    styles.text_styles.push_back(createTextStyle("Annotation", 2.5, "Arial", FontWeight::Normal));
+    styles.text_styles.push_back(createTextStyle("Title", 5.0, "Arial", FontWeight::Bold));
+    styles.text_styles.push_back(createTextStyle("Dimension", 2.5, "Arial", FontWeight::Normal));
+    styles.dimension_styles.push_back(createDimensionStyle("Standard", 2.5, 3.0));
+    HatchStyle solid_hatch;
+    solid_hatch.name = "Solid";
+    solid_hatch.pattern = "Solid";
+    solid_hatch.color = "black";
+    styles.hatch_styles.push_back(solid_hatch);
+    HatchStyle steel_hatch;
+    steel_hatch.name = "Steel";
+    steel_hatch.pattern = "ANSI31";
+    steel_hatch.scale = 1.0;
+    steel_hatch.angle = 45.0;
+    steel_hatch.color = "black";
+    styles.hatch_styles.push_back(steel_hatch);
     return styles;
 }
 

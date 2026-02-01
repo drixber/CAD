@@ -14,6 +14,8 @@
 #include <QUrl>
 #include <QEventLoop>
 #include <QFile>
+#include <QHttpMultiPart>
+#include <QFileInfo>
 #include <QCoreApplication>
 #endif
 
@@ -142,6 +144,65 @@ bool HttpClient::downloadFile(const std::string& url, const std::string& file_pa
     (void)file_path;
     (void)progress_callback;
     return false;
+#endif
+}
+
+HttpResponse HttpClient::uploadFile(const std::string& url, const std::string& file_path,
+                                    const std::map<std::string, std::string>& headers) const {
+    HttpResponse response;
+    if (!validateUrl(url)) {
+        response.status_code = 400;
+        response.success = false;
+        response.body = "Invalid URL";
+        return response;
+    }
+#ifdef CAD_USE_QT_NETWORK
+    QFile file(QString::fromStdString(file_path));
+    if (!file.open(QIODevice::ReadOnly)) {
+        response.status_code = 0;
+        response.success = false;
+        response.body = "Could not open file: " + file_path;
+        return response;
+    }
+    QFileInfo fi(file);
+    QString filename = fi.fileName();
+    if (filename.isEmpty()) filename = "upload.stl";
+
+    QHttpMultiPart* multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    QHttpPart filePart;
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant("form-data; name=\"file\"; filename=\"" + filename + "\""));
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
+    file.setParent(multiPart);
+    filePart.setBodyDevice(&file);
+    multiPart->append(filePart);
+
+    QNetworkAccessManager manager;
+    QNetworkRequest request(QUrl(QString::fromStdString(url)));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QString::fromStdString(user_agent_));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    for (const auto& h : headers) {
+        request.setRawHeader(QByteArray::fromStdString(h.first), QByteArray::fromStdString(h.second));
+    }
+    QNetworkReply* reply = manager.post(request, multiPart);
+    multiPart->setParent(reply);
+
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    response.status_code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    response.success = (reply->error() == QNetworkReply::NoError && response.status_code >= 200 && response.status_code < 300);
+    response.body = reply->readAll().toStdString();
+    reply->deleteLater();
+    return response;
+#else
+    (void)file_path;
+    (void)headers;
+    response.status_code = 501;
+    response.success = false;
+    response.body = "File upload requires CAD_USE_QT_NETWORK";
+    return response;
 #endif
 }
 

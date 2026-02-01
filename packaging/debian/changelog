@@ -1,0 +1,6 @@
+hydracad (3.0.14-1) unstable; urgency=medium
+
+  * Initial Debian/Ubuntu package.
+  * Builds with Qt6 and optional eigen kernel (CAD_USE_EIGENER_KERN=ON).
+
+ -- Hydra CAD Team <noreply@example.com>  Sat, 01 Feb 2025 12:00:00 +0000

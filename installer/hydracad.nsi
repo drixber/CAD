@@ -18,11 +18,20 @@ InstallDir "$PROGRAMFILES64\Hydra CAD"
 InstallDirRegKey HKCU "Software\HydraCAD" "InstallPath"
 RequestExecutionLevel admin
 
-; Version Information
-!define VERSION "3.0.13"
-!define VERSION_MAJOR "3"
-!define VERSION_MINOR "0"
-!define VERSION_PATCH "13"
+; Version Information (CI passes /DINSTALLER_VERSION=... /DVERSION_MAJOR=... etc. from tag)
+!ifndef INSTALLER_VERSION
+  !define INSTALLER_VERSION "3.0.14"
+!endif
+!ifndef VERSION_MAJOR
+  !define VERSION_MAJOR "3"
+!endif
+!ifndef VERSION_MINOR
+  !define VERSION_MINOR "0"
+!endif
+!ifndef VERSION_PATCH
+  !define VERSION_PATCH "14"
+!endif
+!define VERSION "${INSTALLER_VERSION}"
 VIProductVersion "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.0"
 VIAddVersionKey "ProductName" "Hydra CAD"
 VIAddVersionKey "ProductVersion" "${VERSION}"
@@ -137,7 +146,6 @@ Section "Core Application" SecCore
     
     ; Documentation (essential docs only)
     SetOutPath "$INSTDIR\docs"
-    File /nonfatal "${PROJECT_ROOT}\docs\PROJECT_FINAL.md"
     File /nonfatal "${PROJECT_ROOT}\docs\INSTALLATION.md"
     File /nonfatal "${PROJECT_ROOT}\README.md"
     

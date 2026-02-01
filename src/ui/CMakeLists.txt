@@ -16,13 +16,19 @@ if(CAD_USE_QT)
         qt/QtAgentConsole.cpp
         qt/QtAgentThoughts.cpp
         qt/QtViewport.cpp
+        qt/QtViewCubeWidget.cpp
+        qt/QtViewportAxesWidget.cpp
         qt/QtLogPanel.cpp
         qt/QtPerformancePanel.cpp
         qt/QtLoginDialog.cpp
         qt/QtRegisterDialog.cpp
         qt/QtAIChatPanel.cpp
+        qt/QtCommunityPanel.cpp
         qt/QtAISettingsDialog.cpp
         qt/QtUpdateDialog.cpp
+        qt/QtLicenseDialog.cpp
+        qt/QtMateDialog.cpp
+        qt/QtPrintersDialog.cpp
         theme/ThemeManager.cpp
         theme/DockLayoutManager.cpp
         viewport/Viewport3D.cpp
@@ -47,6 +53,7 @@ endif()
 target_include_directories(cad_ui
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/qt
         ${CMAKE_SOURCE_DIR}/src
 )
 

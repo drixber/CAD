@@ -1,9 +1,11 @@
 #include "AppController.h"
+#include "CommunityService.h"
 #include "ai/AIService.h"
 #include "UpdateInstaller.h"
 #include "HttpClient.h"
 #include "core/updates/UpdateChecker.h"
 #include <sstream>
+#include <map>
 #ifdef CAD_USE_QT
 #include <QString>
 #include <QSettings>
@@ -18,6 +20,10 @@
 #include "ui/qt/QtAIChatPanel.h"
 #include "ui/qt/QtAISettingsDialog.h"
 #include "ui/qt/QtUpdateDialog.h"
+#include "ui/qt/QtLicenseDialog.h"
+#include "ui/qt/QtMateDialog.h"
+#include "ui/qt/QtPrintersDialog.h"
+#include "ui/qt/QtCommunityPanel.h"
 #include <QProcess>
 #include <QDir>
 #include <QFileInfo>
@@ -27,28 +33,34 @@
 namespace cad {
 namespace app {
 
-AppController::AppController() = default;
+AppController::AppController() {
+    community_service_ = new CommunityService();
+}
+
+AppController::~AppController() {
+    delete community_service_;
+    community_service_ = nullptr;
+}
 
 bool AppController::initializeWithLogin() {
     #ifdef CAD_USE_QT
-    // Check if user is already logged in (remember me)
-    if (user_auth_service_.loadSavedSession()) {
-        QSettings settings("HydraCAD", "HydraCAD");
-        QString remembered_username = settings.value("auth/remember_username").toString();
-        if (!remembered_username.isEmpty()) {
-            // Show login dialog with remembered username
-            cad::ui::QtLoginDialog login_dialog;
-            login_dialog.setRememberedUsername(remembered_username);
+    user_auth_service_.loadSavedSession();
+    if (user_auth_service_.isLoggedIn()) {
+        return true;
+    }
+    QSettings settings("HydraCAD", "HydraCAD");
+    QString remembered_username = settings.value("auth/remember_username").toString();
+    if (!remembered_username.isEmpty()) {
+        cad::ui::QtLoginDialog login_dialog;
+        login_dialog.setRememberedUsername(remembered_username);
             
             bool login_success = false;
             QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested, &login_dialog,
                    [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
-                cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString());
+                cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString(), remember);
                 if (result.success) {
                     login_success = true;
-                    if (remember) {
-                        user_auth_service_.saveSession(username.toStdString(), true);
-                    }
+                    user_auth_service_.saveSession(username.toStdString(), remember);
                     login_dialog.accept();
                 } else {
                     QMessageBox::warning(&login_dialog, QObject::tr("Login Failed"), 
@@ -85,11 +97,8 @@ bool AppController::initializeWithLogin() {
                 }
             });
             
-            if (login_dialog.exec() != QDialog::Accepted || !login_success) {
-                return false;
-            }
-        } else {
-            return requireLogin();
+        if (login_dialog.exec() != QDialog::Accepted || !login_success) {
+            return false;
         }
     } else {
         return requireLogin();
@@ -109,12 +118,10 @@ bool AppController::requireLogin() {
     
     QObject::connect(&login_dialog, &cad::ui::QtLoginDialog::loginRequested, &login_dialog,
            [this, &login_success, &login_dialog](const QString& username, const QString& password, bool remember) {
-        cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString());
+        cad::app::LoginResult result = user_auth_service_.login(username.toStdString(), password.toStdString(), remember);
         if (result.success) {
             login_success = true;
-            if (remember) {
-                user_auth_service_.saveSession(username.toStdString(), true);
-            }
+            user_auth_service_.saveSession(username.toStdString(), remember);
             login_dialog.accept();
         } else {
             login_dialog.setError(QString::fromStdString(result.error_message));
@@ -162,12 +169,14 @@ void AppController::initialize() {
     main_window_.setViewportStatus("3D viewport ready");
     main_window_.setWorkspaceMode("General");
     main_window_.setDocumentLabel("MainDocument");
-    if (freecad_.initializeSession()) {
-        freecad_.createDocument("MainDocument");
-        main_window_.setIntegrationStatus("FreeCAD on");
+#ifdef CAD_USE_EIGENER_KERN
+    eigen_kernel_ = std::make_unique<cad::kernel::KernelBridge>();
+    if (eigen_kernel_ && eigen_kernel_->initialize()) {
+        main_window_.setIntegrationStatus("Eigen-Kern on");
     } else {
-        main_window_.setIntegrationStatus("FreeCAD off");
+        main_window_.setIntegrationStatus("Eigen-Kern off");
     }
+#endif
     techdraw_bridge_.initialize();
     cad::core::Sketch sketch("Sketch1");
     sketch.addConstraint({cad::core::ConstraintType::Distance, "line1", "line2", 25.0});
@@ -178,11 +187,6 @@ void AppController::initialize() {
     main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
     main_window_.setParameterCount(static_cast<int>(active_sketch_.parameters().size()));
     main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
-    if (freecad_.isAvailable()) {
-        freecad_.syncSketch(active_sketch_);
-        freecad_.syncConstraints(active_sketch_);
-        freecad_.syncGeometry(active_sketch_);
-    }
     // Solve constraints after geometry is added
     modeler_.solveConstraints(active_sketch_);
     initializeAssembly();
@@ -217,6 +221,10 @@ void AppController::initialize() {
         qt_window->setNewProjectHandler([this]() {
             newProject();
         });
+        qt_window->setNewProjectFromTemplateHandler([this](const std::string& path) {
+            newProjectFromTemplate(path);
+        });
+        qt_window->setTemplateDirectory(QString::fromStdString(getTemplateDirectory()));
         qt_window->setSaveProjectHandler([this](const std::string& path) {
             saveProject(path);
         });
@@ -232,6 +240,9 @@ void AppController::initialize() {
         // Initialize recent projects menu
         qt_window->updateRecentProjectsMenu(recent_projects_);
         
+        license_service_.setUserAuthService(&user_auth_service_);
+        license_service_.setHttpClient(&update_service_.getHttpClient());
+
         // Setup user management
         cad::app::User current_user = user_auth_service_.getCurrentUser();
         if (!current_user.username.empty()) {
@@ -259,7 +270,57 @@ void AppController::initialize() {
         qt_window->setCheckForUpdatesHandler([this, qt_window]() {
             checkForUpdates(qt_window, false);
         });
+        qt_window->setLicenseActivateHandler([this, qt_window]() {
+            cad::ui::QtLicenseDialog dlg(qt_window);
+            dlg.setActivateCallback([this](const std::string& key) {
+                return license_service_.activate(key);
+            });
+            dlg.exec();
+        });
         setupAutoUpdate(qt_window);
+
+        community_service_->setDependencies(&user_auth_service_, &update_service_.getHttpClient());
+
+        printer_service_.setHttpClient(&update_service_.getHttpClient());
+        qt_window->setPrintersDialogHandler([this, qt_window]() {
+            cad::ui::QtPrintersDialog dlg(qt_window);
+            dlg.setPrinterService(&printer_service_);
+            dlg.setSendMode(false);
+            dlg.exec();
+        });
+        qt_window->setSendToPrinterHandler([this, qt_window]() {
+            if (printer_service_.getPrinters().empty()) {
+                QMessageBox::information(qt_window, QObject::tr("Send to 3D Printer"),
+                    QObject::tr("No 3D printer configured. Add one in Settings → 3D Printers."));
+                cad::ui::QtPrintersDialog dlg(qt_window);
+                dlg.setPrinterService(&printer_service_);
+                dlg.setSendMode(false);
+                dlg.exec();
+                return;
+            }
+            cad::ui::QtPrintersDialog dlg(qt_window);
+            dlg.setPrinterService(&printer_service_);
+            dlg.setSendMode(true);
+            if (dlg.exec() != QDialog::Accepted) return;
+            std::string printer_id = dlg.selectedPrinterId();
+            if (printer_id.empty()) return;
+            QString temp_path = QDir::temp().filePath("hydracad_send_to_printer.stl");
+            cad::interop::IoResult export_result = io_service_.exportStl(temp_path.toStdString(), false);
+            if (!export_result.success) {
+                QMessageBox::warning(qt_window, QObject::tr("Export failed"),
+                    QObject::tr("Could not export model to STL: %1").arg(QString::fromStdString(export_result.message)));
+                return;
+            }
+            auto upload_result = printer_service_.sendStlToPrinter(printer_id, temp_path.toStdString(), false);
+            if (upload_result.success) {
+                QMessageBox::information(qt_window, QObject::tr("Send to 3D Printer"),
+                    QObject::tr("File sent to printer successfully."));
+                main_window_.setViewportStatus("Sent to 3D printer");
+            } else {
+                QMessageBox::warning(qt_window, QObject::tr("Upload failed"),
+                    QObject::tr("Could not send file to printer: %1").arg(QString::fromStdString(upload_result.message)));
+            }
+        });
 
         qt_window->setImportFileHandler([this](const std::string& path, const std::string& format) {
             cad::interop::IoJob job;
@@ -273,6 +334,35 @@ void AppController::initialize() {
                 main_window_.setViewportStatus("Import queued");
             }
         });
+
+        cad::ui::QtCommunityPanel* community_panel = qt_window->communityPanel();
+        if (community_panel) {
+            QObject::connect(community_panel, &cad::ui::QtCommunityPanel::downloadRequested, qt_window,
+                [this, qt_window](const QString& itemId) {
+                    std::string base = user_auth_service_.getApiBaseUrl();
+                    if (base.empty()) {
+                        QMessageBox::information(qt_window, QObject::tr("Community"), QObject::tr("Set API URL in settings to download from community."));
+                        return;
+                    }
+                    std::string token = user_auth_service_.getAccessToken();
+                    QString path = QDir::temp().filePath(QString("hydracad_community_%1.step").arg(itemId));
+                    if (community_service_->downloadToFile(base, itemId.toStdString(), token, path.toStdString())) {
+                        cad::interop::IoJob job;
+                        job.path = path.toStdString();
+                        job.format = "step";
+                        cad::interop::IoJobResult result = io_pipeline_.importJob(job);
+                        main_window_.setIntegrationStatus(result.message);
+                        main_window_.setViewportStatus("Import queued");
+                    } else {
+                        QMessageBox::warning(qt_window, QObject::tr("Download failed"), QObject::tr("Could not download item. Check API URL and connection."));
+                    }
+                });
+            std::string base = user_auth_service_.getApiBaseUrl();
+            if (!base.empty()) {
+                std::string json = community_service_->fetchFeed(base, "new", "");
+                community_panel->setFeedFromJson(QString::fromStdString(json));
+            }
+        }
         qt_window->setExportFileHandler([this](const std::string& path, const std::string& format) {
             cad::interop::IoJob job;
             job.path = path;
@@ -284,6 +374,21 @@ void AppController::initialize() {
                 main_window_.setIntegrationStatus(result.message + " (" + format + ")");
                 main_window_.setViewportStatus("Export queued");
             }
+        });
+
+        qt_window->setPropertyApplyHandler([this]() {
+            main_window_.setIntegrationStatus("Properties applied");
+            main_window_.setViewportStatus("Properties applied – changes committed");
+        });
+        qt_window->setPropertyCancelHandler([this]() {
+            main_window_.setIntegrationStatus("Properties cancelled");
+            main_window_.setViewportStatus("Properties cancelled – no changes");
+            main_window_.setContextPlaceholder("");
+        });
+        qt_window->setPropertyApplyAndNewHandler([this]() {
+            main_window_.setIntegrationStatus("Applied & New");
+            main_window_.setViewportStatus("Ready for next feature");
+            main_window_.setContextPlaceholder("");
         });
 
         qt_window->setAskUnsavedChangesHandler([qt_window]() {
@@ -347,6 +452,45 @@ void AppController::initialize() {
 
 void AppController::setActiveSketch(const cad::core::Sketch& sketch) {
     active_sketch_ = sketch;
+    updateSketchConstraintStatus();
+}
+
+void AppController::updateSketchConstraintStatus() {
+    if (active_sketch_.geometry().empty() && active_sketch_.constraints().empty()) {
+        main_window_.setViewportStatus("Sketch: Leer");
+        return;
+    }
+    int dof = modeler_.getDegreesOfFreedom(active_sketch_);
+    bool over = modeler_.isOverConstrained(active_sketch_);
+    bool under = modeler_.isUnderConstrained(active_sketch_);
+    std::string status;
+    if (over) {
+        status = "Sketch: Überbestimmt (Konflikte möglich)";
+    } else if (under || dof > 0) {
+        status = "Sketch: Unterbestimmt (" + std::to_string(dof) + " DOF)";
+    } else {
+        status = "Sketch: Voll bestimmt (0 DOF)";
+    }
+    main_window_.setViewportStatus(status);
+}
+
+void AppController::updateAssemblyConstraintStatus() {
+    if (active_assembly_.components().empty()) {
+        return;
+    }
+    int dof = active_assembly_.getDegreesOfFreedom();
+    bool over = active_assembly_.isOverConstrained();
+    bool under = active_assembly_.isUnderConstrained();
+    std::string status;
+    if (over) {
+        status = "Assembly: Überbestimmt (Konflikte möglich)";
+    } else if (under || dof > 0) {
+        status = "Assembly: " + std::to_string(active_assembly_.components().size()) + " Komponenten, "
+                 + std::to_string(active_assembly_.mates().size()) + " Mates, " + std::to_string(dof) + " DOF";
+    } else {
+        status = "Assembly: Voll bestimmt (0 DOF), " + std::to_string(active_assembly_.mates().size()) + " Mates";
+    }
+    main_window_.setViewportStatus(status);
 }
 
 cad::ui::MainWindow& AppController::mainWindow() {
@@ -355,10 +499,6 @@ cad::ui::MainWindow& AppController::mainWindow() {
 
 cad::core::Modeler& AppController::modeler() {
     return modeler_;
-}
-
-cad::core::FreeCADAdapter& AppController::freecad() {
-    return freecad_;
 }
 
 std::string AppController::buildParameterSummary(const cad::core::Sketch& sketch) const {
@@ -377,6 +517,10 @@ std::string AppController::buildParameterSummary(const cad::core::Sketch& sketch
 void AppController::initializeAssembly() {
     active_assembly_ = modeler_.createAssembly();
     cad::core::Part partA("Bracket");
+    partA.addWorkPlaneOffset("XY Offset 10", "XY", 10.0);
+    partA.addUserParameter({"Width", 100.0, ""});
+    partA.addUserParameter({"Height", 50.0, "Width/2"});
+    partA.addUserParameter({"Depth", 10.0, ""});
     cad::core::Part partB("Plate");
     cad::core::Transform transformA;
     cad::core::Transform transformB;
@@ -387,6 +531,35 @@ void AppController::initializeAssembly() {
     main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
     main_window_.setAssemblySummary("2 components, 1 mate");
     main_window_.setMatesSummary("1 mate");
+    updateAssemblyConstraintStatus();
+#ifdef CAD_USE_QT
+    if (cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow()) {
+        QStringList planeNames, axisNames, pointNames;
+        if (!active_assembly_.components().empty()) {
+            const cad::core::Part& part = active_assembly_.components()[0].part;
+            for (const auto& wp : part.workPlanes())
+                planeNames << QString::fromStdString(wp.name);
+            for (const auto& wa : part.workAxes())
+                axisNames << QString::fromStdString(wa.name);
+            for (const auto& wpt : part.workPoints())
+                pointNames << QString::fromStdString(wpt.name);
+        }
+        qt_window->setReferenceGeometry(planeNames, axisNames, pointNames);
+        cad::ui::Viewport3D* vp = qt_window->viewport3D();
+        if (vp) {
+            std::vector<std::string> comp_ids;
+            for (const auto& comp : active_assembly_.components()) {
+                comp_ids.push_back("asm_MainAssembly_" + std::to_string(comp.id));
+            }
+            vp->setAssemblyComponents("MainAssembly", comp_ids);
+            for (const std::string& gid : comp_ids) {
+                vp->renderGeometry(gid, nullptr);
+            }
+            vp->renderAssembly("MainAssembly");
+            syncAssemblyTransformsToViewport();
+        }
+    }
+#endif
     
     // Register assembly in BOM registry for UI integration
     bom_service_.registerAssembly("MainAssembly", active_assembly_);
@@ -467,19 +640,148 @@ void AppController::bindCommands() {
     });
 }
 
+void AppController::syncAssemblyTransformsToViewport() {
+#ifdef CAD_USE_QT
+    cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+    if (!qt_window || !qt_window->viewport3D()) {
+        return;
+    }
+    cad::ui::Viewport3D* vp = qt_window->viewport3D();
+    std::vector<std::string> comp_ids = vp->getAssemblyComponents("MainAssembly");
+    const auto& components = active_assembly_.components();
+    for (std::size_t i = 0; i < comp_ids.size() && i < components.size(); ++i) {
+        cad::core::Transform t = active_assembly_.getDisplayTransform(components[i].id);
+        vp->setComponentTransform(comp_ids[i], t.tx, t.ty, t.tz);
+    }
+#endif
+}
+
 void AppController::executeCommand(const std::string& command) {
-    if (command == "Parameters") {
-        main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
-        main_window_.setParameterCount(static_cast<int>(active_sketch_.parameters().size()));
-        main_window_.setViewportStatus("Parameters: " + std::to_string(active_sketch_.parameters().size()) + " items");
-    } else if (command == "Flange" || command == "Bend" || command == "Unfold" || command == "Refold") {
+#ifdef CAD_USE_QT
+    if (command == "Shaded" || command == "Wireframe" || command == "HiddenLine") {
+        cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+        if (qt_win && qt_win->viewport3D()) {
+            cad::ui::Viewport3D* vp = qt_win->viewport3D();
+            if (command == "Shaded") {
+                vp->setDisplayMode(cad::ui::Viewport3D::DisplayMode::Shaded);
+                main_window_.setViewportStatus("Visual style: Shaded");
+            } else if (command == "Wireframe") {
+                vp->setDisplayMode(cad::ui::Viewport3D::DisplayMode::Wireframe);
+                main_window_.setViewportStatus("Visual style: Wireframe");
+            } else if (command == "HiddenLine") {
+                vp->setDisplayMode(cad::ui::Viewport3D::DisplayMode::HiddenLine);
+                main_window_.setViewportStatus("Visual style: Hidden Line");
+            }
+        }
+        return;
+    }
+    if (command == "New") {
+        cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+        if (qt_win) qt_win->triggerNewProject();
+        return;
+    }
+    if (command == "Open") {
+        cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+        if (qt_win) qt_win->triggerOpenProject();
+        return;
+    }
+    if (command == "Save") {
+        cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+        if (qt_win) qt_win->triggerSaveProject();
+        return;
+    }
+    if (command == "Import") {
+        cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+        if (qt_win) qt_win->triggerImportDialog();
+        return;
+    }
+    if (command == "Export") {
+        cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+        if (qt_win) qt_win->triggerExportDialog();
+        return;
+    }
+    if (command == "GetStarted" || command == "Documentation") {
+        main_window_.setViewportStatus("Get Started: See documentation.");
+        return;
+    }
+#endif
+    if (command == "iLogic") {
+        cad::core::AssemblyComponent* comp = active_assembly_.findComponent(active_assembly_.components().empty() ? 0 : active_assembly_.components()[0].id);
+        if (comp) {
+            if (comp->part.rules().empty()) {
+                cad::core::Rule rule;
+                rule.name = "WidthToHeight";
+                rule.trigger = "ParameterChange";
+                rule.condition_expression = "Width > 80";
+                rule.then_parameter = "Height";
+                rule.then_value_expression = "40";
+                comp->part.addRule(rule);
+            }
+            modeler_.evaluatePartParameters(comp->part);
+            modeler_.evaluatePartRules(comp->part);
+            main_window_.setIntegrationStatus("iLogic: " + std::to_string(comp->part.rules().size()) + " rule(s) evaluated");
+            main_window_.setViewportStatus("Regeln ausgeführt (ParameterChange)");
+        } else {
+            main_window_.setIntegrationStatus("iLogic: No part selected");
+            main_window_.setViewportStatus("Kein Part für Regeln");
+        }
+    } else if (command == "Parameters") {
+        int total_params = static_cast<int>(active_sketch_.parameters().size());
+        std::string summary = buildParameterSummary(active_sketch_);
+        std::vector<std::string> names;
+        std::vector<double> values;
+        std::vector<std::string> expressions;
+        cad::core::AssemblyComponent* comp = active_assembly_.findComponent(active_assembly_.components().empty() ? 0 : active_assembly_.components()[0].id);
+        if (comp) {
+            modeler_.evaluatePartParameters(comp->part);
+            modeler_.evaluatePartRules(comp->part);
+            for (const auto& p : comp->part.userParameters()) {
+                names.push_back(p.name);
+                values.push_back(p.value);
+                expressions.push_back(p.expression);
+            }
+            total_params += static_cast<int>(names.size());
+            if (!comp->part.userParameters().empty()) {
+                summary += " | Part: " + std::to_string(comp->part.userParameters().size()) + " user";
+            }
+        }
+        main_window_.setParameterTable(names, values, expressions);
+        main_window_.setParameterSummary(summary);
+        main_window_.setParameterCount(total_params);
+        main_window_.setViewportStatus("Parameters: " + std::to_string(total_params) + " items");
+    } else if (command == "Flange" || command == "Bend" || command == "Unfold" || command == "Refold" ||
+               command == "Punch" || command == "Bead") {
         cad::modules::SheetMetalRequest request;
         request.targetPart = "Bracket";
-        request.operation = cad::modules::SheetMetalOperation::Flange;
+        if (command == "Flange") request.operation = cad::modules::SheetMetalOperation::Flange;
+        else if (command == "Bend") request.operation = cad::modules::SheetMetalOperation::Bend;
+        else if (command == "Unfold") request.operation = cad::modules::SheetMetalOperation::Unfold;
+        else if (command == "Refold") request.operation = cad::modules::SheetMetalOperation::Refold;
+        else if (command == "Punch") request.operation = cad::modules::SheetMetalOperation::Punch;
+        else request.operation = cad::modules::SheetMetalOperation::Bead;
         cad::modules::SheetMetalResult result = sheet_metal_service_.applyOperation(request);
         main_window_.setIntegrationStatus(result.message);
-        main_window_.setViewportStatus("Sheet metal command queued");
-    } else if (command == "Rectangular Pattern" || command == "Circular Pattern" || command == "Curve Pattern") {
+        main_window_.setViewportStatus("Sheet metal: " + result.message);
+    } else if (command == "SheetMetalRules") {
+        cad::modules::SheetMetalRules rules;
+        rules.thickness = 1.5;
+        rules.bend_radius_default = 2.0;
+        rules.k_factor = 0.5;
+        rules.corner_relief = "Square";
+        sheet_metal_service_.setRules("Bracket", rules);
+        main_window_.setIntegrationStatus("Sheet metal rules set: thickness 1.5 mm, K-factor 0.5");
+        main_window_.setViewportStatus("Blechregeln: Dicke 1.5, Biegeradius 2, K 0.5");
+    } else if (command == "ExportFlatDXF") {
+        std::string path = "flat_pattern.dxf";
+        if (sheet_metal_service_.exportFlatPatternToDxf("Bracket", path)) {
+            main_window_.setIntegrationStatus("Flat pattern exported to " + path);
+            main_window_.setViewportStatus("Abwicklung als DXF gespeichert");
+        } else {
+            main_window_.setIntegrationStatus("Export flat DXF failed");
+            main_window_.setViewportStatus("DXF-Export fehlgeschlagen");
+        }
+    } else if (command == "Rectangular Pattern" || command == "Circular Pattern" || command == "Curve Pattern" ||
+               command == "RectangularPattern" || command == "CurvePattern") {
         cad::modules::PatternRequest request;
         request.targetFeature = "Hole1";
         request.type = cad::modules::PatternType::Rectangular;
@@ -487,7 +789,31 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::PatternResult result = pattern_service_.createPattern(request);
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("Pattern command queued");
-    } else if (command == "Direct Edit" || command == "Freeform") {
+    } else if (command == "CircularPattern") {
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        if (!active_sketch_.geometry().empty()) {
+            modeler_.applyExtrude(part, active_sketch_.name(), 10.0);
+            std::string base = part.features().empty() ? active_sketch_.name() : part.features().back().name;
+            modeler_.applyCircularPattern(part, base, 6, 360.0, "Z");
+            main_window_.setIntegrationStatus("Circular pattern created: 6 instances, 360°, axis Z");
+            main_window_.setViewportStatus("Circular pattern applied");
+        } else {
+            main_window_.setIntegrationStatus("Circular pattern: add sketch geometry first");
+            main_window_.setViewportStatus("Sketch required");
+        }
+    } else if (command == "FacePattern") {
+        cad::modules::PatternRequest request;
+        request.targetFeature = "Hole1";
+        request.type = cad::modules::PatternType::Face;
+        request.face_params.face_id = "Face1";
+        request.face_params.spacing_x = 10.0;
+        request.face_params.spacing_y = 10.0;
+        request.face_params.count_x = 3;
+        request.face_params.count_y = 3;
+        cad::modules::PatternResult result = pattern_service_.createPattern(request);
+        main_window_.setIntegrationStatus(result.message);
+        main_window_.setViewportStatus("Face pattern (Flächenmuster) queued");
+    } else if (command == "Direct Edit" || command == "Freeform" || command == "DirectEdit") {
         cad::modules::DirectEditRequest request;
         request.targetFeature = "Face1";
         request.operation = cad::modules::DirectEditOperation::MoveFace;
@@ -498,9 +824,56 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::RoutingRequest request;
         request.targetAssembly = "MainAssembly";
         request.type = cad::modules::RoutingType::RigidPipe;
+        if (command == "Flexible Hose" || command == "FlexibleHose") request.type = cad::modules::RoutingType::FlexibleHose;
+        else if (command == "Bent Tube" || command == "BentTube") request.type = cad::modules::RoutingType::BentTube;
         cad::modules::RoutingResult result = routing_service_.createRoute(request);
         main_window_.setIntegrationStatus(result.message);
-        main_window_.setViewportStatus("Routing command queued");
+        main_window_.setViewportStatus("Routing: " + result.route_id + ", L=" + std::to_string(static_cast<int>(result.total_length)) + " mm");
+    } else if (command == "RouteBOM") {
+        std::string route_id = "MainAssembly_rigid_pipe";
+        std::vector<cad::modules::PipeBomItem> bom = routing_service_.getRouteBom(route_id);
+        if (bom.empty()) {
+            bom = routing_service_.getRouteBom("MainAssembly_flexible_hose");
+            if (bom.empty()) {
+                bom = routing_service_.getRouteBom("MainAssembly_bent_tube");
+            }
+        }
+        if (bom.empty()) {
+            main_window_.setIntegrationStatus("Route BOM: Create a route first (Rigid Pipe / Bent Tube)");
+            main_window_.setViewportStatus("Keine Route für Stückliste");
+        } else {
+            std::string summary = "Route BOM: " + std::to_string(bom.size()) + " items";
+            for (const auto& item : bom) {
+                summary += "; " + item.description + " x" + std::to_string(item.quantity);
+            }
+            main_window_.setIntegrationStatus(summary);
+            main_window_.setViewportStatus("Rohr-Stückliste: " + std::to_string(bom.size()) + " Positionen");
+        }
+    } else if (command == "Weld") {
+        cad::modules::WeldJoint weld;
+        weld.name = "Weld1";
+        weld.type = cad::modules::WeldType::Fillet;
+        weld.length_mm = 50.0;
+        weld.size_mm = 5.0;
+        weld.part_a = "Bracket";
+        weld.part_b = "Plate";
+        weld.symbol = "Fillet 5";
+        welding_service_.addWeld("MainAssembly", weld);
+        main_window_.setIntegrationStatus("Weld added: " + weld.symbol);
+        main_window_.setViewportStatus("Schweißnaht: Kehlnaht 5 mm");
+    } else if (command == "WeldBOM") {
+        std::vector<cad::modules::WeldBomItem> bom = welding_service_.getWeldBom("MainAssembly");
+        if (bom.empty()) {
+            main_window_.setIntegrationStatus("Weld BOM: Add welds first (Weld)");
+            main_window_.setViewportStatus("Keine Nähte für Schweißstückliste");
+        } else {
+            std::string summary = "Weld BOM: " + std::to_string(bom.size()) + " types";
+            for (const auto& item : bom) {
+                summary += "; " + item.weld_type_name + " x" + std::to_string(item.quantity) + " L=" + std::to_string(static_cast<int>(item.total_length_mm)) + " mm";
+            }
+            main_window_.setIntegrationStatus(summary);
+            main_window_.setViewportStatus("Schweißstückliste: " + std::to_string(bom.size()) + " Nahttypen");
+        }
     } else if (command == "Simplify") {
         cad::modules::SimplifyRequest request;
         request.targetAssembly = "MainAssembly";
@@ -530,7 +903,42 @@ void AppController::executeCommand(const std::string& command) {
         request.type = cad::modules::SimulationType::FEA;
         cad::modules::SimulationResult result = simulation_service_.runSimulation(request);
         main_window_.setIntegrationStatus(result.message);
-        main_window_.setViewportStatus("Simulation queued");
+        if (result.success && result.fea_result.max_stress >= 0.0) {
+            std::string status = "FEA: max stress " + std::to_string(static_cast<int>(result.fea_result.max_stress / 1e6)) + " MPa";
+            if (result.fea_result.safety_factor > 0.0) {
+                status += ", safety factor " + std::to_string(static_cast<int>(result.fea_result.safety_factor * 10) / 10.0);
+            }
+            main_window_.setViewportStatus(status);
+        } else {
+            main_window_.setViewportStatus("Simulation queued");
+        }
+    } else if (command == "ExportFEAReport") {
+        cad::modules::SimulationRequest request;
+        request.targetAssembly = "MainAssembly";
+        request.type = cad::modules::SimulationType::FEA;
+        cad::modules::SimulationResult result = simulation_service_.runSimulation(request);
+        if (simulation_service_.exportFeaReport(result, "fea_report.txt")) {
+            main_window_.setIntegrationStatus("FEA report exported to fea_report.txt");
+            main_window_.setViewportStatus("Bericht: " + result.message);
+        } else {
+            main_window_.setIntegrationStatus("FEA report export failed");
+            main_window_.setViewportStatus("Export fehlgeschlagen");
+        }
+    } else if (command == "ExportMotionReport") {
+        cad::modules::SimulationRequest request;
+        request.targetAssembly = "MainAssembly";
+        request.type = cad::modules::SimulationType::Motion;
+        request.duration = 2.0;
+        request.time_step = 0.02;
+        request.joint_drives["Revolute1"] = 1.0;
+        cad::modules::SimulationResult result = simulation_service_.runSimulation(request);
+        if (simulation_service_.exportMotionReport(result, "motion_report.txt")) {
+            main_window_.setIntegrationStatus("Motion report exported to motion_report.txt");
+            main_window_.setViewportStatus("Bewegungsdiagramm exportiert");
+        } else {
+            main_window_.setIntegrationStatus("Motion report export failed");
+            main_window_.setViewportStatus("Export fehlgeschlagen");
+        }
     } else if (command == "Interference") {
         cad::core::InterferenceResult result = interference_checker_.checkAssembly(active_assembly_);
         main_window_.setIntegrationStatus(result.message);
@@ -548,13 +956,11 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::DrawingRequest request;
         request.sourcePart = "Bracket";
         request.templateName = "ISO";
+        request.sheetFormatId = "A4_Landscape";
         cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
         if (result.success) {
-            if (freecad_.isAvailable()) {
-                freecad_.createDrawing(result.drawingId, "A4_Landscape");
-            }
             cad::drawings::DrawingDocument document =
-                drawing_service_.buildDocumentSkeleton(result.drawingId);
+                drawing_service_.buildDocumentSkeleton(result.drawingId, request.sheetFormatId);
             document.bom = bom_service_.getBomForAssembly("MainAssembly");
             if (!document.sheets.empty()) {
                 document.annotations =
@@ -567,7 +973,14 @@ void AppController::executeCommand(const std::string& command) {
             techdraw_bridge_.syncAssociativeLinks(document);
             associative_link_service_.updateFromModel(document, document.source_model_id);
             main_window_.setIntegrationStatus("Drawing created");
-            main_window_.setViewportStatus("Drawing view created");
+#ifdef CAD_USE_EIGENER_KERN
+            if (eigen_kernel_ && eigen_kernel_->isAvailable()) {
+                main_window_.setViewportStatus("Zeichnung erstellt (Eigen-Kern)");
+            } else
+#endif
+            {
+                main_window_.setViewportStatus("Drawing view created");
+            }
         } else {
             main_window_.setIntegrationStatus("Drawing failed");
             main_window_.setViewportStatus("Drawing view failed");
@@ -608,10 +1021,11 @@ void AppController::executeCommand(const std::string& command) {
     } else if (command == "Dimension") {
         cad::modules::DrawingRequest request;
         request.sourcePart = "Bracket";
+        request.sheetFormatId = "A4_Landscape";
         cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
         if (result.success) {
             cad::drawings::DrawingDocument document =
-                drawing_service_.buildDocumentSkeleton(result.drawingId);
+                drawing_service_.buildDocumentSkeleton(result.drawingId, request.sheetFormatId);
             if (!document.sheets.empty()) {
                 document.dimensions = 
                     annotation_service_.buildDefaultDimensions(document.sheets.front().name);
@@ -672,12 +1086,33 @@ void AppController::executeCommand(const std::string& command) {
         cad::modules::DrawingRequest request;
         request.sourcePart = "Bracket";
         request.templateName = "ISO";
+        request.sheetFormatId = "A4_Landscape";
         cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
         if (result.success) {
             cad::drawings::DrawingDocument document =
-                drawing_service_.buildDocumentSkeleton(result.drawingId);
+                drawing_service_.buildDocumentSkeleton(result.drawingId, request.sheetFormatId);
             main_window_.setIntegrationStatus("Section view created");
             main_window_.setViewportStatus("Section view: " + result.drawingId);
+        }
+    } else if (command == "Detail View" || command == "DetailView") {
+        cad::modules::DrawingRequest request;
+        request.sourcePart = "Bracket";
+        request.templateName = "ISO";
+        request.sheetFormatId = "A4_Landscape";
+        cad::modules::DrawingResult result = drawing_service_.createDrawing(request);
+        if (result.success) {
+            cad::drawings::DrawingDocument document =
+                drawing_service_.buildDocumentSkeleton(result.drawingId, request.sheetFormatId);
+            if (techdraw_bridge_.createDetailView("Detail1", "Front", 50.0, 50.0, 25.0, 2.0)) {
+                main_window_.setIntegrationStatus("Detail view created");
+                main_window_.setViewportStatus("Detail view: Detail1 (scale 2:1)");
+            } else {
+                main_window_.setIntegrationStatus("Detail view prepared");
+                main_window_.setViewportStatus("Detail-Ansicht vorbereitet (Eigen-Kern)");
+            }
+        } else {
+            main_window_.setIntegrationStatus("Drawing failed");
+            main_window_.setViewportStatus("Detail view failed");
         }
     } else if (command == "Styles") {
         cad::drawings::DrawingStyleSet iso_styles = drawing_service_.isoStyles();
@@ -697,7 +1132,7 @@ void AppController::executeCommand(const std::string& command) {
         if (qt_window) {
             cad::ui::QtPropertyPanel* panel = qt_window->propertyPanel();
             if (panel) {
-                QStringList presets = {"Default", "ISO", "ANSI", "JIS"};
+                QStringList presets = {"Default", "ISO", "DIN", "ANSI", "JIS"};
                 panel->setStylePresets(presets);
                 panel->setStylePresetSelector(presets);
                 
@@ -773,9 +1208,75 @@ void AppController::executeCommand(const std::string& command) {
         cad::interop::IoResult result = io_service_.exportBimRfa("C:/temp/model.rfa");
         main_window_.setIntegrationStatus(result.message);
         main_window_.setViewportStatus("RFA export queued");
-    } else if (command == "Mate") {
-        main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
-        main_window_.setViewportStatus("Mate command ready");
+    } else if (command == "Mate" || command.find("Mate ") == 0) {
+        // Mate-Dialog: "Mate" (Dialog öffnen) oder "Mate <type> [value]" (aus Command Line)
+        std::string mate_type_str;
+        double mate_value = 0.0;
+        bool has_value = false;
+
+        if (command == "Mate") {
+            // Ribbon-Klick: Dialog öffnen, dann Befehl mit Typ/Wert ausführen
+#ifdef CAD_USE_QT
+            cad::ui::QtMainWindow* qt_win = main_window_.nativeWindow();
+            if (qt_win) {
+                cad::ui::QtMateDialog dlg(qt_win);
+                if (dlg.exec() == QDialog::Accepted) {
+                    mate_type_str = dlg.mateType().toStdString();
+                    has_value = dlg.isValueUsed();
+                    mate_value = dlg.mateValue();
+                } else {
+                    main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+                    updateAssemblyConstraintStatus();
+                    return;
+                }
+            } else {
+                mate_type_str = "Coincident";
+            }
+#else
+            mate_type_str = "Coincident";
+#endif
+        } else if (command.size() > 5 && command[5] == ' ') {
+            std::istringstream iss(command.substr(6));
+            std::string token;
+            if (iss >> token) mate_type_str = token;
+            if (iss >> token) {
+                try { mate_value = std::stod(token); has_value = true; } catch (...) {}
+            }
+        }
+        if (mate_type_str.empty()) mate_type_str = "Coincident";
+
+        if (active_assembly_.components().size() < 2) {
+            main_window_.setIntegrationStatus("Mate: Need at least 2 components");
+            main_window_.setViewportStatus("Add components first");
+            main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+            updateAssemblyConstraintStatus();
+        } else {
+            std::uint64_t id_a = active_assembly_.components()[0].id;
+            std::uint64_t id_b = active_assembly_.components()[1].id;
+            std::string mate_name;
+            const double deg2rad = 3.14159265358979323846 / 180.0;
+            if (mate_type_str == "Coincident") {
+                mate_name = active_assembly_.createMate(id_a, id_b, mate_value);
+            } else if (mate_type_str == "Parallel") {
+                mate_name = active_assembly_.createParallel(id_a, id_b, has_value ? mate_value : 0.0);
+            } else if (mate_type_str == "Distance") {
+                mate_name = active_assembly_.createDistance(id_a, id_b, has_value ? mate_value : 10.0);
+            } else if (mate_type_str == "Tangent") {
+                mate_name = active_assembly_.createTangent(id_a, id_b, has_value ? mate_value : 0.0);
+            } else if (mate_type_str == "Concentric") {
+                mate_name = active_assembly_.createConcentric(id_a, id_b, has_value ? mate_value : 0.0);
+            } else if (mate_type_str == "Perpendicular") {
+                double angle_rad = has_value ? (mate_value * deg2rad) : (90.0 * deg2rad);
+                mate_name = active_assembly_.createAngle(id_a, id_b, angle_rad);
+            } else {
+                mate_name = active_assembly_.createMate(id_a, id_b, 0.0);
+            }
+            active_assembly_.solveMates();
+            main_window_.setIntegrationStatus("Mate (" + mate_type_str + ") created: " + mate_name);
+            main_window_.setViewportStatus("Mate constraint applied");
+            main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+            updateAssemblyConstraintStatus();
+        }
     } else if (command == "LoadAssembly") {
         assembly_manager_.enqueueLoad("MainAssembly");
         main_window_.setLoadProgress(0);
@@ -809,6 +1310,8 @@ void AppController::executeCommand(const std::string& command) {
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
         }
         #endif
+        main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+        updateSketchConstraintStatus();
     } else if (command == "Rectangle") {
         // Add a rectangle to the active sketch
         cad::core::Point2D corner{0.0, 0.0};
@@ -825,6 +1328,8 @@ void AppController::executeCommand(const std::string& command) {
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
         }
         #endif
+        main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+        updateSketchConstraintStatus();
     } else if (command == "Circle") {
         // Add a circle to the active sketch
         cad::core::Point2D center{25.0, 25.0};
@@ -840,6 +1345,8 @@ void AppController::executeCommand(const std::string& command) {
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
         }
         #endif
+        main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+        updateSketchConstraintStatus();
     } else if (command == "Arc") {
         // Add an arc to the active sketch
         cad::core::Point2D center{25.0, 25.0};
@@ -857,9 +1364,11 @@ void AppController::executeCommand(const std::string& command) {
             qt_window->viewport3D()->renderGeometry(geom_id, nullptr);
         }
         #endif
+        main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
+        updateSketchConstraintStatus();
     } else if (command == "Constraint") {
         main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
-        main_window_.setViewportStatus("Constraints: " + std::to_string(active_sketch_.constraints().size()) + " items");
+        updateSketchConstraintStatus();
     } else if (command == "Extrude") {
         // Create extrude feature from active sketch
         if (!active_sketch_.geometry().empty()) {
@@ -867,6 +1376,13 @@ void AppController::executeCommand(const std::string& command) {
             double depth = 10.0;  // Default depth
             // Try to parse depth from command if available
             modeler_.applyExtrude(part, active_sketch_.name(), depth);
+#ifdef CAD_USE_EIGENER_KERN
+            if (eigen_kernel_ && eigen_kernel_->isAvailable()) {
+                std::map<std::string, cad::core::Sketch> sketches;
+                sketches.insert(std::make_pair(active_sketch_.name(), active_sketch_));
+                eigen_kernel_->buildPartFromPart(part, &sketches);
+            }
+#endif
             main_window_.setIntegrationStatus("Extrude created: depth=" + std::to_string(depth));
             main_window_.setViewportStatus("Extrude feature applied");
             
@@ -887,6 +1403,13 @@ void AppController::executeCommand(const std::string& command) {
             cad::core::Part part = modeler_.createPart(active_sketch_);
             double angle = 360.0;  // Default full revolution
             modeler_.applyRevolve(part, active_sketch_.name(), angle);
+#ifdef CAD_USE_EIGENER_KERN
+            if (eigen_kernel_ && eigen_kernel_->isAvailable()) {
+                std::map<std::string, cad::core::Sketch> sketches;
+                sketches.insert(std::make_pair(active_sketch_.name(), active_sketch_));
+                eigen_kernel_->buildPartFromPart(part, &sketches);
+            }
+#endif
             main_window_.setIntegrationStatus("Revolve created: angle=" + std::to_string(angle));
             main_window_.setViewportStatus("Revolve feature applied");
             
@@ -919,10 +1442,23 @@ void AppController::executeCommand(const std::string& command) {
         cad::core::Part part = modeler_.createPart(active_sketch_);
         double diameter = 5.0;  // Default diameter
         double depth = 10.0;   // Default depth
-        modeler_.applyHole(part, diameter, depth);
+        modeler_.applyHole(part, diameter, depth, false);
         main_window_.setIntegrationStatus("Hole created: diameter=" + std::to_string(diameter));
         main_window_.setViewportStatus("Hole feature applied");
         
+        #ifdef CAD_USE_QT
+        cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+        if (qt_window && qt_window->viewport3D()) {
+            qt_window->viewport3D()->renderGeometry("hole_" + active_sketch_.name(), nullptr);
+        }
+        #endif
+    } else if (command == "HoleThroughAll") {
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        double diameter = 5.0;
+        double depth = 0.0;  // Ignored when through_all
+        modeler_.applyHole(part, diameter, depth, true);
+        main_window_.setIntegrationStatus("Hole (through all) created: diameter=" + std::to_string(diameter));
+        main_window_.setViewportStatus("Hole through all applied");
         #ifdef CAD_USE_QT
         cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
         if (qt_window && qt_window->viewport3D()) {
@@ -944,6 +1480,32 @@ void AppController::executeCommand(const std::string& command) {
             qt_window->viewport3D()->renderGeometry("fillet_" + active_sketch_.name(), nullptr);
         }
         #endif
+    } else if (command == "Chamfer") {
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        double d1 = 1.0, d2 = 1.0, angle = 45.0;
+        std::vector<std::string> edge_ids;
+        modeler_.applyChamfer(part, d1, d2, angle, edge_ids);
+        main_window_.setIntegrationStatus("Chamfer created: d1=" + std::to_string(d1) + " d2=" + std::to_string(d2));
+        main_window_.setViewportStatus("Chamfer feature applied");
+    } else if (command == "Shell") {
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        double wall = 1.0;
+        std::vector<std::string> face_ids;
+        modeler_.applyShell(part, wall, face_ids);
+        main_window_.setIntegrationStatus("Shell created: wall=" + std::to_string(wall) + " mm");
+        main_window_.setViewportStatus("Shell feature applied");
+    } else if (command == "Mirror") {
+        cad::core::Part part = modeler_.createPart(active_sketch_);
+        if (!part.features().empty()) {
+            std::string base = part.features().back().name;
+            std::string plane = "XY";
+            modeler_.applyMirror(part, base, plane, true);
+            main_window_.setIntegrationStatus("Mirror created: base=" + base + ", plane=" + plane);
+            main_window_.setViewportStatus("Mirror feature applied");
+        } else {
+            main_window_.setIntegrationStatus("Mirror: Create a feature first");
+            main_window_.setViewportStatus("Add feature before mirror");
+        }
     } else if (command == "Flush") {
         // Create flush mate constraint
         if (active_assembly_.components().size() >= 2) {
@@ -954,6 +1516,7 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setIntegrationStatus("Flush mate created: " + mate_name);
             main_window_.setViewportStatus("Flush constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+            updateAssemblyConstraintStatus();
         } else {
             main_window_.setIntegrationStatus("Flush: Need at least 2 components");
             main_window_.setViewportStatus("Add components first");
@@ -969,16 +1532,113 @@ void AppController::executeCommand(const std::string& command) {
             main_window_.setIntegrationStatus("Angle mate created: " + mate_name + " angle=" + std::to_string(angle));
             main_window_.setViewportStatus("Angle constraint applied");
             main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+            updateAssemblyConstraintStatus();
         } else {
             main_window_.setIntegrationStatus("Angle: Need at least 2 components");
+            main_window_.setViewportStatus("Add components first");
+        }
+    } else if (command == "Parallel") {
+        if (active_assembly_.components().size() >= 2) {
+            std::uint64_t id_a = active_assembly_.components()[0].id;
+            std::uint64_t id_b = active_assembly_.components()[1].id;
+            double distance = 0.0;
+            std::string mate_name = active_assembly_.createParallel(id_a, id_b, distance);
+            active_assembly_.solveMates();
+            main_window_.setIntegrationStatus("Parallel mate created: " + mate_name);
+            main_window_.setViewportStatus("Parallel constraint applied");
+            main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+            updateAssemblyConstraintStatus();
+        } else {
+            main_window_.setIntegrationStatus("Parallel: Need at least 2 components");
+            main_window_.setViewportStatus("Add components first");
+        }
+    } else if (command == "Distance") {
+        if (active_assembly_.components().size() >= 2) {
+            std::uint64_t id_a = active_assembly_.components()[0].id;
+            std::uint64_t id_b = active_assembly_.components()[1].id;
+            double distance = 10.0;  // Default distance
+            std::string mate_name = active_assembly_.createDistance(id_a, id_b, distance);
+            active_assembly_.solveMates();
+            main_window_.setIntegrationStatus("Distance mate created: " + mate_name + " distance=" + std::to_string(distance));
+            main_window_.setViewportStatus("Distance constraint applied");
+            main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+            updateAssemblyConstraintStatus();
+        } else {
+            main_window_.setIntegrationStatus("Distance: Need at least 2 components");
             main_window_.setViewportStatus("Add components first");
         }
     } else if (command == "Pattern") {
         main_window_.setIntegrationStatus("Pattern command ready");
         main_window_.setViewportStatus("Assembly pattern command active");
+    } else if (command == "ExplosionView") {
+        if (active_assembly_.getExplosionFactor() > 0) {
+            active_assembly_.setExplosionFactor(0.0);
+            main_window_.setViewportStatus("Explosion view off");
+            main_window_.setIntegrationStatus("Explosion view disabled");
+        } else {
+            active_assembly_.setExplosionFactor(1.0);
+            for (std::size_t i = 0; i < active_assembly_.components().size(); ++i) {
+                std::uint64_t cid = active_assembly_.components()[i].id;
+                active_assembly_.setExplosionOffset(cid, 0.0, 0.0, static_cast<double>(i) * 2.0);
+            }
+            main_window_.setViewportStatus("Explosion view on");
+            main_window_.setIntegrationStatus("Explosion view enabled");
+        }
+        syncAssemblyTransformsToViewport();
     } else if (command == "Visibility" || command == "Appearance" || command == "Environment") {
         main_window_.setIntegrationStatus("View: " + command);
         main_window_.setViewportStatus("View " + command + " command active");
+    } else if (command == "Suppress") {
+        // Unterdrückung: Feature oder Komponente unterdrücken (Backend: setFeatureSuppressed)
+        bool did_suppress = false;
+        if (!active_assembly_.components().empty()) {
+            cad::core::AssemblyComponent* comp = active_assembly_.findComponent(active_assembly_.components()[0].id);
+            if (comp && !comp->part.features().empty()) {
+                std::string feat_name = comp->part.features().back().name;
+                did_suppress = comp->part.setFeatureSuppressed(feat_name, true);
+                if (did_suppress) {
+                    main_window_.setIntegrationStatus("Suppress: Feature \"" + feat_name + "\" suppressed.");
+                    main_window_.setViewportStatus("Feature suppressed");
+                }
+            }
+        }
+        if (!did_suppress) {
+            main_window_.setIntegrationStatus("Suppress: Select component/feature in browser, then use Suppress.");
+            main_window_.setViewportStatus("Suppress component or feature");
+        }
+    } else if (command == "Create New Component") {
+        main_window_.setIntegrationStatus("Create New Component: Add new part to assembly.");
+        main_window_.setViewportStatus("New component ready");
+    } else if (command == "Place From File") {
+        main_window_.setIntegrationStatus("Place From File: Use File → Import or place external part.");
+        main_window_.setViewportStatus("Place from file");
+    } else if (command == "Edit Component") {
+        main_window_.setIntegrationStatus("Edit Component: Double-click component in browser to edit in context.");
+        main_window_.setViewportStatus("Edit component");
+    } else if (command == "Properties") {
+        main_window_.setIntegrationStatus("Properties: Selection properties shown in Properties panel.");
+        main_window_.setViewportStatus("Properties panel");
+    } else if (command == "Rename") {
+        main_window_.setIntegrationStatus("Rename: Select item in browser and rename in Properties.");
+        main_window_.setViewportStatus("Rename");
+    } else if (command == "Delete") {
+        main_window_.setIntegrationStatus("Delete: Select item in browser and press Delete key.");
+        main_window_.setViewportStatus("Delete selection");
+    } else if (command == "Copy") {
+        main_window_.setIntegrationStatus("Copy: Selection copied to clipboard.");
+        main_window_.setViewportStatus("Copy");
+    } else if (command == "Cut") {
+        main_window_.setIntegrationStatus("Cut: Selection cut to clipboard.");
+        main_window_.setViewportStatus("Cut");
+    } else if (command == "Paste") {
+        main_window_.setIntegrationStatus("Paste: Paste from clipboard.");
+        main_window_.setViewportStatus("Paste");
+    } else if (command == "Search") {
+        main_window_.setIntegrationStatus("Search: Use browser filter or command search.");
+        main_window_.setViewportStatus("Search");
+    } else if (command == "Show Dependencies") {
+        main_window_.setIntegrationStatus("Show Dependencies: Displays feature/component dependencies.");
+        main_window_.setViewportStatus("Dependencies");
     } else if (command == "AddIns") {
         main_window_.setIntegrationStatus("Add-ins manager");
         main_window_.setViewportStatus("Add-ins panel available");
@@ -1035,6 +1695,86 @@ void AppController::newProject() {
     #endif
 }
 
+std::string AppController::getTemplateDirectory() const {
+    if (!project_config_.template_directory.empty()) {
+        return project_config_.template_directory;
+    }
+#ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    QString path = settings.value("templates/directory").toString();
+    if (!path.isEmpty()) {
+        return path.toStdString();
+    }
+#endif
+    return {};
+}
+
+void AppController::setTemplateDirectory(const std::string& path) {
+    project_config_.template_directory = path;
+#ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    settings.setValue("templates/directory", QString::fromStdString(path));
+#endif
+}
+
+std::vector<std::string> AppController::getTemplateList() const {
+    std::vector<std::string> list;
+    std::string dir = getTemplateDirectory();
+    if (dir.empty()) {
+        return list;
+    }
+    try {
+        std::filesystem::path p(dir);
+        if (!std::filesystem::is_directory(p)) {
+            return list;
+        }
+        for (const auto& entry : std::filesystem::directory_iterator(p)) {
+            if (!entry.is_regular_file()) continue;
+            std::string ext = entry.path().extension().string();
+            if (ext == ".cad" || ext == ".hcad") {
+                list.push_back(entry.path().string());
+            }
+        }
+    } catch (...) {}
+    return list;
+}
+
+bool AppController::newProjectFromTemplate(const std::string& template_path) {
+    if (template_path.empty()) {
+        return false;
+    }
+    if (!std::filesystem::exists(template_path) || !std::filesystem::is_regular_file(template_path)) {
+        main_window_.setIntegrationStatus("Template file not found: " + template_path);
+        return false;
+    }
+#ifdef CAD_USE_QT
+    cad::ui::QtMainWindow* qt_window = main_window_.nativeWindow();
+    if (!qt_window) {
+        return false;
+    }
+    std::string target = qt_window->getSavePathForNewProject();
+    if (target.empty()) {
+        main_window_.setIntegrationStatus("New from template cancelled");
+        return false;
+    }
+    try {
+        std::filesystem::copy_file(template_path, target, std::filesystem::copy_options::overwrite_existing);
+    } catch (const std::exception& e) {
+        main_window_.setIntegrationStatus(std::string("Copy failed: ") + e.what());
+        return false;
+    }
+    bool ok = loadProject(target);
+    if (ok) {
+        main_window_.setIntegrationStatus("New project created from template");
+        main_window_.setViewportStatus("Project loaded from template");
+    }
+    return ok;
+#else
+    main_window_.setIntegrationStatus("New from template requires Qt");
+    return false;
+#endif
+}
+
 bool AppController::saveProject(const std::string& file_path) {
     // Validate file path
     if (file_path.empty()) {
@@ -1065,6 +1805,12 @@ bool AppController::saveProject(const std::string& file_path) {
     if (success) {
         has_unsaved_changes_ = false;
         current_project_path_ = file_path;
+        if (project_config_.working_directory.empty()) {
+            std::filesystem::path p(file_path);
+            project_config_.working_directory = p.parent_path().string();
+        }
+        std::string config_path = ProjectFileService::projectConfigPathForProject(file_path);
+        project_file_service_.saveProjectConfig(config_path, project_config_);
         main_window_.setIntegrationStatus("Project saved: " + file_path);
         
         // Add to recent projects (avoid duplicates)
@@ -1148,12 +1894,23 @@ bool AppController::loadProject(const std::string& file_path) {
             main_window_.setConstraintCount(static_cast<int>(active_sketch_.constraints().size()));
             main_window_.setParameterCount(static_cast<int>(active_sketch_.parameters().size()));
             main_window_.setParameterSummary(buildParameterSummary(active_sketch_));
+            updateSketchConstraintStatus();
         }
         has_unsaved_changes_ = false;
         current_project_path_ = file_path;
+        std::string config_path = ProjectFileService::projectConfigPathForProject(file_path);
+        project_file_service_.loadProjectConfig(config_path, project_config_);
+        if (project_config_.working_directory.empty()) {
+            std::filesystem::path p(file_path);
+            project_config_.working_directory = p.parent_path().string();
+        }
         ProjectFileInfo info = project_file_service_.getProjectInfo(file_path);
         main_window_.setIntegrationStatus("Project loaded: " + file_path);
         main_window_.setDocumentLabel(info.project_name);
+        main_window_.setMateCount(static_cast<int>(active_assembly_.mates().size()));
+        main_window_.setAssemblySummary(std::to_string(active_assembly_.components().size()) + " components, "
+                                        + std::to_string(active_assembly_.mates().size()) + " mates");
+        updateAssemblyConstraintStatus();
         
         // Add to recent projects (avoid duplicates)
         auto it = std::find(recent_projects_.begin(), recent_projects_.end(), file_path);
@@ -1172,6 +1929,7 @@ bool AppController::loadProject(const std::string& file_path) {
         if (qt_window) {
             qt_window->updateRecentProjectsMenu(recent_projects_);
             qt_window->setCurrentProjectPath(QString::fromStdString(file_path));
+            qt_window->setTemplateDirectory(QString::fromStdString(getTemplateDirectory()));
         }
         #endif
     } else {

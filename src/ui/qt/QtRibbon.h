@@ -5,7 +5,10 @@
 
 #include <QAction>
 #include <QIcon>
+#include <QLineEdit>
+#include <QTabBar>
 #include <QTabWidget>
+#include <QWidget>
 
 namespace cad {
 namespace ui {
@@ -16,6 +19,10 @@ class QtRibbon : public QTabWidget {
 public:
     explicit QtRibbon(QWidget* parent = nullptr);
     void setCommandHandler(const std::function<void(const QString&)>& handler);
+    /** Returns the search line edit (placeholder "Search Help & Commands…") for integration in layout. */
+    QLineEdit* searchLineEdit() const { return search_line_; }
+    /** Returns the document tab bar (open documents) for integration below ribbon. */
+    QTabBar* documentTabBar() const { return document_tabs_; }
 
 private:
     void registerDefaultActions();
@@ -28,6 +35,8 @@ private:
 
     std::function<void(const QString&)> command_handler_;
     std::unordered_map<std::string, QAction*> actions_;
+    QLineEdit* search_line_{nullptr};
+    QTabBar* document_tabs_{nullptr};
 };
 
 }  // namespace ui

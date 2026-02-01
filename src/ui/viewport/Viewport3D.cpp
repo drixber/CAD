@@ -105,6 +105,24 @@ void Viewport3D::renderGeometry(const std::string& geometry_id, void* geometry_h
     updateView();
 }
 
+void Viewport3D::setAssemblyComponents(const std::string& assembly_id, const std::vector<std::string>& geometry_ids) {
+    assembly_components_[assembly_id] = geometry_ids;
+}
+
+std::vector<std::string> Viewport3D::getAssemblyComponents(const std::string& assembly_id) const {
+    auto it = assembly_components_.find(assembly_id);
+    if (it != assembly_components_.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+void Viewport3D::setComponentTransform(const std::string& geometry_id, double tx, double ty, double tz) {
+    if (useSoQtViewer() && soqt_viewer_) {
+        soqt_viewer_->updateNodeTransform(geometry_id, tx, ty, tz);
+    }
+}
+
 void Viewport3D::renderAssembly(const std::string& assembly_id) {
     if (useSoQtViewer()) {
         if (soqt_viewer_) {
@@ -266,6 +284,56 @@ void Viewport3D::resetCamera() {
     setCamera(camera_);
 }
 
+void Viewport3D::setStandardView(const std::string& view) {
+    if (useSoQtViewer()) {
+        if (soqt_viewer_) {
+            soqt_viewer_->setStandardView(view.c_str());
+        }
+        return;
+    }
+    const double d = 10.0;
+    const double iso = d / std::sqrt(3.0);
+    if (view == "Top") {
+        camera_.position_x = 0.0; camera_.position_y = d; camera_.position_z = 0.0;
+        camera_.up_x = 0.0; camera_.up_y = 0.0; camera_.up_z = -1.0;
+    } else if (view == "Bottom") {
+        camera_.position_x = 0.0; camera_.position_y = -d; camera_.position_z = 0.0;
+        camera_.up_x = 0.0; camera_.up_y = 0.0; camera_.up_z = 1.0;
+    } else if (view == "Front") {
+        camera_.position_x = 0.0; camera_.position_y = 0.0; camera_.position_z = d;
+        camera_.up_x = 0.0; camera_.up_y = 1.0; camera_.up_z = 0.0;
+    } else if (view == "Back") {
+        camera_.position_x = 0.0; camera_.position_y = 0.0; camera_.position_z = -d;
+        camera_.up_x = 0.0; camera_.up_y = 1.0; camera_.up_z = 0.0;
+    } else if (view == "Right") {
+        camera_.position_x = d; camera_.position_y = 0.0; camera_.position_z = 0.0;
+        camera_.up_x = 0.0; camera_.up_y = 1.0; camera_.up_z = 0.0;
+    } else if (view == "Left") {
+        camera_.position_x = -d; camera_.position_y = 0.0; camera_.position_z = 0.0;
+        camera_.up_x = 0.0; camera_.up_y = 1.0; camera_.up_z = 0.0;
+    } else if (view == "Isometric") {
+        camera_.position_x = iso; camera_.position_y = iso; camera_.position_z = iso;
+        camera_.up_x = 0.0; camera_.up_y = 1.0; camera_.up_z = 0.0;
+    } else {
+        return;
+    }
+    camera_.target_x = 0.0; camera_.target_y = 0.0; camera_.target_z = 0.0;
+    camera_.field_of_view = 45.0;
+    setCamera(camera_);
+}
+
+void Viewport3D::setProjectionType(bool orthographic) {
+    projection_orthographic_ = orthographic;
+    if (useSoQtViewer() && soqt_viewer_) {
+        soqt_viewer_->setProjectionType(orthographic);
+    }
+    updateView();
+}
+
+bool Viewport3D::isOrthographic() const {
+    return projection_orthographic_;
+}
+
 void Viewport3D::fitToView() {
     if (useSoQtViewer()) {
         if (soqt_viewer_) {
@@ -312,6 +380,15 @@ void Viewport3D::fitToView() {
     
         setCamera(camera_);
         updateView();
+    }
+}
+
+void Viewport3D::fitToSelection() {
+    std::vector<std::string> sel = getSelectedObjects();
+    if (useSoQtViewer() && soqt_viewer_) {
+        soqt_viewer_->fitToSelection(sel);
+    } else {
+        fitToView();
     }
 }
 
@@ -376,6 +453,15 @@ void Viewport3D::setDisplayMode(DisplayMode mode) {
 
 Viewport3D::DisplayMode Viewport3D::getDisplayMode() const {
     return display_mode_;
+}
+
+void Viewport3D::setPreferredDragMode(const std::string& mode) {
+    preferred_drag_mode_ = mode;
+    drag_mode_ = mode;
+}
+
+std::string Viewport3D::getPreferredDragMode() const {
+    return preferred_drag_mode_;
 }
 
 void Viewport3D::paintEvent(QPaintEvent* event) {
@@ -489,6 +575,28 @@ void Viewport3D::mouseMoveEvent(QMouseEvent* event) {
             camera_.position_x -= dx * pan_speed;
             camera_.position_y += dy * pan_speed;
             setCamera(camera_);
+        } else if (drag_mode_ == "zoom") {
+            // Zoom: vertical drag = zoom in/out
+            double zoom_speed = 0.005;
+            double dy_zoom = -dy * zoom_speed;
+            double current_distance = std::sqrt(
+                (camera_.position_x - camera_.target_x) * (camera_.position_x - camera_.target_x) +
+                (camera_.position_y - camera_.target_y) * (camera_.position_y - camera_.target_y) +
+                (camera_.position_z - camera_.target_z) * (camera_.position_z - camera_.target_z)
+            );
+            double new_distance = current_distance * (1.0 - dy_zoom);
+            if (new_distance < 0.5) new_distance = 0.5;
+            double dx_c = camera_.position_x - camera_.target_x;
+            double dy_c = camera_.position_y - camera_.target_y;
+            double dz_c = camera_.position_z - camera_.target_z;
+            double len = std::sqrt(dx_c*dx_c + dy_c*dy_c + dz_c*dz_c);
+            if (len > 0.001) {
+                double scale = new_distance / len;
+                camera_.position_x = camera_.target_x + dx_c * scale;
+                camera_.position_y = camera_.target_y + dy_c * scale;
+                camera_.position_z = camera_.target_z + dz_c * scale;
+                setCamera(camera_);
+            }
         }
         
         last_mouse_x_ = static_cast<int>(event->position().x());

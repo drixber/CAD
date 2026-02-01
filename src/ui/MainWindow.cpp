@@ -49,6 +49,15 @@ void MainWindow::setParameterSummary(const std::string& summary) {
 #endif
 }
 
+void MainWindow::setParameterTable(const std::vector<std::string>& names, const std::vector<double>& values, const std::vector<std::string>& expressions) {
+#ifdef CAD_USE_QT
+    native_window_.setParameterTable(names, values, expressions);
+#endif
+    (void)names;
+    (void)values;
+    (void)expressions;
+}
+
 void MainWindow::setIntegrationStatus(const std::string& status) {
     (void)status;
 #ifdef CAD_USE_QT

@@ -184,26 +184,225 @@ void UserAuthService::setApiBaseUrl(const std::string& url) {
     auth_config_.setApiBaseUrl(url);
 }
 
+std::string UserAuthService::getAccessToken() const {
+#ifdef CAD_USE_QT
+    if (!auth_config_.isApiMode() || !is_logged_in_) return {};
+    if (!access_token_.empty()) return access_token_;
+    QSettings settings("HydraCAD", "HydraCAD");
+    return settings.value("auth/access_token").toString().toStdString();
+#else
+    return access_token_;
+#endif
+}
+
+#ifdef CAD_USE_QT_NETWORK
+static std::string extractJsonString(const std::string& body, const std::string& key) {
+    std::string needle = "\"" + key + "\":\"";
+    size_t pos = body.find(needle);
+    if (pos == std::string::npos) return {};
+    pos += needle.size();
+    size_t end = pos;
+    while (end < body.size() && (body[end] != '"' || (end > pos && body[end - 1] == '\\'))) ++end;
+    if (end > body.size()) return {};
+    return body.substr(pos, end - pos);
+}
+static std::string extractJsonStringOrNull(const std::string& body, const std::string& key) {
+    std::string needle = "\"" + key + "\":";
+    size_t pos = body.find(needle);
+    if (pos == std::string::npos) return {};
+    pos += needle.size();
+    while (pos < body.size() && (body[pos] == ' ' || body[pos] == '\t')) ++pos;
+    if (pos < body.size() && body[pos] == '"') {
+        ++pos;
+        size_t end = pos;
+        while (end < body.size() && (body[end] != '"' || (end > pos && body[end - 1] == '\\'))) ++end;
+        return body.substr(pos, end - pos);
+    }
+    return {};
+}
+#endif
+
+void UserAuthService::storeTokens(const std::string& access, const std::string& refresh, bool remember) {
+    access_token_ = access;
+    refresh_token_ = refresh;
+#ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    if (remember && !refresh.empty()) {
+        settings.setValue("auth/refresh_token", QString::fromStdString(refresh));
+    } else {
+        settings.remove("auth/refresh_token");
+    }
+    if (!access.empty()) {
+        settings.setValue("auth/access_token", QString::fromStdString(access));
+    } else {
+        settings.remove("auth/access_token");
+    }
+    settings.sync();
+#endif
+}
+
+void UserAuthService::clearStoredTokens() {
+#ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    settings.remove("auth/refresh_token");
+    settings.remove("auth/access_token");
+    settings.sync();
+#endif
+    access_token_.clear();
+    refresh_token_.clear();
+}
+
+bool UserAuthService::fetchMeAndSetUser(const std::string& access_token) {
+#ifdef CAD_USE_QT_NETWORK
+    std::string base = auth_config_.getApiBaseUrl();
+    if (base.empty()) return false;
+    std::string url = base + "/api/auth/me";
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + access_token},
+        {"Content-Type", "application/json"}
+    };
+    cad::app::HttpResponse resp = http_client_.get(url, headers);
+    if (!resp.success || resp.status_code != 200) return false;
+    std::string id_s = extractJsonString(resp.body, "id");
+    std::string username = extractJsonString(resp.body, "username");
+    std::string email = extractJsonString(resp.body, "email");
+    if (username.empty()) return false;
+    current_user_.username = username;
+    current_user_.email = email;
+    current_user_.last_login_date = getTimestamp();
+    current_user_.is_active = true;
+    is_logged_in_ = true;
+    return true;
+#else
+    (void)access_token;
+    return false;
+#endif
+}
+
+bool UserAuthService::refreshAndSetUser() {
+#ifdef CAD_USE_QT
+    QSettings settings("HydraCAD", "HydraCAD");
+    QString ref = settings.value("auth/refresh_token").toString();
+    if (ref.isEmpty()) return false;
+    std::string refresh = ref.toStdString();
+#else
+    if (refresh_token_.empty()) return false;
+    std::string refresh = refresh_token_;
+#endif
+#ifdef CAD_USE_QT_NETWORK
+    std::string base = auth_config_.getApiBaseUrl();
+    if (base.empty()) return false;
+    std::string url = base + "/api/auth/refresh";
+    std::string body = "{\"refresh_token\":\"" + refresh + "\"}";
+    std::map<std::string, std::string> headers = {{"Content-Type", "application/json"}};
+    cad::app::HttpResponse resp = http_client_.post(url, body, headers);
+    if (!resp.success || resp.status_code != 200) return false;
+    std::string access = extractJsonString(resp.body, "access_token");
+    std::string new_refresh = extractJsonString(resp.body, "refresh_token");
+    if (access.empty()) return false;
+    storeTokens(access, new_refresh, true);
+    return fetchMeAndSetUser(access);
+#else
+    (void)refresh;
+    return false;
+#endif
+}
+
 RegisterResult UserAuthService::registerViaApi(const std::string& username,
                                                const std::string& email,
-                                               const std::string& password) const {
-    (void)username;
-    (void)email;
-    (void)password;
+                                               const std::string& password) {
     RegisterResult result;
-    result.success = false;
-    result.error_message = "Backend API not yet implemented. Unset CAD_API_BASE_URL for local mode.";
+#ifdef CAD_USE_QT_NETWORK
+    std::string base = auth_config_.getApiBaseUrl();
+    if (base.empty()) {
+        result.error_message = "API base URL not set.";
+        return result;
+    }
+    if (username.length() < 3) {
+        result.error_message = "Username must be at least 3 characters long";
+        return result;
+    }
+    if (email.empty() || email.find('@') == std::string::npos) {
+        result.error_message = "Invalid email address";
+        return result;
+    }
+    if (!validatePassword(password)) {
+        result.error_message = "Password does not meet requirements (min 8 characters, at least one letter and one number)";
+        return result;
+    }
+    std::string url = base + "/api/auth/register";
+    std::string body = "{\"username\":\"" + username + "\",\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
+    std::map<std::string, std::string> headers = {{"Content-Type", "application/json"}};
+    cad::app::HttpResponse resp = http_client_.post(url, body, headers);
+    if (resp.status_code == 400) {
+        result.error_message = extractJsonStringOrNull(resp.body, "detail").empty() ? resp.body : extractJsonStringOrNull(resp.body, "detail");
+        if (result.error_message.empty()) result.error_message = "Registration failed (e.g. username or email already taken).";
+        return result;
+    }
+    if (!resp.success || resp.status_code != 200) {
+        result.error_message = "Server error or network failure. Check API URL and try again.";
+        return result;
+    }
+    std::string access = extractJsonString(resp.body, "access_token");
+    std::string refresh = extractJsonString(resp.body, "refresh_token");
+    if (access.empty()) {
+        result.error_message = "Invalid server response (no token).";
+        return result;
+    }
+    storeTokens(access, refresh, true);
+    if (!fetchMeAndSetUser(access)) {
+        result.error_message = "Registration succeeded but could not load user.";
+        return result;
+    }
+    result.success = true;
+    result.user = current_user_;
     return result;
+#else
+    result.error_message = "Backend API requires Qt Network. Unset API URL for local mode.";
+    return result;
+#endif
 }
 
 LoginResult UserAuthService::loginViaApi(const std::string& username,
-                                        const std::string& password) const {
-    (void)username;
-    (void)password;
+                                        const std::string& password,
+                                        bool remember_me) {
     LoginResult result;
-    result.success = false;
-    result.error_message = "Backend API not yet implemented. Unset CAD_API_BASE_URL for local mode.";
+#ifdef CAD_USE_QT_NETWORK
+    std::string base = auth_config_.getApiBaseUrl();
+    if (base.empty()) {
+        result.error_message = "API base URL not set.";
+        return result;
+    }
+    std::string url = base + "/api/auth/login";
+    std::string body = "{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}";
+    std::map<std::string, std::string> headers = {{"Content-Type", "application/json"}};
+    cad::app::HttpResponse resp = http_client_.post(url, body, headers);
+    if (resp.status_code == 401) {
+        result.error_message = "Invalid username or password.";
+        return result;
+    }
+    if (!resp.success || resp.status_code != 200) {
+        result.error_message = "Server error or network failure. Check API URL and try again.";
+        return result;
+    }
+    std::string access = extractJsonString(resp.body, "access_token");
+    std::string refresh = extractJsonString(resp.body, "refresh_token");
+    if (access.empty()) {
+        result.error_message = "Invalid server response (no token).";
+        return result;
+    }
+    storeTokens(access, refresh, remember_me);
+    if (!fetchMeAndSetUser(access)) {
+        result.error_message = "Login succeeded but could not load user.";
+        return result;
+    }
+    result.success = true;
+    result.user = current_user_;
     return result;
+#else
+    result.error_message = "Backend API requires Qt Network. Unset API URL for local mode.";
+    return result;
+#endif
 }
 
 RegisterResult UserAuthService::registerUser(const std::string& username, 
@@ -265,18 +464,10 @@ RegisterResult UserAuthService::registerUser(const std::string& username,
     return result;
 }
 
-LoginResult UserAuthService::login(const std::string& username, const std::string& password) {
+LoginResult UserAuthService::login(const std::string& username, const std::string& password, bool remember_me) {
     LoginResult result;
 
-    if (auth_config_.isApiMode()) {
-        return loginViaApi(username, password);
-    }
-    
-    if (username.empty() || password.empty()) {
-        result.error_message = "Username and password are required";
-        return result;
-    }
-
+    // Test-Login (test/test) immer erlauben – für Testzwecke, auch wenn API-URL gesetzt ist
     if (username == "test" && password == "test") {
         result.success = true;
         result.user.username = "test";
@@ -286,6 +477,15 @@ LoginResult UserAuthService::login(const std::string& username, const std::strin
         result.user.is_active = true;
         current_user_ = result.user;
         is_logged_in_ = true;
+        return result;
+    }
+
+    if (auth_config_.isApiMode()) {
+        return loginViaApi(username, password, remember_me);
+    }
+    
+    if (username.empty() || password.empty()) {
+        result.error_message = "Username and password are required";
         return result;
     }
     
@@ -315,6 +515,7 @@ LoginResult UserAuthService::login(const std::string& username, const std::strin
 void UserAuthService::logout() {
     current_user_ = User();
     is_logged_in_ = false;
+    clearStoredTokens();
     clearSavedSession();
 }
 
@@ -393,11 +594,22 @@ void UserAuthService::saveSession(const std::string& username, bool remember) {
 bool UserAuthService::loadSavedSession() {
     #ifdef CAD_USE_QT
     QSettings settings("HydraCAD", "HydraCAD");
+    if (auth_config_.isApiMode()) {
+#ifdef CAD_USE_QT_NETWORK
+        QString access = settings.value("auth/access_token").toString();
+        if (!access.isEmpty() && fetchMeAndSetUser(access.toStdString())) {
+            return true;
+        }
+        if (refreshAndSetUser()) {
+            return true;
+        }
+#endif
+        clearStoredTokens();
+    }
     bool remember_me = settings.value("auth/remember_me", false).toBool();
     if (remember_me) {
         QString username = settings.value("auth/remember_username").toString();
         if (!username.isEmpty()) {
-            // Return username for auto-fill, but don't auto-login
             return true;
         }
     }

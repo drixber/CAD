@@ -3,7 +3,7 @@
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "Hydra CAD - Automatischer Build und Installer-Erstellung" -ForegroundColor Cyan
-Write-Host "Version 2.0.0 - Phase 20-22 Complete" -ForegroundColor Cyan
+Write-Host "Version 3.0.14" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 

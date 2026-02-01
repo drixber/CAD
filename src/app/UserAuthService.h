@@ -41,8 +41,8 @@ public:
                                const std::string& email, 
                                const std::string& password);
     
-    // Login
-    LoginResult login(const std::string& username, const std::string& password);
+    // Login (optional remember_me: when true and API mode, refresh token is persisted)
+    LoginResult login(const std::string& username, const std::string& password, bool remember_me = true);
     
     // Logout
     void logout();
@@ -65,6 +65,8 @@ public:
     // Backend API config: when set, register/login use API instead of local file
     std::string getApiBaseUrl() const;
     void setApiBaseUrl(const std::string& url);
+    /** Current access token (API mode only); empty if not logged in or local mode. */
+    std::string getAccessToken() const;
 
 private:
     AuthConfig auth_config_;
@@ -76,7 +78,7 @@ private:
     std::string refresh_token_;
 
     RegisterResult registerViaApi(const std::string& username, const std::string& email, const std::string& password);
-    LoginResult loginViaApi(const std::string& username, const std::string& password);
+    LoginResult loginViaApi(const std::string& username, const std::string& password, bool remember_me = true);
     bool fetchMeAndSetUser(const std::string& access_token);
     bool refreshAndSetUser();
     void storeTokens(const std::string& access, const std::string& refresh, bool remember);

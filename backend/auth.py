@@ -124,6 +124,19 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+def get_current_user_id_optional(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Return user_id if Bearer token valid, else None (for optional auth)."""
+    if not credentials:
+        return None
+    try:
+        payload = decode_token(credentials.credentials)
+        if payload.get("type") != "access":
+            return None
+        return int(payload["sub"])
+    except (JWTError, ValueError, KeyError):
+        return None
+
+
 @router.get("/me", response_model=UserResponse)
 def me(user_id: int = Depends(get_current_user_id)):
     with get_db() as conn:

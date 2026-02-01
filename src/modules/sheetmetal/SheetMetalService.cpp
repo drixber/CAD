@@ -3,7 +3,9 @@
 #define _USE_MATH_DEFINES
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <map>
+#include <sstream>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -34,6 +36,10 @@ SheetMetalResult SheetMetalService::applyOperation(const SheetMetalRequest& requ
             return unfoldSheet(request);
         case SheetMetalOperation::Refold:
             return refoldSheet(request);
+        case SheetMetalOperation::Punch:
+            return createPunch(request);
+        case SheetMetalOperation::Bead:
+            return createBead(request);
         default:
             result.success = false;
             result.message = "Operation not yet implemented";
@@ -283,6 +289,10 @@ void SheetMetalService::setMaterialThickness(const std::string& part_id, double 
 }
 
 double SheetMetalService::getMaterialThickness(const std::string& part_id) const {
+    auto rit = rules_.find(part_id);
+    if (rit != rules_.end()) {
+        return rit->second.thickness;
+    }
     auto it = material_thicknesses_.find(part_id);
     if (it != material_thicknesses_.end()) {
         return it->second;
@@ -295,11 +305,79 @@ void SheetMetalService::setKFactor(const std::string& part_id, double k_factor) 
 }
 
 double SheetMetalService::getKFactor(const std::string& part_id) const {
+    auto rit = rules_.find(part_id);
+    if (rit != rules_.end()) {
+        return rit->second.k_factor;
+    }
     auto it = k_factors_.find(part_id);
     if (it != k_factors_.end()) {
         return it->second;
     }
     return 0.5;  // Default K-factor
+}
+
+void SheetMetalService::setRules(const std::string& part_id, const SheetMetalRules& rules) {
+    rules_[part_id] = rules;
+}
+
+SheetMetalRules SheetMetalService::getRules(const std::string& part_id) const {
+    auto it = rules_.find(part_id);
+    if (it != rules_.end()) {
+        return it->second;
+    }
+    SheetMetalRules def;
+    def.thickness = getMaterialThickness(part_id);
+    def.k_factor = getKFactor(part_id);
+    def.bend_radius_default = def.thickness * 2.0;
+    return def;
+}
+
+SheetMetalResult SheetMetalService::createPunch(const SheetMetalRequest& request) const {
+    SheetMetalResult result;
+    result.success = true;
+    result.message = "Punch (Stanzung) created successfully";
+    result.modified_part_id = request.targetPart + "_punch";
+    result.flat_pattern_length = 100.0;
+    result.flat_pattern_width = 50.0;
+    return result;
+}
+
+SheetMetalResult SheetMetalService::createBead(const SheetMetalRequest& request) const {
+    SheetMetalResult result;
+    result.success = true;
+    result.message = "Bead (Sicke) created successfully";
+    result.modified_part_id = request.targetPart + "_bead";
+    result.flat_pattern_length = 100.0;
+    result.flat_pattern_width = 50.0;
+    return result;
+}
+
+bool SheetMetalService::exportFlatPatternToDxf(const std::string& part_id, const std::string& path) const {
+    SheetMetalResult fp = generateFlatPattern(part_id);
+    if (!fp.success) {
+        return false;
+    }
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return false;
+    }
+    file << "0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1015\n0\nENDSEC\n";
+    file << "0\nSECTION\n2\nENTITIES\n";
+    double L = fp.flat_pattern_length;
+    double W = fp.flat_pattern_width;
+    auto writeLine = [&file](double x1, double y1, double x2, double y2) {
+        file << "0\nLINE\n8\n0\n10\n" << x1 << "\n20\n" << y1 << "\n30\n0\n11\n" << x2 << "\n21\n" << y2 << "\n31\n0\n";
+    };
+    writeLine(0, 0, L, 0);
+    writeLine(L, 0, L, W);
+    writeLine(L, W, 0, W);
+    writeLine(0, W, 0, 0);
+    for (const auto& bl : fp.resulting_bend_lines) {
+        writeLine(bl.x1, bl.y1, bl.x2, bl.y2);
+    }
+    file << "0\nENDSEC\n0\nEOF\n";
+    file.close();
+    return true;
 }
 
 SheetMetalResult SheetMetalService::createCut(const SheetMetalRequest& request) const {

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
 from auth import router as auth_router
 from licenses import router as license_router
+from community import router as community_router
 
 app = FastAPI(title="Hydra CAD API", version="1.0.0")
 app.add_middleware(
@@ -21,3 +22,4 @@ def startup():
 
 app.include_router(auth_router)
 app.include_router(license_router)
+app.include_router(community_router)

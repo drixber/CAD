@@ -1,0 +1,4 @@
+build/cad_desktop usr/bin
+packaging/linux/HydraCAD.desktop usr/share/applications
+packaging/linux/HydraCAD.png usr/share/pixmaps
+installer/license.txt usr/share/doc/hydracad

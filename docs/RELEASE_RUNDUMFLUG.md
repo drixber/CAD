@@ -6,8 +6,8 @@ Checkliste von **aktueller Codebasis** bis **neues Release** (z. B. v3.0.12) i
 
 ## 1. Version und Changelog setzen
 
-- [ ] **1.1** `CMakeLists.txt`: `project(InventorStyleCAD VERSION X.Y.Z ...)` auf neue Version (z. B. `3.0.12`) setzen.
-- [ ] **1.2** `installer/hydracad.nsi`: `!define VERSION "X.Y.Z"` sowie `VERSION_MAJOR`, `VERSION_MINOR`, `VERSION_PATCH` anpassen.
+- [ ] **1.1** `CMakeLists.txt`: `project(InventorStyleCAD VERSION X.Y.Z ...)` auf neue Version (z. B. `3.0.15`) setzen.
+- [ ] **1.2** `installer/hydracad.nsi`: Fallback-Version in den `!ifndef`-Blöcken anpassen (optional; CI übergibt Version aus Tag automatisch).
 - [ ] **1.3** `CHANGELOG.md`: Neue Sektion `## [X.Y.Z] - JJJJ-MM-TT` mit Änderungen (Added/Changed/Fixed) ergänzen.
 - [ ] **1.4** `packaging/arch/aur-upload.sh`: `PKGVER="X.Y.Z"` setzen.
 - [ ] **1.5** `packaging/arch/PKGBUILD`: `pkgver=X.Y.Z` setzen (falls du PKGBUILD manuell nutzt).

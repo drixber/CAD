@@ -1,9 +1,12 @@
 #include "QtViewport.h"
+#include "QtViewCubeWidget.h"
+#include "QtViewportAxesWidget.h"
 
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QVBoxLayout>
 #include "viewport/Viewport3D.h"
 
@@ -17,11 +20,26 @@ QtViewport::QtViewport(QWidget* parent) : QFrame(parent) {
     layout_ = new QVBoxLayout(this);
     layout_->setContentsMargins(0, 0, 0, 0);
     
-    // Create 3D viewport (central drawing area)
-    viewport_3d_ = new Viewport3D(this);
+    // Wrapper for viewport + ViewCube overlay (Inventor-style)
+    viewport_container_ = new QWidget(this);
+    QVBoxLayout* container_layout = new QVBoxLayout(viewport_container_);
+    container_layout->setContentsMargins(0, 0, 0, 0);
+    
+    viewport_3d_ = new Viewport3D(viewport_container_);
     viewport_3d_->setMinimumSize(400, 320);
     viewport_3d_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    layout_->addWidget(viewport_3d_);
+    container_layout->addWidget(viewport_3d_);
+    
+    viewcube_widget_ = new QtViewCubeWidget(viewport_container_);
+    viewcube_widget_->setViewport(viewport_3d_);
+    viewcube_widget_->setParent(viewport_container_);
+    viewcube_widget_->raise();
+
+    axes_widget_ = new QtViewportAxesWidget(viewport_container_);
+    axes_widget_->setParent(viewport_container_);
+    axes_widget_->raise();
+    
+    layout_->addWidget(viewport_container_);
     
     // Status bar at bottom
     QHBoxLayout* status_layout = new QHBoxLayout();
@@ -51,11 +69,14 @@ QtViewport::QtViewport(QWidget* parent) : QFrame(parent) {
     QPushButton* pan = new QPushButton(tr("Pan"), this);
     QPushButton* zoom = new QPushButton(tr("Zoom"), this);
     QPushButton* fit = new QPushButton(tr("Fit"), this);
+    QPushButton* zoom_sel = new QPushButton(tr("Zoom Selection"), this);
+    zoom_sel->setToolTip(tr("Zoom to selection (or fit all if nothing selected)"));
     toolbar->addStretch();
     toolbar->addWidget(orbit);
     toolbar->addWidget(pan);
     toolbar->addWidget(zoom);
     toolbar->addWidget(fit);
+    toolbar->addWidget(zoom_sel);
     toolbar->addStretch();
     layout_->addLayout(toolbar);
     
@@ -72,11 +93,20 @@ QtViewport::QtViewport(QWidget* parent) : QFrame(parent) {
             viewport_3d_->fitToView();
         }
     });
+    connect(zoom_sel, &QPushButton::clicked, this, [this]() {
+        if (viewport_3d_) {
+            viewport_3d_->fitToSelection();
+        }
+    });
     
     connect(viewport_3d_, &Viewport3D::viewportUpdated, this, [this]() {
-        // Update FPS when viewport updates
         setFps(60.0);
     });
+    if (viewcube_widget_) {
+        connect(viewcube_widget_, &QtViewCubeWidget::navigationModeChanged, this, [this](const QString& mode) {
+            setNavigationMode(mode);
+        });
+    }
 
     fps_timer_ = new QTimer(this);
     connect(fps_timer_, &QTimer::timeout, this, [this]() { setFps(60.0); });
@@ -102,6 +132,23 @@ void QtViewport::setFps(double fps) {
         fps_label_->setText(tr("FPS: %1").arg(QString::number(fps, 'f', 0)));
     }
     emit fpsUpdated(fps);
+}
+
+void QtViewport::resizeEvent(QResizeEvent* event) {
+    QFrame::resizeEvent(event);
+    const int margin = 8;
+    if (viewport_container_) {
+        if (viewcube_widget_) {
+            viewcube_widget_->adjustSize();
+            viewcube_widget_->move(
+                viewport_container_->width() - viewcube_widget_->width() - margin,
+                margin
+            );
+        }
+        if (axes_widget_) {
+            axes_widget_->move(margin, viewport_container_->height() - axes_widget_->height() - margin);
+        }
+    }
 }
 
 }  // namespace ui

@@ -28,7 +28,23 @@ struct RouteSegment {
     RoutePoint end_point;
     double length{0.0};
     double diameter{10.0};
+    double bend_radius{0.0};
     std::string material;
+};
+
+/** Fitting-Typ für Rohr-Stückliste (Elbow, Tee, Reducer, etc.). */
+struct FittingSpec {
+    std::string type{"Elbow"};
+    double nominal_diameter{10.0};
+    std::string part_number;
+};
+
+/** Einzelposition der Rohr-Stückliste. */
+struct PipeBomItem {
+    std::string description;
+    int quantity{1};
+    std::string unit{"pcs"};
+    std::string part_number;
 };
 
 struct RigidPipeParams {
@@ -72,6 +88,7 @@ struct RoutingResult {
     std::vector<RouteSegment> segments;
     double total_length{0.0};
     int fitting_count{0};
+    std::vector<FittingSpec> fittings_used;
     std::vector<std::string> warnings;
 };
 
@@ -92,6 +109,8 @@ public:
     std::vector<RouteSegment> getRouteSegments(const std::string& route_id) const;
     double getRouteLength(const std::string& route_id) const;
     std::vector<RoutePoint> getRouteWaypoints(const std::string& route_id) const;
+    /** Rohr-Stückliste: Rohr (Länge, DN) + Fittings (Typ, Menge). */
+    std::vector<PipeBomItem> getRouteBom(const std::string& route_id) const;
     
     // Auto-routing
     RoutingResult autoRoute(const std::string& start_connection, const std::string& end_connection, 

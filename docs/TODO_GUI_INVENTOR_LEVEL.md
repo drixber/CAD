@@ -10,14 +10,14 @@ Abgeleitet aus den Referenz-Screenshots (Inventor 2020, Extrusion/Shell/Pattern-
 
 | # | Aufgabe | Status | Priorität |
 |---|---------|--------|-----------|
-| 1.1 | Ribbon-Tabs horizontal wie Inventor: File, 3D Model/Sketch, Annotate, Inspect, Tools, Manage, View, Get Started | offen | hoch |
+| 1.1 | Ribbon-Tabs horizontal wie Inventor: File, 3D Model/Sketch, Annotate, Inspect, Tools, Manage, View, Get Started | erledigt | hoch |
 | 1.2 | Aktiver Tab mit blauem Unterstrich (nicht nur Hintergrund) | erledigt (ThemeManager) | - |
 | 1.3 | Command Groups pro Tab horizontal anordnen (nicht vertikal gestapelt) | erledigt | - |
 | 1.4 | Große Icons für Hauptbefehle (z. B. Extrude, Revolve), Text darunter | erledigt (TextUnderIcon, 32×32) | - |
-| 1.5 | Kleine Icons mit Dropdown für Varianten (z. B. Extrude → Direction) | offen | mittel |
-| 1.6 | Suchleiste rechts: „Search Help & Commands…“ (Placeholder) | offen | niedrig |
+| 1.5 | Kleine Icons mit Dropdown für Varianten (z. B. Extrude → Direction) | erledigt (Extrude: Normal/Reverse/Both) | mittel |
+| 1.6 | Suchleiste rechts: „Search Help & Commands…“ (Placeholder) | erledigt | niedrig |
 | 1.7 | Quick Access Toolbar über dem Ribbon: Save, Undo, Redo, Open (bereits vorhanden, optisch an Inventor anpassen) | optional | niedrig |
-| 1.8 | Dokument-Tabs unter dem Ribbon für geöffnete Dateien | offen | mittel |
+| 1.8 | Dokument-Tabs unter dem Ribbon für geöffnete Dateien | erledigt (Placeholder „Document 1") | mittel |
 
 ---
 
@@ -25,11 +25,11 @@ Abgeleitet aus den Referenz-Screenshots (Inventor 2020, Extrusion/Shell/Pattern-
 
 | # | Aufgabe | Status | Priorität |
 |---|---------|--------|-----------|
-| 2.1 | Hierarchische Baumansicht: Solid Bodies, View, Origin, Komponenten, End of Part | teilweise (Sketches, Parts, Assemblies, Drawings, Mates, Recent) | hoch |
-| 2.2 | Pro Eintrag Icon (Assembly, Part, Sketch, Feature) | offen | mittel |
+| 2.1 | Hierarchische Baumansicht: Solid Bodies, View, Origin, Komponenten, End of Part | erledigt | hoch |
+| 2.2 | Pro Eintrag Icon (Assembly, Part, Sketch, Feature) | erledigt | mittel |
 | 2.3 | Kontextmenü (Rechtsklick): Sichtbarkeit, Unterdrücken, Neue Komponente, Aus Datei platzieren, Bearbeiten, iProperties, Umbenennen, Löschen, Kopieren, Einfügen, Suchen, Abhängigkeiten anzeigen | erledigt (Struktur, Aktionen noch Stubs) | - |
-| 2.4 | Such-/Filter-Icon und „Hinzufügen“ (+) in der Titelleiste des Panels | offen | niedrig |
-| 2.5 | Sichtbarkeit/Unterdrückung als kleines Symbol neben Einträgen (Auge, durchgestrichen) | offen | mittel |
+| 2.4 | Such-/Filter-Icon und „Hinzufügen“ (+) in der Titelleiste des Panels | erledigt (Filter + „+") | niedrig |
+| 2.5 | Sichtbarkeit/Unterdrückung als kleines Symbol neben Einträgen (Auge, durchgestrichen) | erledigt (Auge-Spalte) | mittel |
 
 ---
 
@@ -37,14 +37,14 @@ Abgeleitet aus den Referenz-Screenshots (Inventor 2020, Extrusion/Shell/Pattern-
 
 | # | Aufgabe | Status | Priorität |
 |---|---------|--------|-----------|
-| 3.1 | Titelleiste pro Panel: Titel (z. B. „Eigenschaften Extrusion32“), X (Schließen), + (Neue Konfiguration), Auge (Sichtbarkeit), Suche, Hamburger-Menü | offen | hoch |
-| 3.2 | Kontext/Breadcrumb unter Titel: z. B. „Extrusion32 > Skizze44“ | offen | mittel |
+| 3.1 | Titelleiste pro Panel: Titel (z. B. „Eigenschaften Extrusion32“), X (Schließen), + (Neue Konfiguration), Auge (Sichtbarkeit), Suche, Hamburger-Menü | erledigt (Titel, X, +, Auge) | hoch |
+| 3.2 | Kontext/Breadcrumb unter Titel: z. B. „Extrusion32 > Skizze44“ | erledigt (setBreadcrumb) | mittel |
 | 3.3 | Preset-Dropdown („No Preset“) mit + und Zahnrad | offen | niedrig |
 | 3.4 | **Klappbare Sektionen**: z. B. „Input Geometry“, „Behavior“, „Output“, „Advanced Properties“ mit Dreieck (▼/▶) | teilweise (QGroupBox „Selection“/„Status“ im Property-Panel, ThemeManager QGroupBox-Styling) | hoch |
 | 3.5 | Input-Felder mit Einheiten (mm, in, deg), Dropdown-Pfeil, optional Icon zum Picken aus der 3D-Ansicht | offen | mittel |
 | 3.6 | Richtung/Boolean als Icon-Reihe (z. B. Join, Cut, Intersect, New Body) mit Hervorhebung | offen | mittel |
 | 3.7 | Checkboxen modern (z. B. „Match Shape“, „Allow Approximation“) | erledigt (ThemeManager QCheckBox) | - |
-| 3.8 | OK, Abbrechen unten; großer grüner „+“ (Apply & New) | offen | mittel |
+| 3.8 | OK, Abbrechen unten; großer grüner „+“ (Apply & New) | erledigt | mittel |
 | 3.9 | Grüner „+“ zum Hinzufügen von Überschreibungssätzen / unregelmäßigen Abständen | offen | niedrig |
 
 ---
@@ -53,9 +53,9 @@ Abgeleitet aus den Referenz-Screenshots (Inventor 2020, Extrusion/Shell/Pattern-
 
 | # | Aufgabe | Status | Priorität |
 |---|---------|--------|-----------|
-| 4.1 | **ViewCube** oben rechts (TOP, FRONT, LEFT etc.) für schnelle Ansichtwechsel | offen | hoch |
-| 4.2 | **Navigation Bar** unter ViewCube: Pan, Zoom, Orbit, Home View, ggf. Section/Fullscreen | offen | hoch |
-| 4.3 | **Koordinaten-Widget** (XYZ-Tripod) unten links | offen | mittel |
+| 4.1 | **ViewCube** oben rechts (TOP, FRONT, LEFT etc.) für schnelle Ansichtwechsel | erledigt | hoch |
+| 4.2 | **Navigation Bar** unter ViewCube: Pan, Zoom, Orbit, Home View, ggf. Section/Fullscreen | erledigt | hoch |
+| 4.3 | **Koordinaten-Widget** (XYZ-Tripod) unten links | erledigt | mittel |
 | 4.4 | Heller/weißer Hintergrund, saubere Schattierung und Kanten (Rendering-Qualität) | teilweise (Coin3D/SoQt) | mittel |
 | 4.5 | Live-Vorschau bei Feature-Bearbeitung (z. B. transparente Extrusion) | offen | mittel |
 
@@ -112,4 +112,5 @@ Abgeleitet aus den Referenz-Screenshots (Inventor 2020, Extrusion/Shell/Pattern-
 - **Property Panel:** `src/ui/qt/QtPropertyPanel.cpp`
 - **Browser:** `src/ui/qt/QtBrowserTree.cpp`
 - **Main Window / Docks:** `src/ui/qt/QtMainWindow.cpp`
-- **Viewport:** `src/ui/viewport/Viewport3D.cpp`, `SoQtViewerIntegration.cpp`
+- **Viewport:** `src/ui/viewport/Viewport3D.cpp`, `SoQtViewerIntegration.cpp`, **ViewCube:** `src/ui/qt/QtViewCubeWidget.cpp`
+- **Building/Features/Texturen/Viewport (vollständig):** [TODO_INVENTOR_LEVEL_FULL.md](TODO_INVENTOR_LEVEL_FULL.md)

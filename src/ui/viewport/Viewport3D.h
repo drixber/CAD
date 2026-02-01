@@ -42,6 +42,12 @@ public:
     // Rendering
     void renderGeometry(const std::string& geometry_id, void* geometry_handle);
     void renderAssembly(const std::string& assembly_id);
+    /** Set list of geometry IDs for an assembly (order matches assembly.components()). */
+    void setAssemblyComponents(const std::string& assembly_id, const std::vector<std::string>& geometry_ids);
+    /** Get geometry IDs for an assembly (order matches assembly.components()). */
+    std::vector<std::string> getAssemblyComponents(const std::string& assembly_id) const;
+    /** Set display transform for a geometry node (e.g. assembly component). */
+    void setComponentTransform(const std::string& geometry_id, double tx, double ty, double tz);
     void renderMbdAnnotations(const std::vector<void*>& annotation_handles);
     void clearScene();
     void updateView();
@@ -51,7 +57,15 @@ public:
     ViewportCamera getCamera() const;
     void resetCamera();
     void fitToView();
-    
+    /** Zoom to frame current selection; if none, same as fitToView(). */
+    void fitToSelection();
+    /** Standard view: "Top", "Front", "Right", "Left", "Back", "Bottom", "Isometric". */
+    void setStandardView(const std::string& view);
+
+    /** true = orthographic, false = perspective. */
+    void setProjectionType(bool orthographic);
+    bool isOrthographic() const;
+
     // Viewport settings
     void setSettings(const ViewportSettings& settings);
     ViewportSettings getSettings() const;
@@ -71,7 +85,11 @@ public:
     };
     void setDisplayMode(DisplayMode mode);
     DisplayMode getDisplayMode() const;
-    
+
+    /** Preferred drag mode for left mouse: "orbit", "pan", or "zoom". */
+    void setPreferredDragMode(const std::string& mode);
+    std::string getPreferredDragMode() const;
+
 signals:
     void objectSelected(const std::string& object_id);
     void viewportUpdated();
@@ -94,7 +112,9 @@ private:
     std::vector<std::string> rendered_geometry_ids_;
     std::vector<std::string> highlighted_objects_;
     DisplayMode display_mode_{DisplayMode::Shaded};
-    
+    bool projection_orthographic_{false};
+    std::string preferred_drag_mode_{"orbit"};
+
     bool is_dragging_{false};
     int last_mouse_x_{0};
     int last_mouse_y_{0};

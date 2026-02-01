@@ -14,12 +14,28 @@ enum class FileFormat {
     Dwg,
     Dxf,
     Sat,
+    Parasolid,  /** Parasolid (.x_t/.x_b) Stub */
+    Jt,         /** JT Open Stub */
+    Pdf,        /** 3D PDF / Zeichnungsexport Stub */
+    Fbx,        /** FBX Stub */
     Rfa,
     Obj,
     Ply,
     ThreeMf,
     Gltf,
-    Glb
+    Glb,
+    /** SolidWorks (19.1): Stub – optional über STEP/neutral. */
+    SldPrt,
+    SldAsm,
+    SldDrw,
+    /** Creo (20.1): Stub – optional. */
+    CreoPrt,
+    CreoAsm,
+    CreoDrw,
+    /** CATIA (22.1): Stub – optional. */
+    CatPart,
+    CatProduct,
+    CatDrawing
 };
 
 struct ImportRequest {
@@ -80,6 +96,33 @@ public:
     IoResult exportAssemblyToStep(const std::string& path, const cad::core::Assembly& assembly, bool ascii_mode = true) const;
     cad::core::Part importStlToPart(const std::string& path) const;
     IoResult exportPartToStl(const std::string& path, const cad::core::Part& part, bool ascii_mode = true) const;
+
+    /** SolidWorks (19.1): Stub – Import/Export .SLDPRT/.SLDASM/.SLDDRW (optional/STEP). */
+    IoResult importSldPrt(const std::string& path) const;
+    IoResult importSldAsm(const std::string& path) const;
+    IoResult exportSldPrt(const std::string& path, const cad::core::Part& part) const;
+    IoResult exportSldAsm(const std::string& path, const cad::core::Assembly& assembly) const;
+    /** Creo (20.1): Stub – .PRT/.ASM/.DRW. */
+    IoResult importCreoPrt(const std::string& path) const;
+    IoResult importCreoAsm(const std::string& path) const;
+    IoResult exportCreoPrt(const std::string& path, const cad::core::Part& part) const;
+    IoResult exportCreoAsm(const std::string& path, const cad::core::Assembly& assembly) const;
+    /** CATIA (22.1): Stub – .CATPart/.CATProduct/.CATDrawing. */
+    IoResult importCatPart(const std::string& path) const;
+    IoResult importCatProduct(const std::string& path) const;
+    IoResult exportCatPart(const std::string& path, const cad::core::Part& part) const;
+    IoResult exportCatProduct(const std::string& path, const cad::core::Assembly& assembly) const;
+
+    /** SAT, Parasolid, JT, PDF, FBX Stubs. */
+    IoResult importSat(const std::string& path) const;
+    IoResult exportSat(const std::string& path, const cad::core::Part& part) const;
+    IoResult importParasolid(const std::string& path) const;
+    IoResult exportParasolid(const std::string& path, const cad::core::Part& part, bool binary = true) const;
+    IoResult importJt(const std::string& path) const;
+    IoResult exportJt(const std::string& path, const cad::core::Assembly& assembly) const;
+    IoResult exportPdf(const std::string& path, const cad::core::Part& part) const;
+    IoResult importFbx(const std::string& path) const;
+    IoResult exportFbx(const std::string& path, const cad::core::Part& part) const;
 };
 
 }  // namespace interop

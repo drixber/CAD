@@ -17,6 +17,7 @@
 #endif
 
 #include <string>
+#include <vector>
 #include <map>
 #include <memory>
 
@@ -44,14 +45,24 @@ public:
     void addGeometryNode(const std::string& geometry_id, void* coin_node);
     void removeGeometryNode(const std::string& geometry_id);
     void updateGeometryNode(const std::string& geometry_id, void* coin_node);
+    /** Set display transform for a node (e.g. assembly component); tx,ty,tz in world units. */
+    void updateNodeTransform(const std::string& geometry_id, double tx, double ty, double tz);
     
     void setDisplayMode(int mode);
     void setBackgroundColor(float r, float g, float b);
     void showGrid(bool show);
     void showAxes(bool show);
     
+    /** Standard view: "Top", "Front", "Right", "Left", "Back", "Bottom", "Isometric". */
+    void setStandardView(const char* view);
+
+    /** true = orthographic, false = perspective. */
+    void setProjectionType(bool orthographic);
+    
     std::string pickObject(int x, int y) const;
     void fitToView();
+    /** Zoom camera to frame the given geometry nodes; if empty, same as fitToView(). */
+    void fitToSelection(const std::vector<std::string>& geometry_ids);
     void resetCamera();
     
     ::QWidget* getWidget() const;
@@ -62,12 +73,16 @@ public:
     void addGeometryNode(const std::string&, void*) {}
     void removeGeometryNode(const std::string&) {}
     void updateGeometryNode(const std::string&, void*) {}
+    void updateNodeTransform(const std::string&, double, double, double) {}
     void setDisplayMode(int) {}
     void setBackgroundColor(float, float, float) {}
     void showGrid(bool) {}
     void showAxes(bool) {}
+    void setStandardView(const char*) {}
+    void setProjectionType(bool) {}
     std::string pickObject(int, int) const { return {}; }
     void fitToView() {}
+    void fitToSelection(const std::vector<std::string>&) {}
     void resetCamera() {}
     void* getWidget() const { return nullptr; }
 #endif
@@ -78,12 +93,16 @@ public:
     void addGeometryNode(const std::string&, void*) {}
     void removeGeometryNode(const std::string&) {}
     void updateGeometryNode(const std::string&, void*) {}
+    void updateNodeTransform(const std::string&, double, double, double) {}
     void setDisplayMode(int) {}
     void setBackgroundColor(float, float, float) {}
     void showGrid(bool) {}
     void showAxes(bool) {}
+    void setStandardView(const char*) {}
+    void setProjectionType(bool) {}
     std::string pickObject(int, int) const { return {}; }
     void fitToView() {}
+    void fitToSelection(const std::vector<std::string>&) {}
     void resetCamera() {}
     void* getWidget() const { return nullptr; }
 #endif

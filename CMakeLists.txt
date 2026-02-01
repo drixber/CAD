@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(InventorStyleCAD VERSION 3.0.13 LANGUAGES CXX)
+project(InventorStyleCAD VERSION 3.0.14 LANGUAGES CXX)
 
 set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
@@ -14,11 +14,9 @@ option(CAD_BUILD_TESTS "Build test targets" OFF)
 option(CAD_BUILD_EXAMPLES "Build example projects" OFF)
 option(CAD_SUPERBUILD "Enable superbuild for dependencies" OFF)
 option(CAD_USE_QT "Build Qt UI layer" OFF)
-option(CAD_USE_FREECAD "Enable FreeCAD integration" OFF)
 option(CAD_BUILD_PYTHON "Build Python bindings" OFF)
 set(CAD_DEPENDENCY_PROVIDER "vcpkg" CACHE STRING "Dependency provider (vcpkg/none)")
 set_property(CACHE CAD_DEPENDENCY_PROVIDER PROPERTY STRINGS vcpkg none)
-set(CAD_FREECAD_ROOT "" CACHE PATH "Path to FreeCAD source root")
 
 if(CAD_SUPERBUILD)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/Superbuild.cmake)

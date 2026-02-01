@@ -1,5 +1,6 @@
 # Build outputs
 /build/
+/build2/
 /out/
 /bin/
 /lib/
@@ -28,6 +29,9 @@ __pycache__/
 *.pyc
 *.pyo
 /.venv/
+backend/hydracad.db
+backend/tests/*.db
+backend/tests/.pytest_cache/
 
 # Logs / dumps
 *.log
@@ -36,6 +40,10 @@ __pycache__/
 # Installer outputs
 installer/*.exe
 installer/*.zip
+HydraCAD*.zip
+app-windows.zip
+hydracad-linux-portable.tar.gz
+AppDir/
 
 # Temporary files
 *.tmp

@@ -3,6 +3,7 @@
 #include <utility>
 #include <cctype>
 #include <cstdlib>
+#include <set>
 #include <unordered_map>
 #include <algorithm>
 #include <cmath>
@@ -96,6 +97,53 @@ std::string Sketch::addPoint(const Point2D& point) {
     return entity.id;
 }
 
+std::string Sketch::addEllipse(const Point2D& center, double radius_major, double radius_minor) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Ellipse;
+    entity.center_point = center;
+    entity.radius = radius_major;
+    entity.width = radius_minor;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addPolygon(const std::vector<Point2D>& points) {
+    if (points.empty()) {
+        return {};
+    }
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Polygon;
+    entity.start_point = points.front();
+    entity.end_point = points.size() > 1 ? points.back() : points.front();
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addSpline(const std::vector<Point2D>& control_points) {
+    if (control_points.empty()) {
+        return {};
+    }
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Spline;
+    entity.start_point = control_points.front();
+    entity.end_point = control_points.size() > 1 ? control_points.back() : control_points.front();
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
+std::string Sketch::addText(const Point2D& position, const std::string& text) {
+    GeometryEntity entity;
+    entity.id = generateGeometryId();
+    entity.type = GeometryType::Text;
+    entity.start_point = position;
+    entity.text_content = text;
+    geometry_.push_back(entity);
+    return entity.id;
+}
+
 const std::vector<GeometryEntity>& Sketch::geometry() const {
     return geometry_;
 }
@@ -126,6 +174,23 @@ bool Sketch::removeGeometry(const std::string& id) {
         return true;
     }
     return false;
+}
+
+void Sketch::set3D(bool is_3d) {
+    is_3d_ = is_3d;
+}
+
+bool Sketch::is3D() const {
+    return is_3d_;
+}
+
+std::string Sketch::addWaypoint3D(double x, double y, double z) {
+    waypoints_3d_.push_back(Point3D{x, y, z});
+    return "WP3D_" + std::to_string(waypoints_3d_.size());
+}
+
+const std::vector<Point3D>& Sketch::waypoints3D() const {
+    return waypoints_3d_;
 }
 
 Part::Part(std::string name) : name_(std::move(name)) {}
@@ -169,6 +234,12 @@ std::string Part::generateFeatureName(FeatureType type) {
         case FeatureType::Pattern:
             prefix = "Pattern";
             break;
+        case FeatureType::CircularPattern:
+            prefix = "CircularPattern";
+            break;
+        case FeatureType::PathPattern:
+            prefix = "PathPattern";
+            break;
         case FeatureType::Sweep:
             prefix = "Sweep";
             break;
@@ -191,13 +262,15 @@ std::string Part::generateFeatureName(FeatureType type) {
     return prefix + std::to_string(next_feature_id_++);
 }
 
-std::string Part::createExtrude(const std::string& sketch_id, double depth, bool symmetric) {
+std::string Part::createExtrude(const std::string& sketch_id, double depth, bool symmetric, ExtrudeMode mode) {
     Feature feature;
     feature.name = generateFeatureName(FeatureType::Extrude);
     feature.type = FeatureType::Extrude;
     feature.sketch_id = sketch_id;
     feature.depth = depth;
     feature.symmetric = symmetric;
+    feature.extrude_mode = mode;
+    feature.parameters["extrude_mode"] = static_cast<double>(static_cast<int>(mode));
     features_.push_back(feature);
     return feature.name;
 }
@@ -261,6 +334,48 @@ std::string Part::createPattern(const std::string& base_feature, int count_x, in
     feature.spacing_x = spacing_x;
     feature.spacing_y = spacing_y;
     feature.spacing_z = spacing_z;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createCircularPattern(const std::string& base_feature, int count, double angle_deg,
+                                        const std::string& axis) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::CircularPattern);
+    feature.type = FeatureType::CircularPattern;
+    feature.sketch_id = base_feature;
+    feature.circular_count = count > 0 ? count : 4;
+    feature.circular_angle = angle_deg;
+    feature.circular_axis = axis.empty() ? "Z" : axis;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createPathPattern(const std::string& base_feature, const std::string& path_sketch_id,
+                                     int count, bool equal_spacing) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::PathPattern);
+    feature.type = FeatureType::PathPattern;
+    feature.sketch_id = base_feature;
+    feature.path_sketch_id = path_sketch_id;
+    feature.path_count = count > 0 ? count : 4;
+    feature.path_equal_spacing = equal_spacing;
+    features_.push_back(feature);
+    return feature.name;
+}
+
+std::string Part::createThinExtrude(const std::string& sketch_id, double depth, double wall_thickness,
+                                    bool symmetric, ExtrudeMode mode) {
+    Feature feature;
+    feature.name = generateFeatureName(FeatureType::Extrude);
+    feature.type = FeatureType::Extrude;
+    feature.sketch_id = sketch_id;
+    feature.depth = depth;
+    feature.symmetric = symmetric;
+    feature.extrude_mode = mode;
+    feature.thin_wall = true;
+    feature.thin_thickness = wall_thickness > 0 ? wall_thickness : 1.0;
+    feature.parameters["extrude_mode"] = static_cast<double>(static_cast<int>(mode));
     features_.push_back(feature);
     return feature.name;
 }
@@ -387,6 +502,236 @@ bool Part::removeFeature(const std::string& name) {
     return false;
 }
 
+std::string Part::generateReferenceId(const char* prefix) {
+    return std::string(prefix) + std::to_string(next_ref_id_++);
+}
+
+std::string Part::addWorkPlane(const std::string& name, const Point3D& origin, const Vector3D& normal) {
+    WorkPlane wp;
+    wp.id = generateReferenceId("Plane");
+    wp.name = name.empty() ? wp.id : name;
+    wp.origin = origin;
+    wp.normal = normal;
+    work_planes_.push_back(wp);
+    return wp.id;
+}
+
+std::string Part::addWorkPlaneOffset(const std::string& name, const std::string& base_plane, double offset) {
+    WorkPlane wp;
+    wp.id = generateReferenceId("Plane");
+    wp.name = name.empty() ? wp.id : name;
+    wp.base_plane = base_plane;
+    wp.offset = offset;
+    if (base_plane == "XY") {
+        wp.origin = Point3D{0, 0, offset};
+        wp.normal = Vector3D{0, 0, 1};
+    } else if (base_plane == "YZ") {
+        wp.origin = Point3D{offset, 0, 0};
+        wp.normal = Vector3D{1, 0, 0};
+    } else if (base_plane == "XZ") {
+        wp.origin = Point3D{0, offset, 0};
+        wp.normal = Vector3D{0, 1, 0};
+    } else {
+        wp.origin = Point3D{0, 0, offset};
+        wp.normal = Vector3D{0, 0, 1};
+    }
+    work_planes_.push_back(wp);
+    return wp.id;
+}
+
+std::string Part::addWorkAxis(const std::string& name, const Point3D& point, const Vector3D& direction) {
+    WorkAxis wa;
+    wa.id = generateReferenceId("Axis");
+    wa.name = name.empty() ? wa.id : name;
+    wa.point = point;
+    wa.direction = direction;
+    work_axes_.push_back(wa);
+    return wa.id;
+}
+
+std::string Part::addWorkAxisBase(const std::string& name, const std::string& base_axis) {
+    WorkAxis wa;
+    wa.id = generateReferenceId("Axis");
+    wa.name = name.empty() ? wa.id : name;
+    wa.base_axis = base_axis;
+    wa.point = Point3D{0, 0, 0};
+    if (base_axis == "X") wa.direction = Vector3D{1, 0, 0};
+    else if (base_axis == "Y") wa.direction = Vector3D{0, 1, 0};
+    else wa.direction = Vector3D{0, 0, 1};
+    work_axes_.push_back(wa);
+    return wa.id;
+}
+
+std::string Part::addWorkPoint(const std::string& name, const Point3D& point) {
+    WorkPoint wp;
+    wp.id = generateReferenceId("Point");
+    wp.name = name.empty() ? wp.id : name;
+    wp.point = point;
+    work_points_.push_back(wp);
+    return wp.id;
+}
+
+std::string Part::addCoordinateSystem(const std::string& name, const Point3D& origin,
+                                      const Vector3D& dir_x, const Vector3D& dir_y) {
+    CoordinateSystem cs;
+    cs.id = generateReferenceId("CS");
+    cs.name = name.empty() ? cs.id : name;
+    cs.origin = origin;
+    cs.direction_x = dir_x;
+    cs.direction_y = dir_y;
+    coordinate_systems_.push_back(cs);
+    return cs.id;
+}
+
+const std::vector<WorkPlane>& Part::workPlanes() const {
+    return work_planes_;
+}
+
+const std::vector<WorkAxis>& Part::workAxes() const {
+    return work_axes_;
+}
+
+const std::vector<WorkPoint>& Part::workPoints() const {
+    return work_points_;
+}
+
+const std::vector<CoordinateSystem>& Part::coordinateSystems() const {
+    return coordinate_systems_;
+}
+
+WorkPlane* Part::findWorkPlane(const std::string& id) {
+    for (auto& wp : work_planes_) {
+        if (wp.id == id) return &wp;
+    }
+    return nullptr;
+}
+
+WorkAxis* Part::findWorkAxis(const std::string& id) {
+    for (auto& wa : work_axes_) {
+        if (wa.id == id) return &wa;
+    }
+    return nullptr;
+}
+
+WorkPoint* Part::findWorkPoint(const std::string& id) {
+    for (auto& wp : work_points_) {
+        if (wp.id == id) return &wp;
+    }
+    return nullptr;
+}
+
+void Part::addUserParameter(const Parameter& p) {
+    user_parameters_.push_back(p);
+}
+
+std::vector<Parameter>& Part::userParameters() {
+    return user_parameters_;
+}
+
+const std::vector<Parameter>& Part::userParameters() const {
+    return user_parameters_;
+}
+
+bool Part::setParameterValue(const std::string& name, double value) {
+    Parameter* p = findParameter(name);
+    if (!p) return false;
+    p->value = value;
+    return true;
+}
+
+bool Part::removeParameter(const std::string& name) {
+    auto it = std::find_if(user_parameters_.begin(), user_parameters_.end(),
+        [&name](const Parameter& p) { return p.name == name; });
+    if (it == user_parameters_.end()) return false;
+    user_parameters_.erase(it);
+    return true;
+}
+
+Parameter* Part::findParameter(const std::string& name) {
+    for (auto& p : user_parameters_) {
+        if (p.name == name) return &p;
+    }
+    return nullptr;
+}
+
+const Parameter* Part::findParameter(const std::string& name) const {
+    for (const auto& p : user_parameters_) {
+        if (p.name == name) return &p;
+    }
+    return nullptr;
+}
+
+void Part::addRule(const Rule& rule) {
+    rules_.push_back(rule);
+}
+
+std::vector<Rule>& Part::rules() {
+    return rules_;
+}
+
+const std::vector<Rule>& Part::rules() const {
+    return rules_;
+}
+
+void Part::addConfiguration(const Configuration& config) {
+    configurations_.push_back(config);
+}
+
+const std::vector<Configuration>& Part::configurations() const {
+    return configurations_;
+}
+
+void Part::setActiveConfiguration(int index) {
+    if (index >= 0 && index < static_cast<int>(configurations_.size()))
+        active_configuration_index_ = index;
+}
+
+int Part::activeConfigurationIndex() const {
+    return active_configuration_index_;
+}
+
+void Part::setSkeletonPartId(const std::string& part_id) {
+    skeleton_part_id_ = part_id;
+}
+
+std::string Part::skeletonPartId() const {
+    return skeleton_part_id_;
+}
+
+void Part::setRollbackPosition(int feature_index) {
+    rollback_position_ = feature_index;
+}
+
+int Part::rollbackPosition() const {
+    return rollback_position_;
+}
+
+bool Part::setFeatureSuppressed(const std::string& feature_name, bool suppressed) {
+    for (auto& f : features_) {
+        if (f.name == feature_name) {
+            f.suppressed = suppressed;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Part::isFeatureSuppressed(const std::string& feature_name) const {
+    for (const auto& f : features_) {
+        if (f.name == feature_name) return f.suppressed;
+    }
+    return false;
+}
+
+bool Part::reorderFeature(std::size_t from_index, std::size_t to_index) {
+    if (from_index >= features_.size() || to_index >= features_.size() || from_index == to_index)
+        return false;
+    Feature f = features_[from_index];
+    features_.erase(features_.begin() + static_cast<std::ptrdiff_t>(from_index));
+    features_.insert(features_.begin() + static_cast<std::ptrdiff_t>(to_index), f);
+    return true;
+}
+
 std::uint64_t Assembly::addComponent(const Part& part, const Transform& transform) {
     AssemblyComponent component;
     component.id = next_id_++;
@@ -428,6 +773,46 @@ std::string Assembly::createFlush(std::uint64_t component_a, std::uint64_t compo
     return "Flush_" + std::to_string(mates_.size());
 }
 
+std::string Assembly::createConcentric(std::uint64_t component_a, std::uint64_t component_b, double offset) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Concentric;
+    mate.value = offset;
+    mates_.push_back(mate);
+    return "Concentric_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createTangent(std::uint64_t component_a, std::uint64_t component_b, double offset) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Tangent;
+    mate.value = offset;
+    mates_.push_back(mate);
+    return "Tangent_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createParallel(std::uint64_t component_a, std::uint64_t component_b, double distance) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Parallel;
+    mate.value = distance;
+    mates_.push_back(mate);
+    return "Parallel_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createDistance(std::uint64_t component_a, std::uint64_t component_b, double distance) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Distance;
+    mate.value = distance;
+    mates_.push_back(mate);
+    return "Distance_" + std::to_string(mates_.size());
+}
+
 std::string Assembly::createAngle(std::uint64_t component_a, std::uint64_t component_b, double angle) {
     MateConstraint mate;
     mate.component_a = component_a;
@@ -446,6 +831,26 @@ std::string Assembly::createInsert(std::uint64_t component_a, std::uint64_t comp
     mate.value = 0.0;
     mates_.push_back(mate);
     return "Insert_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createGear(std::uint64_t component_a, std::uint64_t component_b, double ratio) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Gear;
+    mate.value = ratio;
+    mates_.push_back(mate);
+    return "Gear_" + std::to_string(mates_.size());
+}
+
+std::string Assembly::createCam(std::uint64_t component_a, std::uint64_t component_b, double phase_offset) {
+    MateConstraint mate;
+    mate.component_a = component_a;
+    mate.component_b = component_b;
+    mate.type = MateType::Cam;
+    mate.value = phase_offset;
+    mates_.push_back(mate);
+    return "Cam_" + std::to_string(mates_.size());
 }
 
 bool Assembly::solveMates() {
@@ -516,6 +921,88 @@ bool Assembly::solveMates() {
                     }
                     break;
                 }
+                case MateType::Concentric: {
+                    double dx = comp_b->transform.tx - (comp_a->transform.tx + mate.value);
+                    double dy = comp_b->transform.ty - comp_a->transform.ty;
+                    double dz = comp_b->transform.tz - comp_a->transform.tz;
+                    error = std::sqrt(dx*dx + dy*dy + dz*dz);
+                    if (error > tolerance) {
+                        comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                        comp_b->transform.ty = comp_a->transform.ty;
+                        comp_b->transform.tz = comp_a->transform.tz;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Tangent: {
+                    double dx = comp_b->transform.tx - (comp_a->transform.tx + mate.value);
+                    error = std::abs(dx);
+                    if (error > tolerance) {
+                        comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Gear: {
+                    // Kinematik: comp_b.rz = comp_a.rz * ratio (value = ratio)
+                    double target_rz = comp_a->transform.rz * mate.value;
+                    double angle_diff = comp_b->transform.rz - target_rz;
+                    while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+                    while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+                    error = std::abs(angle_diff);
+                    if (error > tolerance) {
+                        comp_b->transform.rz = target_rz;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Cam: {
+                    // Phasenversatz: comp_b.rz = comp_a.rz + mate.value
+                    double target_rz = comp_a->transform.rz + mate.value;
+                    double angle_diff = comp_b->transform.rz - target_rz;
+                    while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+                    while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+                    error = std::abs(angle_diff);
+                    if (error > tolerance) {
+                        comp_b->transform.rz = target_rz;
+                        converged = false;
+                    }
+                    break;
+                }
+                case MateType::Parallel: {
+                    // Ebenen/Achsen parallel: angle alignment, value = optional distance
+                    double angle_diff = comp_b->transform.rz - comp_a->transform.rz;
+                    while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+                    while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+                    error = std::abs(angle_diff);
+                    if (error > tolerance) {
+                        comp_b->transform.rz = comp_a->transform.rz;
+                        converged = false;
+                    }
+                    if (std::abs(mate.value) > 1e-9) {
+                        double dx = comp_b->transform.tx - (comp_a->transform.tx + mate.value);
+                        if (std::abs(dx) > tolerance) {
+                            comp_b->transform.tx = comp_a->transform.tx + mate.value;
+                            converged = false;
+                        }
+                    }
+                    break;
+                }
+                case MateType::Distance: {
+                    double dx = comp_b->transform.tx - comp_a->transform.tx;
+                    double dy = comp_b->transform.ty - comp_a->transform.ty;
+                    double dz = comp_b->transform.tz - comp_a->transform.tz;
+                    double actual = std::sqrt(dx*dx + dy*dy + dz*dz);
+                    error = std::abs(actual - mate.value);
+                    if (error > tolerance && actual > 1e-9) {
+                        double scale = mate.value / actual;
+                        comp_b->transform.tx = comp_a->transform.tx + dx * scale;
+                        comp_b->transform.ty = comp_a->transform.ty + dy * scale;
+                        comp_b->transform.tz = comp_a->transform.tz + dz * scale;
+                        converged = false;
+                    }
+                    break;
+                }
             }
         }
         
@@ -545,6 +1032,224 @@ const AssemblyComponent* Assembly::findComponent(std::uint64_t id) const {
     return nullptr;
 }
 
+void Assembly::addJoint(const Joint& joint) {
+    joints_.push_back(joint);
+}
+
+const std::vector<Joint>& Assembly::joints() const {
+    return joints_;
+}
+
+int Assembly::getJointDegreesOfFreedom() const {
+    int dof = 0;
+    for (const auto& j : joints_) {
+        switch (j.type) {
+            case JointType::Rigid:
+                break;
+            case JointType::Revolute:
+            case JointType::Slider:
+                dof += 1;
+                break;
+            case JointType::Cylindrical:
+                dof += 2;
+                break;
+            case JointType::Planar:
+                dof += 3;
+                break;
+            case JointType::PinSlot:
+                dof += 2;
+                break;
+        }
+    }
+    return dof;
+}
+
+std::string Assembly::createRevolute(std::uint64_t comp_a, std::uint64_t comp_b,
+                                     double axis_x, double axis_y, double axis_z,
+                                     double limit_lo, double limit_hi) {
+    Joint j;
+    j.component_a = comp_a;
+    j.component_b = comp_b;
+    j.type = JointType::Revolute;
+    j.axis_direction.x = axis_x;
+    j.axis_direction.y = axis_y;
+    j.axis_direction.z = axis_z;
+    j.limit_low = limit_lo;
+    j.limit_high = limit_hi;
+    joints_.push_back(j);
+    return "Revolute_" + std::to_string(joints_.size());
+}
+
+std::string Assembly::createSlider(std::uint64_t comp_a, std::uint64_t comp_b,
+                                   double axis_x, double axis_y, double axis_z,
+                                   double limit_lo, double limit_hi) {
+    Joint j;
+    j.component_a = comp_a;
+    j.component_b = comp_b;
+    j.type = JointType::Slider;
+    j.axis_direction.x = axis_x;
+    j.axis_direction.y = axis_y;
+    j.axis_direction.z = axis_z;
+    j.limit_low = limit_lo;
+    j.limit_high = limit_hi;
+    joints_.push_back(j);
+    return "Slider_" + std::to_string(joints_.size());
+}
+
+std::string Assembly::createCylindrical(std::uint64_t comp_a, std::uint64_t comp_b,
+                                        double axis_x, double axis_y, double axis_z) {
+    Joint j;
+    j.component_a = comp_a;
+    j.component_b = comp_b;
+    j.type = JointType::Cylindrical;
+    j.axis_direction.x = axis_x;
+    j.axis_direction.y = axis_y;
+    j.axis_direction.z = axis_z;
+    joints_.push_back(j);
+    return "Cylindrical_" + std::to_string(joints_.size());
+}
+
+std::string Assembly::createPlanar(std::uint64_t comp_a, std::uint64_t comp_b,
+                                   double normal_x, double normal_y, double normal_z) {
+    Joint j;
+    j.component_a = comp_a;
+    j.component_b = comp_b;
+    j.type = JointType::Planar;
+    j.axis_direction.x = normal_x;
+    j.axis_direction.y = normal_y;
+    j.axis_direction.z = normal_z;
+    joints_.push_back(j);
+    return "Planar_" + std::to_string(joints_.size());
+}
+
+std::string Assembly::createPinSlot(std::uint64_t comp_a, std::uint64_t comp_b,
+                                    double axis_x, double axis_y, double axis_z,
+                                    double slot_x, double slot_y, double slot_z,
+                                    double limit_lo, double limit_hi) {
+    Joint j;
+    j.component_a = comp_a;
+    j.component_b = comp_b;
+    j.type = JointType::PinSlot;
+    j.axis_direction.x = axis_x;
+    j.axis_direction.y = axis_y;
+    j.axis_direction.z = axis_z;
+    j.slot_direction.x = slot_x;
+    j.slot_direction.y = slot_y;
+    j.slot_direction.z = slot_z;
+    j.limit_low = limit_lo;
+    j.limit_high = limit_hi;
+    joints_.push_back(j);
+    return "PinSlot_" + std::to_string(joints_.size());
+}
+
+void Assembly::setExplosionOffset(std::uint64_t component_id, double dx, double dy, double dz) {
+    explosion_offsets_[component_id] = Vector3D{dx, dy, dz};
+}
+
+Vector3D Assembly::getExplosionOffset(std::uint64_t component_id) const {
+    auto it = explosion_offsets_.find(component_id);
+    if (it != explosion_offsets_.end()) {
+        return it->second;
+    }
+    return Vector3D{0.0, 0.0, 0.0};
+}
+
+void Assembly::setExplosionFactor(double factor) {
+    explosion_factor_ = std::max(0.0, std::min(1.0, factor));
+}
+
+double Assembly::getExplosionFactor() const {
+    return explosion_factor_;
+}
+
+void Assembly::clearExplosionOffsets() {
+    explosion_offsets_.clear();
+}
+
+bool Assembly::hasExplosionOffsets() const {
+    return !explosion_offsets_.empty();
+}
+
+Transform Assembly::getDisplayTransform(std::uint64_t component_id) const {
+    const AssemblyComponent* comp = findComponent(component_id);
+    if (!comp) {
+        return Transform{};
+    }
+    Transform out = comp->transform;
+    Vector3D off = getExplosionOffset(component_id);
+    out.tx += off.x * explosion_factor_;
+    out.ty += off.y * explosion_factor_;
+    out.tz += off.z * explosion_factor_;
+    return out;
+}
+
+void Assembly::setComponentLightweight(std::uint64_t component_id, bool lightweight) {
+    if (lightweight) {
+        lightweight_components_.insert(component_id);
+    } else {
+        lightweight_components_.erase(component_id);
+    }
+    AssemblyComponent* comp = findComponent(component_id);
+    if (comp) {
+        comp->lightweight_display = lightweight;
+    }
+}
+
+bool Assembly::isComponentLightweight(std::uint64_t component_id) const {
+    return lightweight_components_.find(component_id) != lightweight_components_.end();
+}
+
+void Assembly::setComponentFlexible(std::uint64_t component_id, bool flexible) {
+    if (flexible) {
+        flexible_components_.insert(component_id);
+    } else {
+        flexible_components_.erase(component_id);
+    }
+    AssemblyComponent* comp = findComponent(component_id);
+    if (comp) {
+        comp->flexible_subassembly = flexible;
+    }
+}
+
+bool Assembly::isComponentFlexible(std::uint64_t component_id) const {
+    return flexible_components_.find(component_id) != flexible_components_.end();
+}
+
+void Assembly::addConfiguration(const AssemblyConfiguration& config) {
+    configurations_.push_back(config);
+}
+
+const std::vector<AssemblyConfiguration>& Assembly::configurations() const {
+    return configurations_;
+}
+
+void Assembly::setActiveConfiguration(int index) {
+    if (index >= 0 && index < static_cast<int>(configurations_.size()))
+        active_configuration_index_ = index;
+}
+
+int Assembly::activeConfigurationIndex() const {
+    return active_configuration_index_;
+}
+
+void Assembly::addArrangement(const AssemblyConfiguration& config) {
+    addConfiguration(config);
+}
+
+const std::vector<AssemblyConfiguration>& Assembly::arrangements() const {
+    return configurations_;
+}
+
+void Assembly::addComponentInterface(std::uint64_t component_id, const std::string& interface_name) {
+    component_interfaces_[component_id].push_back(interface_name);
+}
+
+std::vector<std::string> Assembly::getComponentInterfaces(std::uint64_t component_id) const {
+    auto it = component_interfaces_.find(component_id);
+    if (it != component_interfaces_.end()) return it->second;
+    return {};
+}
+
 bool Assembly::validateMates() const {
     for (const auto& mate : mates_) {
         const AssemblyComponent* comp_a = findComponent(mate.component_a);
@@ -572,13 +1277,27 @@ int Assembly::getDegreesOfFreedom() const {
                 constraint_dof += 3;
                 break;
             case MateType::Flush:
+            case MateType::Tangent:
                 constraint_dof += 1;
+                break;
+            case MateType::Concentric:
+                constraint_dof += 4;
                 break;
             case MateType::Angle:
                 constraint_dof += 1;
                 break;
             case MateType::Insert:
                 constraint_dof += 5;
+                break;
+            case MateType::Gear:
+            case MateType::Cam:
+                constraint_dof += 1;
+                break;
+            case MateType::Parallel:
+                constraint_dof += 2;
+                break;
+            case MateType::Distance:
+                constraint_dof += 1;
                 break;
         }
     }
@@ -701,6 +1420,59 @@ bool evaluateExpression(const std::string& expression,
     }
 }
 
+bool evaluateCondition(const std::string& expression,
+                       const std::unordered_map<std::string, double>& symbols,
+                       bool& out) {
+    std::string trimmed;
+    for (char c : expression) {
+        if (!std::isspace(static_cast<unsigned char>(c))) {
+            trimmed.push_back(c);
+        }
+    }
+    if (trimmed.empty()) {
+        return false;
+    }
+    const char* ops2[] = { ">=", "<=", "==", "!=" };
+    const char* ops1[] = { ">", "<" };
+    size_t op_pos = std::string::npos;
+    int op_len = 0;
+    int op_type = -1;  // 0: >=, 1: <=, 2: ==, 3: !=, 4: >, 5: <
+    for (int i = 0; i < 4; ++i) {
+        size_t p = trimmed.find(ops2[i]);
+        if (p != std::string::npos && (op_pos == std::string::npos || p < op_pos)) {
+            op_pos = p;
+            op_len = 2;
+            op_type = i;
+        }
+    }
+    for (int i = 0; i < 2; ++i) {
+        size_t p = trimmed.find(ops1[i]);
+        if (p != std::string::npos && (op_pos == std::string::npos || p < op_pos)) {
+            op_pos = p;
+            op_len = 1;
+            op_type = 4 + i;
+        }
+    }
+    if (op_pos == std::string::npos) {
+        return false;
+    }
+    std::string left = trimmed.substr(0, op_pos);
+    std::string right = trimmed.substr(op_pos + op_len);
+    double lhs = 0.0, rhs = 0.0;
+    if (!evaluateExpression(left, symbols, lhs) || !evaluateExpression(right, symbols, rhs)) {
+        return false;
+    }
+    switch (op_type) {
+        case 0: out = (lhs >= rhs); return true;
+        case 1: out = (lhs <= rhs); return true;
+        case 2: out = (std::abs(lhs - rhs) < 1e-12); return true;
+        case 3: out = (std::abs(lhs - rhs) >= 1e-12); return true;
+        case 4: out = (lhs > rhs); return true;
+        case 5: out = (lhs < rhs); return true;
+        default: return false;
+    }
+}
+
 }  // namespace
 
 bool Modeler::evaluateParameters(Sketch& sketch) const {
@@ -725,12 +1497,71 @@ bool Modeler::evaluateParameters(Sketch& sketch) const {
     return all_ok;
 }
 
+bool Modeler::evaluatePartParameters(Part& part) const {
+    bool all_ok = true;
+    std::unordered_map<std::string, double> symbols;
+    for (const auto& p : part.userParameters()) {
+        symbols[p.name] = p.value;
+    }
+    for (auto& p : part.userParameters()) {
+        if (p.expression.empty()) {
+            continue;
+        }
+        double value = 0.0;
+        if (evaluateExpression(p.expression, symbols, value)) {
+            p.value = value;
+            symbols[p.name] = value;
+        } else {
+            all_ok = false;
+        }
+    }
+    return all_ok;
+}
+
+bool Modeler::evaluatePartRules(Part& part) const {
+    std::unordered_map<std::string, double> symbols;
+    for (const auto& p : part.userParameters()) {
+        symbols[p.name] = p.value;
+    }
+    bool any_applied = false;
+    for (const auto& rule : part.rules()) {
+        if (rule.condition_expression.empty() || rule.then_parameter.empty()) {
+            continue;
+        }
+        bool cond = false;
+        if (!evaluateCondition(rule.condition_expression, symbols, cond)) {
+            continue;
+        }
+        if (!cond) {
+            continue;
+        }
+        double value = 0.0;
+        if (!evaluateExpression(rule.then_value_expression.empty() ? "0" : rule.then_value_expression, symbols, value)) {
+            continue;
+        }
+        part.setParameterValue(rule.then_parameter, value);
+        symbols[rule.then_parameter] = value;
+        any_applied = true;
+    }
+    if (any_applied) {
+        evaluatePartParameters(part);
+    }
+    return true;
+}
+
 bool Modeler::solveConstraints(Sketch& sketch) const {
     const std::vector<Constraint>& constraints = sketch.constraints();
     std::vector<GeometryEntity>& geometry = const_cast<std::vector<GeometryEntity>&>(sketch.geometry());
     
     if (constraints.empty() || geometry.empty()) {
         return true;
+    }
+    
+    std::set<std::string> fixed_ids;
+    for (const auto& c : constraints) {
+        if (c.type == ConstraintType::Fixed && !c.a.empty()) {
+            fixed_ids.insert(c.a);
+        }
     }
     
     int max_iterations = 200;
@@ -858,6 +1689,19 @@ bool Modeler::solveConstraints(Sketch& sketch) const {
                         residual = angle_diff - target_angle;
                     }
                     break;
+                case ConstraintType::Fixed:
+                    residual = 0.0;
+                    break;
+                case ConstraintType::Symmetric:
+                    if (geom_a && geom_b) {
+                        double axis_angle = constraint.value * M_PI / 180.0;
+                        double cx = std::cos(axis_angle);
+                        double cy = std::sin(axis_angle);
+                        double d_a = geom_a->start_point.x * cx + geom_a->start_point.y * cy;
+                        double d_b = geom_b->start_point.x * cx + geom_b->start_point.y * cy;
+                        residual = d_a + d_b;
+                    }
+                    break;
             }
             
             residuals[c_idx] = residual * weight;
@@ -886,6 +1730,9 @@ bool Modeler::solveConstraints(Sketch& sketch) const {
         }
         
         for (size_t g_idx = 0; g_idx < geometry.size(); ++g_idx) {
+            if (fixed_ids.count(geometry[g_idx].id)) {
+                continue;
+            }
             double delta_x = 0.0;
             double delta_y = 0.0;
             
@@ -903,7 +1750,8 @@ bool Modeler::solveConstraints(Sketch& sketch) const {
                 geometry[g_idx].end_point.y += delta_y * 0.5;
             }
             
-            if (geometry[g_idx].type == GeometryType::Circle || geometry[g_idx].type == GeometryType::Arc) {
+            if (geometry[g_idx].type == GeometryType::Circle || geometry[g_idx].type == GeometryType::Arc ||
+                geometry[g_idx].type == GeometryType::Ellipse) {
                 geometry[g_idx].center_point.x += delta_x;
                 geometry[g_idx].center_point.y += delta_y;
             }
@@ -952,6 +1800,14 @@ bool Modeler::isOverConstrained(const Sketch& sketch) const {
             case GeometryType::Rectangle:
                 total_dof += 4;
                 break;
+            case GeometryType::Ellipse:
+            case GeometryType::Polygon:
+            case GeometryType::Spline:
+                total_dof += 4;
+                break;
+            case GeometryType::Text:
+                total_dof += 2;
+                break;
         }
     }
     
@@ -974,6 +1830,12 @@ bool Modeler::isOverConstrained(const Sketch& sketch) const {
             case ConstraintType::Tangent:
             case ConstraintType::Equal:
                 constraint_dof += 1;
+                break;
+            case ConstraintType::Symmetric:
+                constraint_dof += 2;
+                break;
+            case ConstraintType::Fixed:
+                constraint_dof += 2;
                 break;
         }
     }
@@ -1011,6 +1873,14 @@ int Modeler::getDegreesOfFreedom(const Sketch& sketch) const {
             case GeometryType::Rectangle:
                 total_dof += 4;  // corner x, y, width, height
                 break;
+            case GeometryType::Ellipse:
+            case GeometryType::Polygon:
+            case GeometryType::Spline:
+                total_dof += 4;
+                break;
+            case GeometryType::Text:
+                total_dof += 2;  // position
+                break;
         }
     }
     
@@ -1020,8 +1890,8 @@ int Modeler::getDegreesOfFreedom(const Sketch& sketch) const {
     return std::max(0, total_dof - removed_dof);
 }
 
-Part Modeler::applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric) const {
-    std::string feature_name = part.createExtrude(sketch_id, depth, symmetric);
+Part Modeler::applyExtrude(Part& part, const std::string& sketch_id, double depth, bool symmetric, ExtrudeMode mode) const {
+    std::string feature_name = part.createExtrude(sketch_id, depth, symmetric, mode);
     (void)feature_name;  // Feature created and added to part
     return part;
 }
@@ -1086,6 +1956,27 @@ Part Modeler::applyDraft(Part& part, double angle, const std::string& draft_plan
 Part Modeler::applyMirror(Part& part, const std::string& base_feature, const std::string& mirror_plane,
                          bool merge_result) const {
     std::string feature_name = part.createMirror(base_feature, mirror_plane, merge_result);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyCircularPattern(Part& part, const std::string& base_feature, int count, double angle_deg,
+                                     const std::string& axis) const {
+    std::string feature_name = part.createCircularPattern(base_feature, count, angle_deg, axis);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyPathPattern(Part& part, const std::string& base_feature, const std::string& path_sketch_id,
+                               int count, bool equal_spacing) const {
+    std::string feature_name = part.createPathPattern(base_feature, path_sketch_id, count, equal_spacing);
+    (void)feature_name;
+    return part;
+}
+
+Part Modeler::applyThinExtrude(Part& part, const std::string& sketch_id, double depth, double wall_thickness,
+                              bool symmetric, ExtrudeMode mode) const {
+    std::string feature_name = part.createThinExtrude(sketch_id, depth, wall_thickness, symmetric, mode);
     (void)feature_name;
     return part;
 }

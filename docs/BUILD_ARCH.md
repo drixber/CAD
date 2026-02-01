@@ -12,12 +12,11 @@ Installation der Abhängigkeiten mit Pacman:
 sudo pacman -S --needed base-devel cmake qt6-base qt6-tools qt6-translations
 ```
 
-Optional (für Tests, FreeCAD-Integration, Python-Bindings):
+Optional (für Tests, Python-Bindings):
 
 ```bash
 sudo pacman -S --needed qt6-network  # für CAD_USE_QT_NETWORK (Updates ohne curl)
 # Optional:
-# sudo pacman -S freecad  # wenn FreeCAD-Integration gebaut werden soll
 # sudo pacman -S python python-pip  # für CAD_BUILD_PYTHON
 ```
 
@@ -52,10 +51,8 @@ ctest --output-on-failure
 | `CAD_USE_QT=ON` | Qt-UI (empfohlen) |
 | `CAD_BUILD_TESTS=ON` | Tests bauen und ausführen |
 | `CAD_USE_QT_NETWORK=ON` | Wird gesetzt, wenn Qt6::Network gefunden wird – Updates ohne curl |
-| `CAD_USE_FREECAD=ON` | FreeCAD-Integration (FreeCAD-Entwicklungspakete nötig) |
 | `CAD_BUILD_PYTHON=ON` | Python-Bindings |
 
-**FreeCAD unter Arch:** Mit installiertem `freecad` und Build-Flag `-DCAD_USE_FREECAD=ON` nutzt Hydra CAD das System-FreeCAD; die App zeigt „FreeCAD on“, sofern die Bibliotheken gefunden werden.
 
 ---
 

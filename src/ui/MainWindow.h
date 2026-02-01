@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <vector>
 
 #include "BrowserTree.h"
 #include "CommandLine.h"
@@ -28,6 +30,7 @@ public:
     void setConstraintCount(int count);
     void setParameterCount(int count);
     void setParameterSummary(const std::string& summary);
+    void setParameterTable(const std::vector<std::string>& names, const std::vector<double>& values, const std::vector<std::string>& expressions);
     void setIntegrationStatus(const std::string& status);
     void setMateCount(int count);
     void setCommandHandler(const std::function<void(const std::string&)>& handler);

@@ -31,6 +31,38 @@ QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setSpacing(8);
 
+    // Titelleiste (Inventor-Niveau: Titel, X, +, Auge)
+    QWidget* title_bar = new QWidget(this);
+    title_bar->setObjectName("propertyPanelTitleBar");
+    title_bar->setStyleSheet("#propertyPanelTitleBar { background: transparent; border-bottom: 1px solid palette(mid); }");
+    QHBoxLayout* title_layout = new QHBoxLayout(title_bar);
+    title_layout->setContentsMargins(4, 4, 4, 4);
+    QLabel* title_label = new QLabel(tr("Properties"), title_bar);
+    title_label->setObjectName("propertyPanelTitle");
+    title_layout->addWidget(title_label);
+    title_layout->addStretch();
+    QPushButton* btn_visibility = new QPushButton(title_bar);
+    btn_visibility->setToolTip(tr("Visibility"));
+    btn_visibility->setText(QString::fromUtf8("\u25CB"));  // circle as eye placeholder
+    btn_visibility->setFixedSize(24, 24);
+    QPushButton* btn_new = new QPushButton("+", title_bar);
+    btn_new->setToolTip(tr("New configuration"));
+    btn_new->setFixedSize(24, 24);
+    QPushButton* btn_close = new QPushButton("×", title_bar);
+    btn_close->setToolTip(tr("Close panel"));
+    btn_close->setFixedSize(24, 24);
+    title_layout->addWidget(btn_visibility);
+    title_layout->addWidget(btn_new);
+    title_layout->addWidget(btn_close);
+    layout->addWidget(title_bar);
+
+    breadcrumb_label_ = new QLabel(this);
+    breadcrumb_label_->setObjectName("propertyPanelBreadcrumb");
+    breadcrumb_label_->setStyleSheet("color: palette(mid); font-size: 0.9em;");
+    breadcrumb_label_->setTextFormat(Qt::PlainText);
+    breadcrumb_label_->hide();
+    layout->addWidget(breadcrumb_label_);
+
     QGroupBox* selectionGroup = new QGroupBox(tr("Selection"), this);
     selectionGroup->setFlat(true);
     QVBoxLayout* selectionLayout = new QVBoxLayout(selectionGroup);
@@ -41,12 +73,17 @@ QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
     parameters_summary_ = new QLabel(tr("Parameter Summary:"));
     parameters_summary_->setWordWrap(true);
     selectionLayout->addWidget(parameters_summary_);
+    parameters_table_ = new QTableWidget(0, 3, selectionGroup);
+    parameters_table_->setHorizontalHeaderLabels({tr("Name"), tr("Value"), tr("Expression")});
+    parameters_table_->horizontalHeader()->setStretchLastSection(true);
+    parameters_table_->setAlternatingRowColors(true);
+    selectionLayout->addWidget(parameters_table_);
     layout->addWidget(selectionGroup);
 
     QGroupBox* statusGroup = new QGroupBox(tr("Status"), this);
     statusGroup->setFlat(true);
     QVBoxLayout* statusLayout = new QVBoxLayout(statusGroup);
-    integration_status_ = new QLabel(tr("Integration: FreeCAD off"));
+    integration_status_ = new QLabel(tr("Integration: —"));
     statusLayout->addWidget(integration_status_);
     mates_label_ = new QLabel(tr("Mates: 0"));
     statusLayout->addWidget(mates_label_);
@@ -55,7 +92,7 @@ QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
     layout->addWidget(statusGroup);
 
     context_stack_ = new QStackedWidget(this);
-    auto makePanel = [this](const QString& title, const QStringList& fields) {
+    auto makePanel = [this](const QString& title, const QStringList& fields, bool addActionButtons = false) {
         QWidget* panel = new QWidget(context_stack_);
         QVBoxLayout* panelLayout = new QVBoxLayout(panel);
         QLabel* header = new QLabel(title, panel);
@@ -68,13 +105,26 @@ QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
             form->addRow(field + ":", input);
         }
         panelLayout->addLayout(form);
+        if (addActionButtons) {
+            QHBoxLayout* btnRow = new QHBoxLayout();
+            QPushButton* okBtn = new QPushButton(tr("OK"), panel);
+            okBtn->setDefault(true);
+            QPushButton* cancelBtn = new QPushButton(tr("Cancel"), panel);
+            QPushButton* applyNewBtn = new QPushButton(tr("Apply & New"), panel);
+            applyNewBtn->setStyleSheet("QPushButton { background: #2E7D32; color: white; } QPushButton:hover { background: #1B5E20; }");
+            btnRow->addWidget(okBtn);
+            btnRow->addWidget(cancelBtn);
+            btnRow->addStretch();
+            btnRow->addWidget(applyNewBtn);
+            panelLayout->addLayout(btnRow);
+        }
         panelLayout->addStretch();
         panel->setLayout(panelLayout);
         return panel;
     };
 
     context_stack_->addWidget(makePanel(tr("Context Panel: General"),
-                                        {tr("Name"), tr("Description")}));
+                                        {tr("Name"), tr("Description")}, true));
     context_stack_->addWidget(makePanel(tr("Context Panel: Sketch"),
                                         {tr("Constraint"), tr("Dimension")}));
     context_stack_->addWidget(makePanel(tr("Context Panel: Part"),
@@ -369,6 +419,31 @@ QtPropertyPanel::QtPropertyPanel(::QWidget* parent) : ::QWidget(parent) {
                                         {tr("Appearance"), tr("Environment")}));
     layout->addWidget(context_stack_);
 
+    // OK, Abbrechen, Apply & New (Inventor-Niveau)
+    QWidget* footer = new QWidget(this);
+    footer->setObjectName("propertyPanelFooter");
+    QHBoxLayout* footer_layout = new QHBoxLayout(footer);
+    footer_layout->setContentsMargins(4, 8, 4, 4);
+    footer_layout->addStretch();
+    QPushButton* btn_ok = new QPushButton(tr("OK"), footer);
+    btn_ok->setObjectName("propertyPanelOk");
+    QPushButton* btn_cancel = new QPushButton(tr("Cancel"), footer);
+    btn_cancel->setObjectName("propertyPanelCancel");
+    QPushButton* btn_apply_new = new QPushButton(tr("+"), footer);
+    btn_apply_new->setObjectName("propertyPanelApplyNew");
+    btn_apply_new->setToolTip(tr("Apply & New"));
+    btn_apply_new->setStyleSheet(
+        "#propertyPanelApplyNew { background-color: #2e7d32; color: white; font-weight: bold; min-width: 36px; }"
+        "#propertyPanelApplyNew:hover { background-color: #388e3c; }"
+    );
+    footer_layout->addWidget(btn_ok);
+    footer_layout->addWidget(btn_cancel);
+    footer_layout->addWidget(btn_apply_new);
+    connect(btn_ok, &QPushButton::clicked, this, [this]() { emit applyRequested(); });
+    connect(btn_cancel, &QPushButton::clicked, this, [this]() { emit cancelRequested(); });
+    connect(btn_apply_new, &QPushButton::clicked, this, [this]() { emit applyAndNewRequested(); });
+    layout->addWidget(footer);
+
     layout->addStretch();
 }
 
@@ -390,6 +465,18 @@ void QtPropertyPanel::setParameterSummary(const QString& summary) {
     }
 }
 
+void QtPropertyPanel::setParameterTable(const QList<QStringList>& rows) {
+    if (!parameters_table_) return;
+    parameters_table_->setRowCount(static_cast<int>(rows.size()));
+    for (int r = 0; r < rows.size(); ++r) {
+        const QStringList& row = rows[r];
+        for (int c = 0; c < 3 && c < row.size(); ++c) {
+            QTableWidgetItem* item = new QTableWidgetItem(row[c]);
+            parameters_table_->setItem(r, c, item);
+        }
+    }
+}
+
 void QtPropertyPanel::setIntegrationStatus(const QString& status) {
     if (integration_status_) {
         integration_status_->setText(tr("Integration: %1").arg(status));
@@ -405,6 +492,25 @@ void QtPropertyPanel::setMateCount(int count) {
 void QtPropertyPanel::setContextPlaceholder(const QString& context) {
     if (context_label_) {
         context_label_->setText(tr("Context: %1").arg(context));
+    }
+    if (breadcrumb_label_) {
+        if (context.isEmpty()) {
+            breadcrumb_label_->hide();
+        } else {
+            breadcrumb_label_->setText(context + " > " + tr("Sketch1"));
+            breadcrumb_label_->show();
+        }
+    }
+}
+
+void QtPropertyPanel::setBreadcrumb(const QString& breadcrumb) {
+    if (breadcrumb_label_) {
+        if (breadcrumb.isEmpty()) {
+            breadcrumb_label_->hide();
+        } else {
+            breadcrumb_label_->setText(breadcrumb);
+            breadcrumb_label_->show();
+        }
     }
 }
 

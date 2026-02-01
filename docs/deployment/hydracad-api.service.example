@@ -1,0 +1,27 @@
+# Hydra CAD API – systemd Service (Beispiel)
+# Kopieren nach: /etc/systemd/system/hydracad-api.service
+# Dann: sudo systemctl daemon-reload && sudo systemctl enable hydracad-api && sudo systemctl start hydracad-api
+#
+# Vorher: User/Verzeichnisse anlegen, JWT-Secret setzen:
+#   sudo mkdir -p /var/lib/hydracad/uploads
+#   sudo useradd -r -s /bin/false hydracad
+#   sudo chown -R hydracad:hydracad /var/lib/hydracad /opt/hydracad/backend
+#
+[Unit]
+Description=Hydra CAD API (Auth, License, Community)
+After=network.target
+
+[Service]
+Type=simple
+User=hydracad
+Group=hydracad
+WorkingDirectory=/opt/hydracad/backend
+Environment="HYDRACAD_DB_PATH=/var/lib/hydracad/hydracad.db"
+Environment="HYDRACAD_JWT_SECRET=<starkes-geheimes-token-min-32-zeichen>"
+Environment="HYDRACAD_UPLOAD_DIR=/var/lib/hydracad/uploads"
+ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

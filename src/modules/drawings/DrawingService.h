@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "model/DrawingDocument.h"
 #include "model/DrawingStyles.h"
@@ -11,6 +12,7 @@ namespace modules {
 struct DrawingRequest {
     std::string sourcePart;
     std::string templateName;
+    std::string sheetFormatId;
 };
 
 struct DrawingResult {
@@ -21,10 +23,12 @@ struct DrawingResult {
 class DrawingService {
 public:
     DrawingResult createDrawing(const DrawingRequest& request) const;
-    cad::drawings::DrawingDocument buildDocumentSkeleton(const std::string& title) const;
+    cad::drawings::DrawingDocument buildDocumentSkeleton(const std::string& title, const std::string& sheet_format_id = "") const;
+    std::vector<cad::drawings::SheetFormat> getSheetFormats() const;
     cad::drawings::DrawingStyleSet defaultStyles() const;
     cad::drawings::DrawingStyleSet createStylePreset(cad::drawings::StylePreset preset) const;
     cad::drawings::DrawingStyleSet isoStyles() const;
+    cad::drawings::DrawingStyleSet dinStyles() const;
     cad::drawings::DrawingStyleSet ansiStyles() const;
     cad::drawings::DrawingStyleSet jisStyles() const;
     

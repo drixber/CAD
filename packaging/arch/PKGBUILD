@@ -3,7 +3,7 @@
 # pkgver bei neuem Release anpassen (z. B. 3.0.7).
 
 pkgname=hydracad
-pkgver=3.0.13
+pkgver=3.0.14
 pkgrel=1
 pkgdesc="Professional CAD application (C++/Qt6)"
 arch=('x86_64')

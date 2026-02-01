@@ -1,7 +1,6 @@
 add_library(cad_core
     Modeler/Modeler.cpp
-    FreeCAD/FreeCADAdapter.cpp
-    FreeCAD/TechDrawBridge.cpp
+    TechDrawBridge.cpp
     logging/Logger.cpp
     crash/CrashReporter.cpp
     undo/UndoStack.cpp
@@ -19,14 +18,10 @@ target_include_directories(cad_core
         ${CMAKE_SOURCE_DIR}/src
 )
 
-if(CAD_USE_FREECAD)
-    target_compile_definitions(cad_core PUBLIC CAD_USE_FREECAD=1)
-    if(CAD_FREECAD_ROOT)
-        target_include_directories(cad_core
-            PUBLIC
-                ${CAD_FREECAD_ROOT}/src
-        )
-    endif()
+option(CAD_USE_EIGENER_KERN "Build und nutze eigenen CAD-Kern (Standard: an)" ON)
+if(CAD_USE_EIGENER_KERN)
+    add_subdirectory(kernel)
+    target_link_libraries(cad_core PRIVATE cad_eigen_kernel)
 endif()
 
 option(CAD_USE_OCCT "Enable OpenCASCADE Technology integration" OFF)

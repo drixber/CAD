@@ -2,7 +2,7 @@
 
 ## Overview
 
-Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with C++ and Qt 6, with 3D viewport rendering, project management, AI-assisted workflows, and optional FreeCAD/Coin3D integration.
+Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with C++ and Qt 6, with 3D viewport rendering, project management, AI-assisted workflows, and an integrated CAD kernel (optional Coin3D for 3D display).
 
 **Status**: ✅ Windows releases via GitHub (Installer + Portable ZIP). Version from Git tag (e.g. `v1.0.0`).
 
@@ -45,7 +45,7 @@ Hydra CAD is a comprehensive Computer-Aided Design (CAD) application built with 
 
 ### Weitere Module (Build-Optionen)
 
-- **FreeCAD-Integration**: Sketches, Parts, Drawings (optional).
+- **Eigen-Kern**: Sketches, Parts, Extrude/Revolve, Drawings.
 - **Constraint Solver**, **Simulation** (FEA, Motion, etc.), **Sheet Metal**, **Routing**, **Direct Editing**, **Drawing/TechDraw**.
 - **AI**: OpenAI, Grok und Anthropic (Claude) für CAD-Assistenz.
 

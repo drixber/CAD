@@ -13,9 +13,5 @@ This directory hosts build helper files for Windows-only development.
 - Packages list configured in `cmake/Vcpkg.cmake`.
 - Customize triplet with `-DCAD_VCPKG_TRIPLET=x64-windows`.
 
-## FreeCAD
-- Enable integration with `-DCAD_USE_FREECAD=ON`.
-- Set source root with `-DCAD_FREECAD_ROOT=...` (e.g. `third_party/FreeCAD`).
-
 ## Toolchains
 - `toolchains/windows-msvc.cmake` for MSVC/Clang-CL builds.

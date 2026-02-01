@@ -10,7 +10,9 @@ namespace modules {
 enum class PatternType {
     Rectangular,
     Circular,
-    CurveDriven
+    CurveDriven,
+    /** Flächenmuster (SolidWorks): Füllt Fläche/Region mit Instanzen. */
+    Face
 };
 
 struct PatternInstance {
@@ -52,6 +54,16 @@ struct CurvePatternParams {
     bool align_to_curve{true};
 };
 
+struct FacePatternParams {
+    std::string face_id;
+    double spacing_x{10.0};
+    double spacing_y{10.0};
+    int count_x{3};
+    int count_y{3};
+    double angle{0.0};
+    bool fill_region{true};
+};
+
 struct PatternRequest {
     std::string targetFeature;
     PatternType type;
@@ -59,6 +71,7 @@ struct PatternRequest {
     RectangularPatternParams rectangular_params;
     CircularPatternParams circular_params;
     CurvePatternParams curve_params;
+    FacePatternParams face_params;
     bool vary_instances{false};
     std::map<std::string, std::vector<double>> instance_variations;
 };
@@ -78,6 +91,8 @@ public:
     PatternResult createRectangularPattern(const PatternRequest& request) const;
     PatternResult createCircularPattern(const PatternRequest& request) const;
     PatternResult createCurvePattern(const PatternRequest& request) const;
+    /** Flächenmuster (SolidWorks): Füllt Fläche mit Instanzen. */
+    PatternResult createFacePattern(const PatternRequest& request) const;
     
     // Pattern editing
     PatternResult editPattern(const std::string& pattern_id, const PatternRequest& request) const;
@@ -95,6 +110,7 @@ private:
     std::vector<PatternInstance> generateRectangularInstances(const RectangularPatternParams& params) const;
     std::vector<PatternInstance> generateCircularInstances(const CircularPatternParams& params) const;
     std::vector<PatternInstance> generateCurveInstances(const CurvePatternParams& params) const;
+    std::vector<PatternInstance> generateFaceInstances(const FacePatternParams& params) const;
     
     double evaluateCurveX(const std::string& curve_id, double t) const;
     double evaluateCurveY(const std::string& curve_id, double t) const;

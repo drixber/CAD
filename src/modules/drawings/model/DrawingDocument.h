@@ -8,6 +8,16 @@
 namespace cad {
 namespace drawings {
 
+/** Blattformat (ISO/DIN/ANSI): Name, Breite/Höhe in mm, Ausrichtung. */
+struct SheetFormat {
+    std::string name;
+    double width_mm{297.0};
+    double height_mm{210.0};
+    bool landscape{true};
+    bool has_border{true};
+    bool has_title_block{true};
+};
+
 struct DrawingView {
     std::string name;
     std::string orientation;
@@ -20,6 +30,9 @@ struct DrawingView {
 struct DrawingSheet {
     std::string name;
     std::string template_name;
+    std::string format_id;
+    double width_mm{0.0};
+    double height_mm{0.0};
     std::vector<DrawingView> views;
     bool associative{true};
     std::string scale_label{"1:1"};

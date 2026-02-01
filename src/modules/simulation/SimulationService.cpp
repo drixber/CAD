@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 
 namespace cad::modules {
 
@@ -156,6 +157,22 @@ SimulationResult SimulationService::runThermalAnalysis(const SimulationRequest& 
     computation_time = std::max(0.1, std::min(computation_time, 5.0));
     result.computation_time = computation_time;
     
+    return result;
+}
+
+SimulationResult SimulationService::runCfdAnalysis(const SimulationRequest& request) const {
+    (void)request;
+    SimulationResult result;
+    result.success = false;
+    result.message = "CFD analysis not implemented (stub)";
+    return result;
+}
+
+SimulationResult SimulationService::runMultiphysicsAnalysis(const SimulationRequest& request) const {
+    (void)request;
+    SimulationResult result;
+    result.success = false;
+    result.message = "Multiphysics analysis not implemented (stub)";
     return result;
 }
 
@@ -381,6 +398,12 @@ MotionResult SimulationService::calculateMotion(const SimulationRequest& request
     double initial_position = 0.0;
     double initial_velocity = 0.0;
     double acceleration = 0.0;
+    double joint_angular_velocity = 0.0;
+    bool use_joint_drive = false;
+    if (!request.joint_drives.empty()) {
+        use_joint_drive = true;
+        joint_angular_velocity = request.joint_drives.begin()->second;
+    }
     
     for (const auto& constraint : request.constraints) {
         if (constraint.type == "Force") {
@@ -403,8 +426,14 @@ MotionResult SimulationService::calculateMotion(const SimulationRequest& request
     for (int i = 0; i < step_count; ++i) {
         double t = i * request.time_step;
         
-        current_velocity = initial_velocity + acceleration * t;
-        current_position = initial_position + initial_velocity * t + 0.5 * acceleration * t * t;
+        if (use_joint_drive) {
+            current_position = joint_angular_velocity * t;
+            current_velocity = joint_angular_velocity;
+            acceleration = 0.0;
+        } else {
+            current_velocity = initial_velocity + acceleration * t;
+            current_position = initial_position + initial_velocity * t + 0.5 * acceleration * t * t;
+        }
         
         motion.positions.push_back(current_position);
         motion.velocities.push_back(current_velocity);
@@ -469,6 +498,52 @@ SimulationRequest cad::modules::SimulationService::optimizeParameters(const Simu
     }
     
     return best_request;
+}
+
+bool SimulationService::exportFeaReport(const SimulationResult& result, const std::string& path) const {
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return false;
+    }
+    file << "=== FEA Analysis Report ===\n";
+    file << "Success: " << (result.success ? "Yes" : "No") << "\n";
+    file << "Message: " << result.message << "\n";
+    file << "Computation time: " << result.computation_time << " s\n";
+    file << "--- Results ---\n";
+    file << "Max stress [Pa]: " << result.fea_result.max_stress << "\n";
+    file << "Max displacement [m]: " << result.fea_result.max_displacement << "\n";
+    file << "Safety factor: " << result.fea_result.safety_factor << "\n";
+    file << "Stress map nodes: " << result.fea_result.stress_map.size() << "\n";
+    file << "Displacement map nodes: " << result.fea_result.displacement_map.size() << "\n";
+    if (!result.warnings.empty()) {
+        file << "--- Warnings ---\n";
+        for (const auto& w : result.warnings) {
+            file << w << "\n";
+        }
+    }
+    file << "=== End Report ===\n";
+    file.close();
+    return true;
+}
+
+bool SimulationService::exportMotionReport(const SimulationResult& result, const std::string& path) const {
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return false;
+    }
+    file << "time\tposition\tvelocity\tacceleration\n";
+    const std::vector<double>& pos = result.motion_result.positions;
+    const std::vector<double>& vel = result.motion_result.velocities;
+    const std::vector<double>& acc = result.motion_result.accelerations;
+    double dt = result.motion_result.simulation_time / static_cast<double>(pos.empty() ? 1 : pos.size());
+    for (size_t i = 0; i < pos.size(); ++i) {
+        double t = static_cast<double>(i) * dt;
+        double v = (i < vel.size()) ? vel[i] : 0.0;
+        double a = (i < acc.size()) ? acc[i] : 0.0;
+        file << t << "\t" << pos[i] << "\t" << v << "\t" << a << "\n";
+    }
+    file.close();
+    return true;
 }
 
 } // namespace cad::modules

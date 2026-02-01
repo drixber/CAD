@@ -57,7 +57,6 @@ ctest --output-on-failure
 |--------|--------------|
 | `CAD_USE_QT=ON` | Qt-UI (empfohlen) |
 | `CAD_BUILD_TESTS=ON` | Tests bauen und ausführen |
-| `CAD_USE_FREECAD=ON` | FreeCAD-Integration (FreeCAD-Entwicklungspakete nötig) |
 | `CAD_BUILD_PYTHON=ON` | Python-Bindings |
 
 **App-Bundle:** Unter macOS erzeugt CMake automatisch ein App-Bundle (`.app`) mit `MACOSX_BUNDLE`; Icon und Qt-Bibliotheken können mit `packaging/macos/` und `macdeployqt` ergänzt werden (siehe [packaging/macos/README.md](../packaging/macos/README.md)).
