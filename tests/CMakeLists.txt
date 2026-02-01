@@ -39,6 +39,21 @@ if(CAD_BUILD_TESTS)
         PRIVATE
             ${CMAKE_SOURCE_DIR}/src
     )
+
+    # Core UpdateChecker (semver, update.json parsing)
+    add_executable(update_checker_test
+        core/UpdateCheckerTest.cpp
+    )
+    target_link_libraries(update_checker_test
+        PRIVATE
+            cad_core
+            GTest::gtest
+            GTest::gtest_main
+    )
+    target_include_directories(update_checker_test
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/src
+    )
     
     # Module Tests
     add_executable(pattern_service_test
