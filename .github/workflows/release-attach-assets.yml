@@ -244,8 +244,11 @@ jobs:
 
       - name: Deploy Qt (macdeployqt)
         run: |
-          QT_BIN=$(dirname $(find $HOME -name macdeployqt -type f 2>/dev/null | head -1))
-          [ -n "$QT_BIN" ] && export PATH="$QT_BIN:$PATH"
+          MACDEPLOYQT=$(find $HOME/Qt -name macdeployqt -type f 2>/dev/null | head -1)
+          if [ -n "$MACDEPLOYQT" ]; then
+            QT_BIN=$(dirname "$MACDEPLOYQT")
+            export PATH="$QT_BIN:$PATH"
+          fi
           macdeployqt build/cad_desktop.app -always-overwrite || true
 
       - name: Create macOS archive
