@@ -2306,7 +2306,7 @@ void AppController::installUpdate(cad::ui::QtMainWindow* qt_window,
         progress_dialog.setCompleted(true, QObject::tr("Installer started."));
         progress_dialog.exec();
         QMessageBox::information(qt_window, QObject::tr("Update"),
-                                QObject::tr("The installer has been started. Complete the setup and restart the application."));
+                                QObject::tr("The installer has been started. The application will close now. Complete the setup and restart."));
         QApplication::quit();
     } else {
         if (is_exe) {
