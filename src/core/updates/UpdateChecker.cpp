@@ -4,9 +4,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cctype>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <map>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -31,6 +33,11 @@ bool parseSemverTag(const std::string& tag, Semver& out) {
     std::string trimmed = tag;
     if (trimmed[0] == 'v' || trimmed[0] == 'V') {
         trimmed = trimmed.substr(1);
+    }
+    // Strip pre-release suffix (e.g. -beta, -rc.1) so 3.0.16-beta compares as same base version
+    std::size_t dash = trimmed.find('-');
+    if (dash != std::string::npos) {
+        trimmed = trimmed.substr(0, dash);
     }
     std::stringstream ss(trimmed);
     std::string part;
@@ -147,6 +154,16 @@ UpdateInfo parseGithubReleaseResponse(const std::string& response, const std::st
         info.error = "Empty response from GitHub API";
         return info;
     }
+    // Detect rate limit or API errors in body
+    if (response.find("rate limit") != std::string::npos ||
+        response.find("API rate limit exceeded") != std::string::npos) {
+        info.error = "GitHub API rate limit exceeded. Please try again later.";
+        return info;
+    }
+    if (response.find("\"message\":\"Not Found\"") != std::string::npos) {
+        info.error = "Release or repository not found.";
+        return info;
+    }
     std::string latest_tag;
     std::string html_url;
     if (!extractJsonStringValue(response, "tag_name", latest_tag)) {
@@ -180,7 +197,70 @@ UpdateInfo parseGithubReleaseResponse(const std::string& response, const std::st
         return info;
     }
     info.updateAvailable = isNewer(latest, current);
+    // Pre-release (e.g. v3.0.16-beta) is not considered newer than stable v3.0.16
+    if (info.updateAvailable && latest_tag.find('-') != std::string::npos &&
+        latest.major == current.major && latest.minor == current.minor && latest.patch == current.patch) {
+        info.updateAvailable = false;
+    }
     return info;
+}
+
+std::string getAssetUrlFromReleaseJson(const std::string& releaseJson, const std::string& assetName) {
+    return extractAssetDownloadUrl(releaseJson, {assetName});
+}
+
+std::map<std::string, std::string> parseUpdateJsonChecksums(const std::string& updateJsonBody) {
+    std::map<std::string, std::string> out;
+    if (updateJsonBody.empty()) return out;
+    // Minimal parse: find "assets": [ ... ] and each { "name": "X", "sha256": "Y" }
+    const std::string key_assets = "\"assets\"";
+    size_t assets_pos = updateJsonBody.find(key_assets);
+    if (assets_pos == std::string::npos) return out;
+    size_t bracket = updateJsonBody.find('[', assets_pos);
+    if (bracket == std::string::npos) return out;
+    size_t pos = bracket + 1;
+    while (pos < updateJsonBody.size()) {
+        size_t name_pos = updateJsonBody.find("\"name\"", pos);
+        if (name_pos == std::string::npos || name_pos > updateJsonBody.find(']', pos)) break;
+        size_t colon = updateJsonBody.find(':', name_pos);
+        if (colon == std::string::npos) break;
+        size_t quote1 = updateJsonBody.find('"', colon);
+        if (quote1 == std::string::npos) break;
+        size_t quote2 = updateJsonBody.find('"', quote1 + 1);
+        if (quote2 == std::string::npos) break;
+        std::string name = updateJsonBody.substr(quote1 + 1, quote2 - quote1 - 1);
+        size_t sha_pos = updateJsonBody.find("\"sha256\"", quote2);
+        if (sha_pos == std::string::npos || sha_pos > updateJsonBody.find('}', quote2)) {
+            pos = quote2 + 1;
+            continue;
+        }
+        size_t colon2 = updateJsonBody.find(':', sha_pos);
+        if (colon2 == std::string::npos) break;
+        size_t q1 = updateJsonBody.find('"', colon2);
+        if (q1 == std::string::npos) break;
+        size_t q2 = updateJsonBody.find('"', q1 + 1);
+        if (q2 == std::string::npos) break;
+        std::string sha = updateJsonBody.substr(q1 + 1, q2 - q1 - 1);
+        if (!name.empty() && !sha.empty()) {
+            out[name] = sha;
+        }
+        pos = q2 + 1;
+    }
+    return out;
+}
+
+bool isVersionNewerThan(const std::string& latestTag, const std::string& currentTag) {
+    Semver latest{};
+    Semver current{};
+    if (!parseSemverTag(latestTag, latest) || !parseSemverTag(currentTag, current)) {
+        return false;
+    }
+    if (!isNewer(latest, current)) return false;
+    if (latestTag.find('-') != std::string::npos &&
+        latest.major == current.major && latest.minor == current.minor && latest.patch == current.patch) {
+        return false;
+    }
+    return true;
 }
 
 UpdateInfo checkGithubLatestRelease(const std::string& owner,
