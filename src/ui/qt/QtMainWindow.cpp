@@ -44,7 +44,7 @@ namespace {
 
 QString categoryForCommand(const QString& command) {
     const QSet<QString> sketch = {"Line", "Rectangle", "Circle", "Arc", "Constraint"};
-    const QSet<QString> part = {"Extrude", "Revolve", "Loft", "Hole", "Fillet",
+    const QSet<QString> part = {"Extrude", "ExtrudeReverse", "ExtrudeBoth", "Revolve", "Loft", "Hole", "HoleThroughAll", "Fillet", "Chamfer", "Shell", "Mirror",
                                 "Flange", "Bend", "Unfold", "Refold", "Punch", "Bead", "SheetMetalRules", "ExportFlatDXF",
                                 "RectangularPattern", "CircularPattern", "CurvePattern", "FacePattern",
                                 "DirectEdit", "Freeform"};
@@ -243,6 +243,13 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     browser_title->addWidget(browser_add_btn, 0);
     browser_layout->addLayout(browser_title);
     browser_layout->addWidget(browser_tree_, 1);
+    connect(browser_filter, &QLineEdit::textChanged, this, [this](const QString& text) {
+        browser_tree_->setFilterText(text);
+    });
+    connect(browser_add_btn, &QPushButton::clicked, this, [this]() {
+        executeCommand("Create New Component");
+        if (statusBar()) statusBar()->showMessage(tr("Create New Component"), 2000);
+    });
     browserDock->setWidget(browser_wrapper);
     addDockWidget(Qt::LeftDockWidgetArea, browserDock);
     browserDock->setMinimumWidth(220);
@@ -300,6 +307,7 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     communityDock->setFeatures(QDockWidget::DockWidgetMovable |
                               QDockWidget::DockWidgetFloatable |
                               QDockWidget::DockWidgetClosable);
+    communityDock->setVisible(false);  // Offline mode: Community (cloud) hidden by default
 
     tabifyDockWidget(agentDock, aiChatDock);
     aiChatDock->raise(); // Show AI Chat by default
@@ -384,67 +392,72 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     statusBar()->addPermanentWidget(fps_status_label_);
     statusBar()->addPermanentWidget(autosave_status_label_);
     
-    user_label_ = new QLabel(tr("User: Not logged in"), this);
+    user_label_ = new QLabel(tr("Offline"), this);
     statusBar()->addPermanentWidget(user_label_);
-    
-    // Create menu bar with File menu
+
+    // Create menu bar with File menu (no User menu in offline mode)
     QMenuBar* menu_bar = menuBar();
-    // User menu
-    user_menu_ = menu_bar->addMenu(tr("&User"));
-    QAction* profile_action = user_menu_->addAction(tr("&Profile"));
-    connect(profile_action, &QAction::triggered, this, [this]() {
-        if (profile_handler_) {
-            profile_handler_();
-        }
-    });
-    QAction* logout_action = user_menu_->addAction(tr("&Logout"));
-    connect(logout_action, &QAction::triggered, this, [this]() {
-        if (logout_handler_) {
-            logout_handler_();
-        }
-    });
-    
-    // Layout menu
+
+    // Layout menu – use the same static layoutManager; explicit connect() so actions always fire
     QMenu* layout_menu = menu_bar->addMenu(tr("&Layout"));
-    DockLayoutManager* layout_manager = new DockLayoutManager();
-    
-    QAction* save_layout_action = layout_menu->addAction(tr("&Save Current Layout..."), this, [this, layout_manager]() {
+    DockLayoutManager* layout_mgr = &layoutManager;
+
+    QAction* save_layout_act = layout_menu->addAction(tr("&Save Current Layout..."));
+    connect(save_layout_act, &QAction::triggered, this, [this, layout_mgr]() {
         bool ok;
-        QString name = QInputDialog::getText(this, tr("Save Layout"), tr("Layout name:"), 
+        QString name = QInputDialog::getText(this, tr("Save Layout"), tr("Layout name:"),
                                             QLineEdit::Normal, "", &ok);
         if (ok && !name.isEmpty()) {
-            layout_manager->saveLayout(this, name);
-            QSettings settings;
-            layout_manager->saveToSettings(settings);
+            layout_mgr->saveLayout(this, name);
+            QSettings settings("HydraCAD", "HydraCAD");
+            layout_mgr->saveToSettings(settings);
+            if (statusBar()) statusBar()->showMessage(tr("Layout \"%1\" saved.").arg(name), 3000);
         }
     });
-    
+
     layout_menu->addSeparator();
-    
+
     QMenu* templates_menu = layout_menu->addMenu(tr("&Templates"));
-    QAction* inventor_layout = templates_menu->addAction(tr("&Inventor Style"), this, [this, layout_manager]() {
-        layout_manager->applyInventorLayout(this);
+    QAction* inventor_act = templates_menu->addAction(tr("&Inventor Style"));
+    connect(inventor_act, &QAction::triggered, this, [this, layout_mgr]() {
+        layout_mgr->applyInventorLayout(this);
+        if (statusBar()) statusBar()->showMessage(tr("Layout: Inventor Style"), 2000);
     });
-    QAction* solidworks_layout = templates_menu->addAction(tr("&SolidWorks Style"), this, [this, layout_manager]() {
-        layout_manager->applySolidWorksLayout(this);
+    QAction* solidworks_act = templates_menu->addAction(tr("&SolidWorks Style"));
+    connect(solidworks_act, &QAction::triggered, this, [this, layout_mgr]() {
+        layout_mgr->applySolidWorksLayout(this);
+        if (statusBar()) statusBar()->showMessage(tr("Layout: SolidWorks Style"), 2000);
     });
-    QAction* catia_layout = templates_menu->addAction(tr("&CATIA Style"), this, [this, layout_manager]() {
-        layout_manager->applyCATIALayout(this);
+    QAction* catia_act = templates_menu->addAction(tr("&CATIA Style"));
+    connect(catia_act, &QAction::triggered, this, [this, layout_mgr]() {
+        layout_mgr->applyCATIALayout(this);
+        if (statusBar()) statusBar()->showMessage(tr("Layout: CATIA Style"), 2000);
     });
-    QAction* default_layout = templates_menu->addAction(tr("&Default"), this, [this, layout_manager]() {
-        layout_manager->restoreDefaultLayout(this);
+    QAction* default_act = templates_menu->addAction(tr("&Default"));
+    connect(default_act, &QAction::triggered, this, [this, layout_mgr]() {
+        if (layout_mgr->restoreDefaultLayout(this)) {
+            if (statusBar()) statusBar()->showMessage(tr("Default layout restored."), 2000);
+        }
     });
-    
+
     layout_menu->addSeparator();
-    
+
     QMenu* saved_layouts_menu = layout_menu->addMenu(tr("&Saved Layouts"));
-    // Populate saved layouts
-    QStringList saved = layout_manager->getSavedLayouts();
-    for (const QString& name : saved) {
-        QAction* action = saved_layouts_menu->addAction(name, this, [this, layout_manager, name]() {
-            layout_manager->restoreLayout(this, name);
-        });
-    }
+    connect(saved_layouts_menu, &QMenu::aboutToShow, this, [this, saved_layouts_menu, layout_mgr]() {
+        saved_layouts_menu->clear();
+        for (const QString& name : layout_mgr->getSavedLayouts()) {
+            QAction* act = saved_layouts_menu->addAction(name);
+            connect(act, &QAction::triggered, this, [this, layout_mgr, name]() {
+                if (layout_mgr->restoreLayout(this, name)) {
+                    if (statusBar()) statusBar()->showMessage(tr("Layout \"%1\" restored.").arg(name), 2000);
+                }
+            });
+        }
+        if (saved_layouts_menu->actions().isEmpty()) {
+            QAction* none = saved_layouts_menu->addAction(tr("(No saved layouts)"));
+            none->setEnabled(false);
+        }
+    });
     
     QMenu* file_menu = menu_bar->addMenu(tr("&File"));
     
@@ -488,9 +501,15 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     });
     save_as_action->setShortcut(QKeySequence::SaveAs);
     
-    file_menu->addAction(tr("Manage &Checkpoints..."), this, [this]() { showCheckpointsDialog(); });
-    QAction* send_to_printer_action = file_menu->addAction(tr("Send to 3D &Printer..."), this, [this]() {
-        if (send_to_printer_handler_) send_to_printer_handler_();
+    QAction* checkpoints_act = file_menu->addAction(tr("Manage &Checkpoints..."));
+    connect(checkpoints_act, &QAction::triggered, this, [this]() { showCheckpointsDialog(); });
+    QAction* send_to_printer_action = file_menu->addAction(tr("Send to 3D &Printer..."));
+    connect(send_to_printer_action, &QAction::triggered, this, [this]() {
+        if (send_to_printer_handler_) {
+            send_to_printer_handler_();
+        } else if (statusBar()) {
+            statusBar()->showMessage(tr("Send to printer: not available."), 2000);
+        }
     });
     
     file_menu->addSeparator();
@@ -499,7 +518,8 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     // Recent projects will be populated dynamically
     
     file_menu->addSeparator();
-    QAction* exit_action = file_menu->addAction(tr("E&xit"), this, &QMainWindow::close);
+    QAction* exit_action = file_menu->addAction(tr("E&xit"));
+    connect(exit_action, &QAction::triggered, this, &QMainWindow::close);
     exit_action->setShortcut(QKeySequence::Quit);
 
     // Settings menu (language selection)
@@ -547,23 +567,32 @@ QtMainWindow::QtMainWindow(QWidget* parent)
     connect(check_updates_action, &QAction::triggered, this, [this]() {
         if (check_for_updates_handler_) {
             check_for_updates_handler_();
+        } else if (statusBar()) {
+            statusBar()->showMessage(tr("Check for updates: not available."), 2000);
         }
     });
 
-    QAction* license_activate_action = settings_menu->addAction(tr("Activate &License..."));
-    connect(license_activate_action, &QAction::triggered, this, [this]() {
-        if (license_activate_handler_) {
-            license_activate_handler_();
+    QAction* install_update_from_file_action = settings_menu->addAction(tr("Install &Update from File..."));
+    connect(install_update_from_file_action, &QAction::triggered, this, [this]() {
+        if (install_update_from_file_handler_) {
+            install_update_from_file_handler_();
+        } else if (statusBar()) {
+            statusBar()->showMessage(tr("Install update from file: not available."), 2000);
         }
     });
 
     QAction* printers_dialog_action = settings_menu->addAction(tr("3D &Printers..."));
     connect(printers_dialog_action, &QAction::triggered, this, [this]() {
-        if (printers_dialog_handler_) printers_dialog_handler_();
+        if (printers_dialog_handler_) {
+            printers_dialog_handler_();
+        } else if (statusBar()) {
+            statusBar()->showMessage(tr("3D Printers: not available."), 2000);
+        }
     });
 
     QMenu* diagnostics_menu = settings_menu->addMenu(tr("&Diagnostics"));
-    diagnostics_menu->addAction(tr("Open &Logs Folder"), this, [this]() {
+    QAction* logs_act = diagnostics_menu->addAction(tr("Open &Logs Folder"));
+    connect(logs_act, &QAction::triggered, this, [this]() {
         const QString logs_dir = logsDirectory();
         if (logs_dir.isEmpty()) {
             QMessageBox::warning(this, tr("Diagnostics"), tr("Logs folder is not available."));
@@ -571,11 +600,13 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         }
         QDesktopServices::openUrl(QUrl::fromLocalFile(logs_dir));
     });
-    diagnostics_menu->addAction(tr("Open &Install Folder"), this, []() {
+    QAction* install_act = diagnostics_menu->addAction(tr("Open &Install Folder"));
+    connect(install_act, &QAction::triggered, this, []() {
         QDesktopServices::openUrl(QUrl::fromLocalFile(QCoreApplication::applicationDirPath()));
     });
     diagnostics_menu->addSeparator();
-    diagnostics_menu->addAction(tr("Show &Startup Log"), this, [this]() {
+    QAction* startup_log_act = diagnostics_menu->addAction(tr("Show &Startup Log"));
+    connect(startup_log_act, &QAction::triggered, this, [this]() {
         const QString log_path = QDir(logsDirectory()).filePath("startup.log");
         const QString preview = readLogPreview(log_path);
         if (preview.isEmpty()) {
@@ -584,7 +615,8 @@ QtMainWindow::QtMainWindow(QWidget* parent)
         }
         QMessageBox::information(this, tr("Startup Log"), preview);
     });
-    diagnostics_menu->addAction(tr("Show &Last Crash Log"), this, [this]() {
+    QAction* crash_log_act = diagnostics_menu->addAction(tr("Show &Last Crash Log"));
+    connect(crash_log_act, &QAction::triggered, this, [this]() {
         const QString log_path = QDir(logsDirectory()).filePath("last_crash.log");
         const QString preview = readLogPreview(log_path);
         if (preview.isEmpty()) {
@@ -763,6 +795,12 @@ void QtMainWindow::setCommandHandler(const std::function<void(const std::string&
         statusBar()->showMessage(tr("Command: %1").arg(command), 2000);
         log_panel_->appendLog(tr("Browser: %1").arg(command));
     });
+    connect(browser_tree_, &QtBrowserTree::selectionChanged, this, [this](const QString& breadcrumb, const QString& nodeName) {
+        if (!breadcrumb.isEmpty()) {
+            property_panel_->setBreadcrumb(breadcrumb);
+            statusBar()->showMessage(tr("Selected: %1").arg(nodeName), 2000);
+        }
+    });
 }
 
 void QtMainWindow::executeCommand(const std::string& command) {
@@ -915,6 +953,10 @@ void QtMainWindow::setCurrentProjectPath(const QString& path) {
 
 void QtMainWindow::setCheckForUpdatesHandler(const std::function<void()>& handler) {
     check_for_updates_handler_ = handler;
+}
+
+void QtMainWindow::setInstallUpdateFromFileHandler(const std::function<void()>& handler) {
+    install_update_from_file_handler_ = handler;
 }
 
 void QtMainWindow::setLicenseActivateHandler(const std::function<void()>& handler) {

@@ -77,6 +77,7 @@ public:
     void setAutoSaveTriggerHandler(const std::function<void()>& handler);
     void setAutoSaveStatusHandler(const std::function<void(const std::string&)>& handler);
     void setCheckForUpdatesHandler(const std::function<void()>& handler);
+    void setInstallUpdateFromFileHandler(const std::function<void()>& handler);
     void setLicenseActivateHandler(const std::function<void()>& handler);
     void setPrintersDialogHandler(const std::function<void()>& handler);
     void setSendToPrinterHandler(const std::function<void()>& handler);
@@ -139,6 +140,7 @@ private:
     std::function<void()> autosave_trigger_handler_;
     std::function<void(const std::string&)> autosave_status_handler_;
     std::function<void()> check_for_updates_handler_;
+    std::function<void()> install_update_from_file_handler_;
     std::function<void()> license_activate_handler_;
     std::function<void()> printers_dialog_handler_;
     std::function<void()> send_to_printer_handler_;
