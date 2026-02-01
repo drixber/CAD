@@ -23,6 +23,9 @@
 #include <cstdlib>
 #include <cstdio>
 
+#ifdef __linux__
+#include <unistd.h>
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -123,21 +126,56 @@ bool preflightCheckWindows(const std::filesystem::path& exe_dir) {
     return true;
 }
 #endif
+
+#ifdef __linux__
+// Resolve real executable path so the app works when started from desktop/launcher
+// (argv[0] may be just "cad_desktop" or a path relative to wrong CWD).
+std::filesystem::path getLinuxExeDir() {
+    char buf[4096];
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n <= 0) return {};
+    buf[n] = '\0';
+    std::filesystem::path exe_path(buf);
+    return exe_path.parent_path();
+}
+#endif
 }  // namespace
 
 int main(int argc, char** argv) {
-    fprintf(stderr, "Hydra CAD: main() start\n");
-    fflush(stderr);
     std::filesystem::path exe_dir;
     try {
-        std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
-        exe_dir = exe_path.parent_path();
-        const QByteArray plugin_root = QByteArray::fromStdString(exe_dir.string());
-        const QByteArray platform_path = QByteArray::fromStdString((exe_dir / "platforms").string());
-        qputenv("QT_PLUGIN_PATH", plugin_root);
-        qputenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path);
+#ifdef __linux__
+        exe_dir = getLinuxExeDir();
+        if (exe_dir.empty())
+#endif
+        {
+            std::filesystem::path exe_path = std::filesystem::absolute(argv[0]);
+            exe_dir = exe_path.parent_path();
+        }
+        const std::filesystem::path platform_path = exe_dir / "platforms";
+        // Only override Qt plugin paths when we ship our own (e.g. portable/Windows).
+        // On Linux system install (e.g. /usr/lib/hydracad) there is no platforms/,
+        // so Qt must use system paths (/usr/lib/qt/plugins etc.); setting them
+        // to a non-existent directory would prevent the app from starting.
+        if (std::filesystem::is_directory(platform_path)) {
+            const QByteArray plugin_root = QByteArray::fromStdString(exe_dir.string());
+            const QByteArray platform_path_env = QByteArray::fromStdString(platform_path.string());
+            qputenv("QT_PLUGIN_PATH", plugin_root);
+            qputenv("QT_QPA_PLATFORM_PLUGIN_PATH", platform_path_env);
+        }
     } catch (...) {
         // If path resolution fails, let Qt use default search paths.
+    }
+
+    // So Qt's applicationDirPath() is correct when started from launcher (argv[0] may be just the program name).
+    static std::string exe_path_for_argv;
+    if (!exe_dir.empty()) {
+#ifdef _WIN32
+        exe_path_for_argv = (exe_dir / "cad_desktop.exe").string();
+#else
+        exe_path_for_argv = (exe_dir / "cad_desktop").string();
+#endif
+        argv[0] = const_cast<char*>(exe_path_for_argv.c_str());
     }
 
 #ifdef __linux__
@@ -157,8 +195,12 @@ int main(int argc, char** argv) {
     QApplication qt_app(argc, argv);
     // Ensure working directory is the application directory so plugins, resources and
     // relative paths resolve correctly regardless of how the app was started (shortcut,
-    // installer "Run", etc.). Fixes black window / "run as admin" required after update.
-    QDir::setCurrent(QCoreApplication::applicationDirPath());
+    // file manager, launcher with argv[0] just the program name, etc.).
+    if (!exe_dir.empty()) {
+        QDir::setCurrent(QString::fromStdString(exe_dir.string()));
+    } else {
+        QDir::setCurrent(QCoreApplication::applicationDirPath());
+    }
     setupStartupLogging();
 
     std::set_terminate([]() {

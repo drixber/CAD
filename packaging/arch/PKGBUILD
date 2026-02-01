@@ -3,7 +3,7 @@
 # pkgver bei neuem Release anpassen (z. B. 3.0.7).
 
 pkgname=hydracad
-pkgver=3.0.20
+pkgver=3.0.22
 pkgrel=1
 pkgdesc="Professional CAD application (C++/Qt6)"
 arch=('x86_64')
@@ -23,9 +23,21 @@ build() {
 
 package() {
   cd CAD
-  # Real binary in lib; wrapper in PATH so app starts from menu and terminal (Wayland → xcb).
+  # Binary in /usr/lib/hydracad; wrapper in PATH for menu/terminal (Wayland → xcb).
   install -Dm755 build/cad_desktop -t "$pkgdir/usr/lib/hydracad"
-  install -Dm755 packaging/linux/cad_desktop.wrapper "$pkgdir/usr/bin/cad_desktop"
+  if [ -f packaging/linux/cad_desktop.wrapper ]; then
+    install -Dm755 packaging/linux/cad_desktop.wrapper "$pkgdir/usr/bin/cad_desktop"
+  else
+    # Fallback if wrapper not in source (e.g. old tag): gleicher einheitlicher Launcher inline.
+    _wrap="$srcdir/cad_desktop.wrapper.in"
+    printf '%s\n' \
+      '#!/bin/sh' \
+      'if [ -z "$QT_QPA_PLATFORM" ] && [ -n "$WAYLAND_DISPLAY" ]; then export QT_QPA_PLATFORM=xcb; fi' \
+      'BUILD="${HYDRACAD_BUILD:-$HOME/GitHub/CAD/build}"' \
+      'if [ -x "$BUILD/cad_desktop" ]; then cd "$BUILD" && exec ./cad_desktop "$@"; fi' \
+      'exec /usr/lib/hydracad/cad_desktop "$@"' > "$_wrap"
+    install -Dm755 "$_wrap" "$pkgdir/usr/bin/cad_desktop"
+  fi
   ln -s cad_desktop "$pkgdir/usr/bin/hydracad"
   install -Dm644 packaging/linux/HydraCAD.desktop -t "$pkgdir/usr/share/applications"
   install -Dm644 installer/license.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"

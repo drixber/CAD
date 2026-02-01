@@ -26,7 +26,7 @@ makepkg -si
 
 `makepkg -si` baut das Paket und installiert es mit **pacman** (lokal erzeugtes `.pkg.tar.zst`). Danach startest du Hydra CAD mit `cad_desktop` oder über das Anwendungsmenü (Desktop-Eintrag).
 
-**Hinweis:** Im PKGBUILD steht ein fester Tag (`pkgver=3.0.7`). Für eine neuere Version `pkgver` in `packaging/arch/PKGBUILD` anpassen und erneut `makepkg -si` ausführen.
+**Hinweis:** Im PKGBUILD steht ein fester Tag (`pkgver`). Für eine neuere Version `pkgver` in `packaging/arch/PKGBUILD` anpassen und erneut `makepkg -si` ausführen.
 
 ---
 
@@ -41,6 +41,8 @@ yay -S hydracad
 ```
 
 (yay fragt ggf. nach Bestätigung zum Bauen/Installieren.)
+
+**Start nach Installation:** Die App setzt die Qt-Plugins nur, wenn neben der Binary ein `platforms/`-Verzeichnis existiert. Bei System-Install (`/usr/lib/hydracad`) nutzt Qt die System-Pfade – die App startet nach `yay -S hydracad` mit `cad_desktop` oder `hydracad` bzw. über das Anwendungsmenü. (Ab Version mit Fix im Repo, sobald das AUR-Paket darauf aktualisiert wurde.)
 
 ### Wenn es noch kein AUR-Paket gibt – AUR-Paket anlegen
 

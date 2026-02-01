@@ -33,8 +33,9 @@ target_link_libraries(cad_app
 )
 
 if(CAD_USE_EIGENER_KERN)
-    target_link_libraries(cad_app PRIVATE cad_eigen_kernel)
-    target_compile_definitions(cad_app PRIVATE CAD_USE_EIGENER_KERN=1)
+    # PUBLIC, damit Ziele die cad_app nutzen (z. B. cad_desktop) auch Kernel-Header und -Defines sehen (ODR/LTO + topology/Types.h).
+    target_link_libraries(cad_app PUBLIC cad_eigen_kernel)
+    target_compile_definitions(cad_app PUBLIC CAD_USE_EIGENER_KERN=1)
 endif()
 
 if(CAD_USE_QT)

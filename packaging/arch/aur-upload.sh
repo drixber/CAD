@@ -9,7 +9,7 @@ set -euo pipefail
 # ========== ANPASSEN ==========
 PKGNAME="hydracad"
 # Version: 1. Argument (z. B. ./aur-upload.sh 3.0.20) oder Umgebungsvariable PKGVER
-PKGVER="${1:-${PKGVER:-3.0.16}}"
+PKGVER="${1:-${PKGVER:-3.0.22}}"
 PKGREL="${PKGREL:-1}"
 PKGDESC="Professional CAD application (C++/Qt6)"
 ARCH="x86_64"
