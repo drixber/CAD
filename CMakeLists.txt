@@ -18,6 +18,11 @@ option(CAD_BUILD_PYTHON "Build Python bindings" OFF)
 set(CAD_DEPENDENCY_PROVIDER "vcpkg" CACHE STRING "Dependency provider (vcpkg/none)")
 set_property(CACHE CAD_DEPENDENCY_PROVIDER PROPERTY STRINGS vcpkg none)
 
+# App-Version für Update-Check (wird von CI mit Tag überschrieben)
+if(NOT DEFINED APP_VERSION)
+  set(APP_VERSION "v${PROJECT_VERSION}")
+endif()
+
 if(CAD_SUPERBUILD)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/Superbuild.cmake)
     return()

@@ -25,7 +25,7 @@ namespace cad {
 namespace app {
 
 UpdateService::UpdateService() {
-    current_version_ = "2.0.0";
+    current_version_ = "v3.0.14";
     update_server_url_ = "https://updates.hydracad.com/api/v1";
     http_client_ = std::make_unique<HttpClient>();
 }

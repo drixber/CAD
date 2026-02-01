@@ -1,6 +1,18 @@
 # Kompletter Rundumflug bis zum neuen Release
 
-Checkliste von **aktueller Codebasis** bis **neues Release** (z. B. v3.0.12) inkl. GitHub Release, Assets und AUR.
+Checkliste von **aktueller Codebasis** bis **neues Release** (z. B. v3.0.14) inkl. GitHub Release, Assets und AUR.
+
+---
+
+## Schnell-Release (nur Tag → EXE/Pakete)
+
+Wenn **main** bereits gepusht ist und die Version in `CMakeLists.txt` stimmt (z. B. 3.0.14):
+
+1. **Tag setzen und pushen:**  
+   `git tag v3.0.14`  
+   `git push origin v3.0.14`
+2. **Automatisch:** Workflow „Release bei Tag-Push erstellen“ legt das Release an → „Release – Assets anhängen“ baut Windows (EXE + ZIP), Linux (Tarball), macOS (ZIP) und hängt sie ans Release.
+3. **Prüfen:** Unter GitHub **Releases** nach einigen Minuten **HydraCADSetup.exe**, **app-windows.zip**, **hydracad-linux-portable.tar.gz** prüfen. Die **In-App-Update-Funktion** („Check for Updates“) sucht genau diese Dateinamen; bei vorhandenem Asset wird der Installer direkt heruntergeladen und (unter Windows) gestartet.
 
 ---
 
